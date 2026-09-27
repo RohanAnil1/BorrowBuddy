@@ -274,6 +274,27 @@ body {
   }
 }
 
+/* The campus belt — rightward dash marquee (two copies, -50% → 0 loop).
+   Speed is tuned to the parcel pace: slower on phones, brisker on desktop. */
+.belt-run {
+  animation: belt-run 38s linear infinite;
+}
+
+@media (min-width: 800px) {
+  .belt-run {
+    animation-duration: 20s;
+  }
+}
+
+@keyframes belt-run {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 /* Dot-matrix monogram tile on paper tags. */
 .monogram-tile {
   background-color: #000000;
