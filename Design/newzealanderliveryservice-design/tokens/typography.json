@@ -1,0 +1,90 @@
+{
+  "families": [
+    "GothamMedium",
+    "GothamBold",
+    "NotoSansMono-Bold"
+  ],
+  "scale": {
+    "heading-1": {
+      "fontFamily": "GothamMedium",
+      "fontSize": "4rem",
+      "fontWeight": "700",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "heading-2": {
+      "fontFamily": "GothamMedium",
+      "fontSize": "2.56rem",
+      "fontWeight": "700",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "heading-3": {
+      "fontFamily": "GothamMedium",
+      "fontSize": "2.5rem",
+      "fontWeight": "700",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "body": {
+      "fontFamily": "GothamBold",
+      "fontSize": "1rem",
+      "fontWeight": "400",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "caption": {
+      "fontFamily": "GothamBold",
+      "fontSize": "1.25rem",
+      "fontWeight": "400",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "code": {
+      "fontFamily": "NotoSansMono-Bold",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": null,
+      "source": "css"
+    }
+  },
+  "fontFaces": [
+    {
+      "family": "GothamBold",
+      "src": "https://www.newzealanderliveryservice.co.nz/_next/static/media/GothamNarrow-Bold.123e163e.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "GothamMedium",
+      "src": "https://www.newzealanderliveryservice.co.nz/_next/static/media/GothamNarrow-Medium.dcabd60d.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "MDThermochromeSemibold",
+      "src": "https://www.newzealanderliveryservice.co.nz/_next/static/media/MDThermochrome0.4-Semibold-Trial.86c3e5c5.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "NotoSans_ExtraCondensed-Bold",
+      "src": "https://www.newzealanderliveryservice.co.nz/_next/static/media/NotoSans_ExtraCondensed-Bold.985d9adf.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "NotoSansMono-Bold",
+      "src": "https://www.newzealanderliveryservice.co.nz/_next/static/media/NotoSansMono-Bold.f4352d62.woff2",
+      "format": "woff2",
+      "weight": "400"
+    }
+  ],
+  "rules": {
+    "maxSizesPerScreen": 4,
+    "headingWeightRange": "600-700",
+    "bodyWeight": 400,
+    "lineHeightBody": 1.5,
+    "lineHeightHeading": 1.2
+  }
+}

@@ -1,0 +1,376 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   BorrowBuddy — "Campus Cargo" design system.
+   Ported 1:1 from the NZDS design skill package (design/newzealanderliveryservice-design):
+   dark-only, deep-blue palette, single orange accent, flat elevation (no shadows,
+   no blur), 4px spacing grid, condensed uppercase display type, mono secondary
+   labels, bracket statuses, boarding-pass tickets.
+   --------------------------------------------------------------------------- */
+
+@custom-variant dt (@media (min-width: 800px));
+
+@theme {
+  /* Core palette — every value traces to the extracted tokens. */
+  --color-canvas: #003993; /* page background (html) */
+  --color-deep: #021249; /* darker section panel (carousels, map) */
+  --color-panel: #000000; /* card / panel surface — black, like the sign-in pass */
+  --color-line: #1e1e1e; /* dividers, card borders */
+  --color-ink: #ffffff; /* primary text */
+  --color-muted: #334844; /* secondary text on raised surfaces */
+  --color-accent: #cb840e; /* THE accent — CTAs, links, focus, active */
+  --color-warn: #ff9f00; /* warning / caution */
+  --color-mid: #6176c9; /* mid-blue (map hover fills, soft emphasis) */
+  --color-paper: #f0f0f0; /* construction marks, logo fills */
+  --color-paper-2: #e7e7e7; /* light surface highlight */
+  --color-black: #000000; /* pure black panels */
+
+  /* Type system — mapped through next/font/local variables. */
+  --font-title: var(--ff-noto-cond), "Arial Narrow", sans-serif; /* type-title */
+  --font-body: var(--ff-gotham-med), system-ui, sans-serif; /* type-body */
+  --font-strong: var(--ff-gotham-bold), system-ui, sans-serif; /* type-body-alt */
+  --font-label: var(--ff-noto-mono), ui-monospace, monospace; /* font-secondary */
+  --font-ticket: var(--ff-thermo), monospace; /* thermal ticket display */
+
+  /* Motion tokens — never invent durations or easings outside these. */
+  --ease-cargo: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-soft: cubic-bezier(0, 0, 0.2, 1);
+}
+
+:root {
+  color-scheme: dark;
+  --gutter: 1rem;
+  --gutter-dt: 2.5rem;
+}
+
+/* NOTE: no explicit `html` background — the body's canvas blue must propagate
+   to the document canvas so the fixed -z-10 photographic backdrop (layout.tsx)
+   paints above it. An opaque html background would cover that layer. */
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-transform: uppercase;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Type utilities — mirror the reference classes exactly.
+   --------------------------------------------------------------------------- */
+
+/* `type-title` — huge condensed uppercase display headings. */
+.type-title {
+  font-family: var(--font-title);
+  font-weight: 400; /* the file itself is Bold; weight 400 = rendered bold */
+  text-transform: uppercase;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+/* `type-body` — Gotham Medium body/UI text. */
+.type-body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* `type-body-alt` — bold Gotham emphasis inside body copy (`[&_b]:type-body-alt`). */
+.type-body-alt {
+  font-family: var(--font-strong);
+  font-weight: 400;
+}
+
+/* `font-secondary` — orange mono labels: routes, codes, statuses. */
+.font-secondary {
+  font-family: var(--font-label);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* `font-ticket` — thermal printer display for boarding-pass panels. */
+.font-ticket {
+  font-family: var(--font-ticket);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Bracketed status text: [ LOAN DISPATCHED ] */
+.status-bracket {
+  font-family: var(--font-label);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+/* ▶ arrow marker before section titles. */
+.title-arrow::before {
+  content: "\25B6";
+  display: inline-block;
+  margin-right: 0.35em;
+  color: var(--color-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Atmosphere — gradient mood + faint pattern (landing/public surfaces only).
+   Functional app surfaces stay flat per the token system.
+   --------------------------------------------------------------------------- */
+
+.atmos {
+  background:
+    radial-gradient(120% 90% at 85% -10%, rgba(0, 0, 0, 0.55) 0%, transparent 55%),
+    radial-gradient(110% 80% at 0% 110%, rgba(103, 199, 214, 0.28) 0%, transparent 55%),
+    radial-gradient(140% 120% at 50% 50%, #012a72 0%, #003993 60%, #001a52 100%);
+}
+
+.atmos-pattern {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1'%3E%3Cpath d='M20 20c8-8 20-8 28 0s-4 20-12 20S12 28 20 20z'/%3E%3Cpath d='M70 60c8-8 20-8 28 0s-4 20-12 20-24-12-16-20z'/%3E%3Cpath d='M30 80c6-6 16-6 22 0s-3 16-9 16-19-10-13-16z'/%3E%3Ccircle cx='90' cy='20' r='6'/%3E%3Ccircle cx='15' cy='52' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+
+/* Photographic backdrop — NZDS gradient plate (bg.jpg) + batik corner print
+   (bgpattern.png, transparent navy strokes; screen blend lifts them to the
+   grey etching on navy seen in the reference). */
+.backdrop-photo {
+  background-image: url("/bg.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+.batik-corner {
+  pointer-events: none;
+  background-image: url("/bgpattern.png");
+  background-repeat: no-repeat;
+  background-position: right top;
+  background-size: cover;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframes — extracted motion set (ANIMATIONS.md), nothing invented.
+   --------------------------------------------------------------------------- */
+
+@keyframes bounce-right {
+  0% {
+    opacity: 0;
+    transform: translate(-70%);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(10%);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0px);
+  }
+}
+
+@keyframes bounce-left {
+  0% {
+    opacity: 0;
+    transform: translate(70%);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-10%);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0px);
+  }
+}
+
+/* cyber-label-blink — 6s steps(1) infinite, for [ BRACKET LABELS ]. */
+@keyframes blink-label {
+  0%,
+  2%,
+  4%,
+  100% {
+    opacity: 1;
+  }
+  1%,
+  3% {
+    opacity: 0.08;
+  }
+}
+
+@keyframes draw-arc {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes spin-slow {
+  100% {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0;
+  }
+}
+
+.blink-label {
+  animation: blink-label 6s steps(1, end) infinite;
+}
+
+.draw-arc {
+  stroke-dasharray: 1;
+  animation: draw-arc 0.55s ease-out both;
+}
+
+/* The running yellow tag — seamless marquee (two identical copies, -50% loop),
+   pauses on hover; reduced-motion kills it via the global duration kill. */
+.ticker-run {
+  animation: ticker-run 42s linear infinite;
+}
+
+.status-ticker:hover .ticker-run {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-run {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Dot-matrix monogram tile on paper tags. */
+.monogram-tile {
+  background-color: #000000;
+  background-image: radial-gradient(rgba(240, 240, 240, 0.4) 1px, transparent 1.4px);
+  background-size: 6px 6px;
+}
+
+/* Photographic paper for the big loan tags — vertical light falloff +
+   faint grain lines (flat system: shading via gradients, never shadows). */
+.paper-tag {
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.018) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #ffffff 0%, #f0f0f0 58%, #e7e7e7 100%);
+}
+
+/* Typewriter eyebrow — CSS-only char reveal via clip-path (immune to
+   letter-spacing widths; steps count matches the string length). */
+.typewriter {
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  animation: type-reveal 0.9s steps(34, end) 1.6s forwards;
+}
+
+.typewriter::after {
+  content: "▌";
+  color: var(--color-accent);
+  animation: caret 1s steps(1, end) infinite;
+}
+
+@keyframes type-reveal {
+  to {
+    clip-path: inset(0 -4% 0 0);
+  }
+}
+
+/* Boot scanline — one sweep over the device stage as it powers on. */
+.scanline-sweep {
+  overflow: hidden;
+}
+
+.scanline-sweep::after {
+  content: "";
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: -18%;
+  height: 14%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(255, 159, 0, 0.14) 42%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 159, 0, 0.16) 58%,
+    transparent
+  );
+  animation: scan-sweep 1.15s ease-in-out 1.5s 1 both;
+}
+
+@keyframes scan-sweep {
+  to {
+    top: 104%;
+  }
+}
+
+/* Preloader fail-safe: even if JS never runs (stale chunks, blocked scripts),
+   the overlay fades itself out via CSS so content is never stuck behind it. */
+.preloader {
+  animation: preloader-exit 0.5s ease-out 1.2s forwards;
+}
+
+@keyframes preloader-exit {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion — hard kill per ANIMATIONS.md.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars — flat, palette-only.
+   --------------------------------------------------------------------------- */
+* {
+  scrollbar-color: var(--color-panel) var(--color-black);
+  scrollbar-width: thin;
+}

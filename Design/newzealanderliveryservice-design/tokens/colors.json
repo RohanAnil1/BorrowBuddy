@@ -1,0 +1,63 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "core": {
+    "text-primary": {
+      "value": "#ffffff",
+      "role": "text-primary",
+      "name": "tw-ring-offset-color"
+    },
+    "background": {
+      "value": "#000000",
+      "role": "background",
+      "name": "theme-color"
+    },
+    "surface": {
+      "value": "#10174a",
+      "role": "surface"
+    },
+    "border": {
+      "value": "#1e1e1e",
+      "role": "border",
+      "name": "color-charcoal"
+    },
+    "text-muted": {
+      "value": "#334844",
+      "role": "text-muted",
+      "name": "color-secondary"
+    },
+    "accent": {
+      "value": "#cb840e",
+      "role": "accent"
+    }
+  },
+  "status": {
+    "warning": {
+      "value": "#ff9f00",
+      "role": "warning",
+      "name": "color-orange"
+    }
+  },
+  "extended": {
+    "color-background": {
+      "value": "#003993",
+      "role": "info",
+      "name": "color-background"
+    },
+    "color-e7e7e7": {
+      "value": "#e7e7e7",
+      "role": "unknown"
+    },
+    "color-f0f0f0": {
+      "value": "#f0f0f0",
+      "role": "unknown"
+    },
+    "color-6176c9": {
+      "value": "#6176c9",
+      "role": "unknown"
+    }
+  },
+  "meta": {
+    "theme": "dark",
+    "extracted": "2026-09-25"
+  }
+}

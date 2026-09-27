@@ -1,0 +1,95 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireVerified } from "@/lib/auth/guards";
+import { createClient } from "@/lib/supabase/server";
+
+export async function approveRequest(formData: FormData): Promise<void> {
+  await requireVerified();
+  const requestId = String(formData.get("request_id") ?? "");
+  if (!requestId) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("approve_request", { p_request_id: requestId });
+
+  if (error) {
+    redirect(`/my/items?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/my/items");
+  revalidatePath("/my/borrows");
+  revalidatePath("/home");
+}
+
+export async function declineRequest(formData: FormData): Promise<void> {
+  await requireVerified();
+  const requestId = String(formData.get("request_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!requestId) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decline_request", {
+    p_request_id: requestId,
+    p_reason: reason || null,
+  });
+
+  if (error) {
+    redirect(`/my/items?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/my/items");
+  revalidatePath("/my/borrows");
+}
+
+export async function cancelRequest(formData: FormData): Promise<void> {
+  await requireVerified();
+  const requestId = String(formData.get("request_id") ?? "");
+  if (!requestId) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_request", { p_request_id: requestId });
+
+  if (error) {
+    redirect(`/my/borrows?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/my/borrows");
+  revalidatePath("/my/items");
+}
+
+export async function cancelLoan(formData: FormData): Promise<void> {
+  await requireVerified();
+  const loanId = String(formData.get("loan_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!loanId) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_loan", {
+    p_loan_id: loanId,
+    p_reason: reason || null,
+  });
+
+  if (error) {
+    redirect(`/loans/${loanId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/loans/${loanId}`);
+  revalidatePath("/my/borrows");
+  revalidatePath("/my/items");
+}
+
+export async function leaveWaitlist(formData: FormData): Promise<void> {
+  await requireVerified();
+  const entryId = String(formData.get("entry_id") ?? "");
+  if (!entryId) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("leave_waitlist", { p_entry_id: entryId });
+
+  if (error) {
+    redirect(`/my/borrows?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/my/borrows");
+}
