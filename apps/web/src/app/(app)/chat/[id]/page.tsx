@@ -69,7 +69,7 @@ export default async function ChatThreadPage({ params }: { params: Promise<{ id:
       {/* pinned loan-status chip */}
       {loan && (
         <Link
-          className="mt-3 flex w-fit items-center gap-3 border border-line bg-black px-3 py-2 transition-colors hover:border-accent"
+          className="mt-3 flex w-fit flex-wrap items-center gap-3 border border-line bg-black px-3 py-2 transition-colors hover:border-accent"
           href={`/loans/${loan.id}`}
         >
           <span className="blink-label size-2 shrink-0 bg-accent" />

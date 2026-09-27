@@ -88,7 +88,7 @@ export function RequestForm({
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className={`flex flex-col gap-5 ${armed ? "pb-24" : ""}`}>
       <AvailabilityCalendar
         end={range.end}
         maxLoanDays={maxLoanDays}
@@ -120,7 +120,7 @@ export function RequestForm({
         )}
 
         <SubmitButton
-          className="hidden md:inline-flex"
+          className="hidden dt:inline-flex"
           disabled={!armed}
           pendingLabel="DISPATCHING…"
         >
@@ -162,7 +162,7 @@ export function RequestForm({
         {armed && (
           <motion.div
             animate={{ y: 0, opacity: 1 }}
-            className="fixed inset-x-0 bottom-16 z-40 border-t border-line bg-black px-4 py-3 md:hidden"
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-black px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dt:hidden"
             exit={{ y: 24, opacity: 0 }}
             initial={{ y: 24, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}

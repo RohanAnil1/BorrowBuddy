@@ -215,7 +215,7 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
           <h2 className="font-secondary text-[11px] uppercase text-ink/60">[ CUSTODY CHAIN ]</h2>
           <ol className="mt-5 flex flex-col gap-4">
             {timeline.map((step, index) => (
-              <li className="flex items-start gap-3" key={step.label}>
+              <li className="flex gap-3" key={step.label}>
                 <div className="relative flex flex-col items-center">
                   <span
                     className={`flex size-3 items-center justify-center rounded-full border-2 ${
@@ -224,7 +224,7 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
                   />
                   {index < timeline.length - 1 && (
                     <span
-                      className={`absolute top-3 h-8 w-0.5 ${
+                      className={`absolute -bottom-4 top-3 w-0.5 ${
                         step.done ? "bg-accent/60" : "bg-ink/15"
                       }`}
                     />

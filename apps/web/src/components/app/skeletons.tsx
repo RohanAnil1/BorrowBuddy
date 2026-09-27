@@ -28,7 +28,7 @@ export function FeedSkeleton() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 dt:px-10">
       <SkeletonBlock className="h-3 w-32" />
-      <SkeletonBlock className="mt-4 h-10 w-80" />
+      <SkeletonBlock className="mt-4 h-10 w-full max-w-80" />
       <SkeletonBlock className="mt-6 h-12 w-full" />
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (

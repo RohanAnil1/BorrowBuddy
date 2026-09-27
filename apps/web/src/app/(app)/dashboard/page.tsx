@@ -54,7 +54,7 @@ export default async function DashboardPage() {
             {profile.full_name.split(" ")[0]}&apos;s lending desk
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="border border-accent/60 bg-accent/10 px-3 py-1.5 font-secondary text-[10px] text-accent">
             TRUST SCORE {Math.round(profile.trust_score)}
           </span>

@@ -103,7 +103,7 @@ export function ImageUploader({
               )}
               <button
                 aria-label="Remove photo"
-                className="absolute right-1 top-1 flex size-6 items-center justify-center bg-black text-accent opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1 top-1 flex size-7 items-center justify-center border border-line bg-black/80 text-accent transition-colors hover:bg-black"
                 onClick={() => removePath(path)}
                 type="button"
               >

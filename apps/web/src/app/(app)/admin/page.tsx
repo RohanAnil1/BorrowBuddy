@@ -88,7 +88,7 @@ export default async function AdminPage({
               return (
                 <article className="border border-line bg-panel p-6" key={profile.id}>
                   <div className="flex flex-wrap items-start justify-between gap-6">
-                    <div className="min-w-56">
+                    <div className="w-full min-w-0 dt:w-auto dt:min-w-56">
                       <p className="type-body-alt text-[15px] uppercase">
                         {profile.full_name || "Unnamed student"}
                       </p>
@@ -134,7 +134,7 @@ export default async function AdminPage({
                           <input name="profile_id" type="hidden" value={profile.id} />
                           <input name="decision" type="hidden" value="reject" />
                           <input
-                            className={`${inputClass} w-44`}
+                            className={`${inputClass} w-full sm:w-44`}
                             maxLength={500}
                             name="note"
                             placeholder="Reason (sent to them)"
@@ -230,7 +230,7 @@ export default async function AdminPage({
                       <option value="rejected">Rejected</option>
                     </select>
                   </label>
-                  <label className="flex min-w-64 flex-1 flex-col gap-1.5">
+                  <label className="flex w-full min-w-0 flex-1 flex-col gap-1.5 sm:min-w-64">
                     <span className="font-secondary text-[9px] text-ink/50">RESOLUTION NOTE</span>
                     <input
                       className={inputClass}

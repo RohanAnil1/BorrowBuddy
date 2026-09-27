@@ -1,4 +1,4 @@
-import { Bell, Compass, Inbox, MessagesSquare, PlusCircle, User } from "lucide-react";
+import { Bell } from "lucide-react";
 import Link from "next/link";
 import type { Profile } from "@borrowbuddy/shared";
 import { CargoMark } from "@/components/landing/hero";
@@ -10,14 +10,6 @@ const DESKTOP_LINKS = [
   { href: "/home", label: "Browse" },
   { href: "/chat", label: "Chat" },
   { href: "/map", label: "Map" },
-];
-
-const MOBILE_LINKS = [
-  { href: "/dashboard", label: "Home", icon: Compass },
-  { href: "/my/borrows", label: "Borrows", icon: Inbox },
-  { href: "/items/new", label: "List", icon: PlusCircle },
-  { href: "/chat", label: "Chat", icon: MessagesSquare },
-  { href: "/me", label: "You", icon: User },
 ];
 
 export function AppShell({
@@ -36,16 +28,16 @@ export function AppShell({
       <StatusTicker />
 
       <header className="sticky top-0 z-40 border-b border-line bg-black">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 dt:px-10">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 px-4 pt-3 dt:flex-nowrap dt:px-10">
           <Link className="flex items-center gap-2.5" href="/dashboard">
             <CargoMark className="size-8" />
             <span className="font-secondary text-[12px] text-ink">BORROWBUDDY</span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="order-last -mx-1 flex w-full flex-wrap items-center gap-1 pb-1.5 dt:order-none dt:mx-0 dt:w-auto dt:pb-0">
             {DESKTOP_LINKS.map((link) => (
               <Link
-                className="type-body rounded-lg px-4 py-2 text-[13px] uppercase text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+                className="type-body rounded-lg px-3 py-1.5 text-[13px] uppercase text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink dt:px-4 dt:py-2"
                 href={link.href}
                 key={link.href}
               >
@@ -53,7 +45,7 @@ export function AppShell({
               </Link>
             ))}
             <Link
-              className="type-body flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] uppercase text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="type-body flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] uppercase text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink dt:px-4 dt:py-2"
               href="/my/items"
             >
               My items
@@ -68,7 +60,7 @@ export function AppShell({
           <div className="flex items-center gap-2">
             {profile.is_admin && (
               <Link
-                className="hidden font-secondary text-[10px] uppercase text-ink/50 transition-colors hover:text-accent sm:inline-flex"
+                className="font-secondary text-[10px] uppercase text-ink/50 transition-colors hover:text-accent"
                 href="/admin"
               >
                 [ ADMIN ]
@@ -96,25 +88,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col pb-20 md:pb-0">{children}</main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-black md:hidden">
-        <div className="mx-auto flex max-w-md items-stretch justify-between px-2">
-          {MOBILE_LINKS.map((link) => (
-            <Link
-              className="relative flex flex-1 flex-col items-center gap-1 py-3 font-secondary text-[8px] text-ink/50 transition-colors hover:text-accent"
-              href={link.href}
-              key={link.href}
-            >
-              <link.icon className="size-5" />
-              {link.label.toUpperCase()}
-              {link.href === "/my/borrows" && pendingCount > 0 && (
-                <span className="absolute right-3 top-2 size-2 bg-accent" />
-              )}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <main className="flex flex-1 flex-col pb-8">{children}</main>
     </div>
   );
 }

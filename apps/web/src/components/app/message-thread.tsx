@@ -138,7 +138,7 @@ export function MessageThread({
         <div ref={bottomRef} />
       </div>
 
-      <div className="sticky bottom-0 border-t border-line bg-black py-4">
+      <div className="sticky bottom-0 border-t border-line bg-black pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
         {error && (
           <p className="mb-2 font-secondary text-[9px] text-warn">[ {error} ]</p>
         )}

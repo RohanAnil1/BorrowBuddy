@@ -65,9 +65,9 @@ export function LandingHero() {
 
       <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-10 px-4 pb-14 pt-6 dt:min-h-[calc(100svh-6rem)] dt:grid-cols-[1.02fr_0.98fr] dt:gap-4 dt:px-10 dt:pb-10">
         {/* left — copy column (front scroll layer: lifts + fades) */}
-        <motion.div className="order-2 dt:order-1" style={{ y: copyY, opacity: copyOpacity }}>
+        <motion.div style={{ y: copyY, opacity: copyOpacity }}>
           <motion.div animate="show" initial="hidden" variants={staggerContainer}>
-          <motion.p className="font-secondary text-accent" variants={fadeUp}>
+          <motion.p className="font-secondary text-[13px] text-accent dt:text-base" variants={fadeUp}>
             <span className="typewriter">[ BENNETT UNIVERSITY · EST. 2025 ]</span>
           </motion.p>
 
@@ -121,10 +121,10 @@ export function LandingHero() {
         </motion.div>
 
         {/* right — the 3D device (near scroll layer: drifts slower) */}
-        <motion.div className="order-1 dt:order-2" style={{ y: deviceY }}>
+        <motion.div style={{ y: deviceY }}>
           <motion.div
             animate={{ opacity: 1 }}
-            className="order-1 h-[420px] dt:order-2 dt:h-[min(78vh,720px)]"
+            className="h-[420px] dt:h-[min(78vh,720px)]"
             initial={{ opacity: 0 }}
             transition={{ duration: 0.4, delay: 1.15 }}
           >

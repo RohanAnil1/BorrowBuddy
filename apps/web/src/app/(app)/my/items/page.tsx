@@ -102,7 +102,7 @@ export default async function MyItemsPage({
                     <form action={declineRequest} className="flex flex-col gap-2">
                       <input name="request_id" type="hidden" value={request.id} />
                       <input
-                        className="w-48 rounded-lg border border-line bg-black px-4 py-2 text-[12px] outline-none transition-colors focus:border-accent"
+                        className="w-full rounded-lg border border-line bg-black px-4 py-2 text-[12px] outline-none transition-colors focus:border-accent dt:w-48"
                         maxLength={300}
                         name="reason"
                         placeholder="Reason (optional)"

@@ -90,6 +90,7 @@ export default async function MapPage() {
             return (
               <g key={location.id}>
                 <line
+                  className="[stroke-width:4px] dt:[stroke-width:3px]"
                   strokeLinecap="round"
                   stroke="#1e1e1e"
                   strokeOpacity="0.9"
@@ -99,24 +100,34 @@ export default async function MapPage() {
                   y1={y}
                   y2={y + 26}
                 />
-                <circle cx={x} cy={y} fill="#f0f0f0" r="13" stroke="#1e1e1e" strokeWidth="3" />
-                <circle cx={x} cy={y} fill="#cb840e" r="4.5" />
+                <circle
+                  className="[r:20px] dt:[r:13px] [stroke-width:4px] dt:[stroke-width:3px]"
+                  cx={x}
+                  cy={y}
+                  fill="#f0f0f0"
+                  r="13"
+                  stroke="#1e1e1e"
+                  strokeWidth="3"
+                />
+                <circle className="[r:7px] dt:[r:4.5px]" cx={x} cy={y} fill="#cb840e" r="4.5" />
                 <text
+                  className="text-[24px] dt:text-[15px]"
                   fill="#ffffff"
                   fontFamily="var(--ff-gotham-med), sans-serif"
                   fontSize="15"
                   fontWeight="400"
-                  x={x + 20}
-                  y={y + 5}
+                  x={x + 26}
+                  y={y + 6}
                 >
                   {location.name}
                 </text>
                 <text
+                  className="text-[18px] dt:text-[11px]"
                   fill="#cb840e"
                   fontFamily="var(--ff-noto-mono), monospace"
                   fontSize="11"
-                  x={x + 20}
-                  y={y + 22}
+                  x={x + 26}
+                  y={y + 30}
                 >
                   {availableCount} AVAILABLE
                 </text>

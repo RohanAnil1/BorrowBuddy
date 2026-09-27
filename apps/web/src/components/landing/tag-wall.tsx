@@ -313,7 +313,7 @@ export function TagWall() {
         >
           {TAGS.map((loan, index) => (
             <TagCard
-              data-testid={`wall-tag-${index}`}
+              dataTestId={`wall-tag-${index}`}
               distance={index - active}
               isActive={index === active}
               key={loan.id}

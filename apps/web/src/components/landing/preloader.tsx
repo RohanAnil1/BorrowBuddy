@@ -21,7 +21,7 @@ export function Preloader() {
           exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           initial={{ opacity: 1 }}
         >
-          <p className="status-bracket blink-label opacity-40 text-center text-[20px]">
+          <p className="status-bracket blink-label px-4 text-center text-[15px] opacity-40 dt:text-[20px]">
             [ OPENING THE BUDDY SHELF. . . ]
           </p>
         </motion.div>

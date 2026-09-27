@@ -20,8 +20,8 @@ export function AuthPanel({
   const isSignup = mode === "signup";
 
   return (
-    <div className="relative z-10 grid w-full max-w-5xl items-center gap-14 lg:grid-cols-[1fr_420px]">
-      <div className="hidden lg:block">
+    <div className="relative z-10 grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[1fr_420px] lg:gap-14">
+      <div>
         <Link className="inline-flex items-center gap-3" href="/">
           <CargoMark className="size-9" />
           <span className="font-secondary text-ink">BORROWBUDDY</span>
@@ -29,7 +29,7 @@ export function AuthPanel({
 
         <motion.p
           animate="show"
-          className="font-secondary mt-12"
+          className="font-secondary mt-12 text-[13px] dt:text-base"
           initial="hidden"
           variants={fadeUp}
         >
@@ -173,10 +173,6 @@ export function AuthPanel({
         <AuthTabs mode={mode} />
 
         <div className="p-8 sm:p-10">
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <CargoMark className="size-8" />
-            <span className="font-secondary text-ink">BORROWBUDDY</span>
-          </div>
           {children}
         </div>
 

@@ -35,7 +35,7 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <ConstructionMark className="hidden w-32 shrink-0 dt:block" />
+        <ConstructionMark className="w-32 shrink-0" />
       </div>
     </footer>
   );
