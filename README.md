@@ -75,6 +75,32 @@ Useful bits:
 - `npx supabase db reset` re-applies every migration and the seed
 - `npx supabase stop` / `npx supabase stop --no-backup` to pause or wipe
 
+### Deploying to Vercel
+
+This is an npm-workspaces monorepo — the Next.js app lives in `apps/web`, so
+Vercel needs one project setting to find it (Framework Preset must be
+Next.js, never "Other"):
+
+1. Project → **Settings → General → Root Directory**: `apps/web`, and turn ON
+   **"Include source files outside of the Root Directory in the Build Step"**
+   (required so the `@borrowbuddy/shared` workspace package is available).
+   Framework Preset then auto-detects **Next.js** — leave the Build Command
+   and Output Directory at their defaults (`.next` is managed by the preset).
+2. **Environment variables** (Production + Preview) — same names as
+   `apps/web/.env.example`: `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `NEXT_PUBLIC_APP_URL` (your Vercel URL), `ADMIN_EMAIL`.
+3. Use a **hosted Supabase project** — the local stack (127.0.0.1) isn't
+   reachable from Vercel. Apply the schema with
+   `npx supabase link --project-ref <ref>` then `npx supabase db push`
+   (tables, RLS, RPCs and storage buckets all ship in `supabase/migrations`).
+4. In the hosted Supabase dashboard → **Auth → Sign In / Up**: disable email
+   confirmations (password sign-ins are instant) and set the password policy
+   to minimum length 8 with "letters and digits", matching
+   `supabase/config.toml`.
+5. Redeploy, then sign up once with the `ADMIN_EMAIL` address — the bootstrap
+   promotes it to admin + verified automatically, ready for the review queue.
+
 ### What the app does today (Phase 1 + 2 + 3)
 
 - Email + password auth (Bennett domain only), onboarding, student-ID upload, admin verification queue
