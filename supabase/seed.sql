@@ -27,6 +27,21 @@ values
 on conflict (name) do update
 set description = excluded.description, lat = excluded.lat, lng = excluded.lng;
 
+-- Campus pins for the landing board — xp/yp are percentages of the master
+-- plan photograph (apps/web/public/campus-map.png), nudged by the admin desk.
+insert into public.pickup_locations (name, description, xp, yp, map_label)
+values
+  ('Maggi Hotspot', 'Eatery counter in front of Block C1', 38.8, 44.4, 'right'),
+  ('Southern Stories', 'Eatery counter in front of Block D1', 38.8, 41.3, 'left'),
+  ('D5 Stage', 'Open-air stage in front of Block D5', 37.5, 35.7, 'left'),
+  ('Laundry', 'Laundry drop between Blocks D4 and D2', 42.0, 36.6, 'right'),
+  ('Quench', 'Eatery counter in front of the Sports Complex', 29.7, 33.6, 'left')
+on conflict (name) do update
+set description = excluded.description,
+    xp = excluded.xp,
+    yp = excluded.yp,
+    map_label = excluded.map_label;
+
 insert into public.conversations (type, title)
 values ('community', 'Campus Lending')
 on conflict (title) where type = 'community' do nothing;

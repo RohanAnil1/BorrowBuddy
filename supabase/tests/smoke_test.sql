@@ -474,6 +474,64 @@ begin
 end;
 $$;
 
+-- ---------------------------------------------------------------------------
+-- 14. Campus pins: only admins add or remove map pins, and every change is audited
+-- ---------------------------------------------------------------------------
+
+do $$
+begin
+  begin
+    perform public.admin_save_pickup_location(null, 'Sneaky Pin', 'not allowed', 40, 40, 'right', true);
+    raise exception 'FAIL: a non-admin added a campus pin';
+  exception
+    when others then
+      if sqlerrm like 'FAIL:%' then raise; end if;
+      perform pg_temp.assert(
+        sqlerrm like 'Only admins can manage pickup locations',
+        'non-admins cannot add campus pins'
+      );
+  end;
+end;
+$$;
+
+select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-8444-444444444444"}', true);
+
+do $$
+declare
+  v_pin public.pickup_locations;
+begin
+  v_pin := public.admin_save_pickup_location(
+    null, 'Test Pin', 'Placed by the smoke test', 41.5, 36.2, 'left', true
+  );
+  perform pg_temp.assert(v_pin.id is not null, 'admin adds a campus pin');
+  perform pg_temp.assert(
+    v_pin.xp = 41.5 and v_pin.yp = 36.2 and v_pin.map_label = 'left',
+    'pin stores its map coordinates'
+  );
+
+  v_pin := public.admin_save_pickup_location(
+    v_pin.id, 'Test Pin', 'Moved by the smoke test', 42.5, 37.2, 'right', false
+  );
+  perform pg_temp.assert(
+    v_pin.xp = 42.5 and v_pin.is_active = false,
+    'admin edits a campus pin'
+  );
+
+  perform public.admin_delete_pickup_location(v_pin.id);
+  perform pg_temp.assert(
+    (select count(*) from public.pickup_locations where name = 'Test Pin') = 0,
+    'admin removes a campus pin'
+  );
+  perform pg_temp.assert(
+    exists (
+      select 1 from public.audit_log
+      where action = 'pickup_location.deleted' and entity_id = v_pin.id::text
+    ),
+    'pin changes are written to the audit log'
+  );
+end;
+$$;
+
 reset role;
 
 rollback;

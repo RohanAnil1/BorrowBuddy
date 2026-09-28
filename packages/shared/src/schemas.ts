@@ -179,6 +179,19 @@ export const fineActionSchema = z.object({
   action: z.enum(["settle", "waive"]),
 });
 
+/* --------------------------------- campus pins ------------------------------ */
+
+export const pickupLocationSchema = z.object({
+  id: z.uuid().optional(),
+  name: z.string().trim().min(3, "Give the pin a name").max(60),
+  description: z.string().trim().max(200).optional(),
+  /** Map-board position as a percentage of the photo, 0-100 */
+  xp: z.number().min(0).max(100),
+  yp: z.number().min(0).max(100),
+  map_label: z.enum(["left", "right"]),
+  is_active: z.boolean(),
+});
+
 /* ---------------------------------- types ---------------------------------- */
 
 export type SignInInput = z.infer<typeof signInSchema>;
@@ -197,3 +210,4 @@ export type ReviewInput = z.infer<typeof reviewSchema>;
 export type MessageInput = z.infer<typeof messageSchema>;
 export type ReportInput = z.infer<typeof reportSchema>;
 export type FineActionInput = z.infer<typeof fineActionSchema>;
+export type PickupLocationInput = z.infer<typeof pickupLocationSchema>;

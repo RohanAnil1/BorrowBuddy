@@ -1,10 +1,14 @@
 /* ---------------------------------------------------------------------------
    Bennett University master plan — pickup points for the landing board.
    Everything is expressed as a percentage of the 4000 × 3000 photograph, so a
-   pin can be nudged later with two numbers: xp runs left to right, yp top to
-   bottom. Traced from the printed plan (north-up: Gates 1/2 on the east
-   approach road, Gate 3 west, sports belt north-west, academic core and
-   library centre, hostel cluster east, fields south).
+   pin can be nudged with two numbers: xp runs left to right, yp top to
+   bottom. Positions are traced from the printed plan (north-up: Gates 1/2 on
+   the east approach road, Gate 3 west, sports belt north-west, academic core
+   centre, hostel cluster east, fields south).
+
+   The list below is the static fallback used when the database is not wired
+   up; once it is, active pickup_locations rows with coordinates render here
+   and the admin desk can add or remove pins.
    --------------------------------------------------------------------------- */
 
 export const IMAGE = { w: 4000, h: 3000 } as const;
@@ -19,73 +23,50 @@ export type MapSpot = {
   yp: number;
   /** which side the label chip sits on */
   label: "left" | "right";
-  /** decorative live count (landing stays static) */
-  live: number;
+  /** optional decorative live count when a source provides one */
+  live?: number;
 };
 
 export const SPOTS: MapSpot[] = [
   {
-    id: "library",
-    name: "Library Entrance",
-    description: "Main library steps, ground floor",
-    xp: 50.1,
-    yp: 40.7,
+    id: "maggi-hotspot",
+    name: "Maggi Hotspot",
+    description: "Eatery counter in front of Block C1",
+    xp: 38.8,
+    yp: 44.4,
+    label: "right",
+  },
+  {
+    id: "southern-stories",
+    name: "Southern Stories",
+    description: "Eatery counter in front of Block D1",
+    xp: 38.8,
+    yp: 41.3,
     label: "left",
-    live: 14,
   },
   {
-    id: "sac",
-    name: "Student Activity Center",
-    description: "Plaza beside the German Hangar",
-    xp: 56.0,
-    yp: 46.0,
-    label: "right",
-    live: 9,
-  },
-  {
-    id: "block-a",
-    name: "Academic Block A",
-    description: "Atrium near the notice board",
-    xp: 45.4,
-    yp: 49.8,
-    label: "right",
-    live: 11,
-  },
-  {
-    id: "boys-hostel",
-    name: "Boys Hostel Gate",
-    description: "Gate 1 entrance, Block O side",
-    xp: 63.6,
-    yp: 42.7,
+    id: "d5-stage",
+    name: "D5 Stage",
+    description: "Open-air stage in front of Block D5",
+    xp: 37.5,
+    yp: 35.7,
     label: "left",
-    live: 21,
   },
   {
-    id: "girls-hostel",
-    name: "Girls Hostel Gate",
-    description: "Gate 2 entrance, Block P side",
-    xp: 61.0,
-    yp: 50.7,
+    id: "laundry",
+    name: "Laundry",
+    description: "Laundry drop between Blocks D4 and D2",
+    xp: 42.0,
+    yp: 36.6,
+    label: "right",
+  },
+  {
+    id: "quench",
+    name: "Quench",
+    description: "Eatery counter in front of the Sports Complex",
+    xp: 29.7,
+    yp: 33.6,
     label: "left",
-    live: 7,
-  },
-  {
-    id: "sports",
-    name: "Sports Complex",
-    description: "Near the equipment room",
-    xp: 28.1,
-    yp: 29.1,
-    label: "right",
-    live: 6,
-  },
-  {
-    id: "cafeteria",
-    name: "Cafeteria",
-    description: "Central seating, Food Street",
-    xp: 41.5,
-    yp: 60.0,
-    label: "right",
-    live: 12,
   },
 ];
 

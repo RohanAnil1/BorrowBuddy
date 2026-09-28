@@ -1,17 +1,20 @@
-import { AlertTriangle, Check, ExternalLink, Receipt, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Check, ExternalLink, MapPin, Receipt, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
+import { PinForm } from "@/components/app/pin-form";
 import { StatusBadge } from "@/components/app/status-badge";
 import { SubmitButton } from "@/components/app/submit-button";
 import { formatMoney, relativeTime } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getPendingFines } from "@/lib/data/fines";
 import { getOpenIncidents } from "@/lib/data/incidents";
+import { getAllPickupLocations } from "@/lib/data/items";
 import { getPendingVerifications } from "@/lib/data/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { BUCKETS } from "@/lib/storage";
 import { reviewVerification } from "./actions";
 import { actOnFine, resolveIncident } from "./moderation-actions";
+import { removePin, savePin } from "./pins-actions";
 
 export const metadata = { title: "Admin" };
 
@@ -26,10 +29,11 @@ export default async function AdminPage({
   await requireAdmin();
   const { error } = await searchParams;
 
-  const [pending, incidents, fines] = await Promise.all([
+  const [pending, incidents, fines, locations] = await Promise.all([
     getPendingVerifications(),
     getOpenIncidents(),
     getPendingFines(),
+    getAllPickupLocations(),
   ]);
 
   const supabase = await createClient();
@@ -52,6 +56,10 @@ export default async function AdminPage({
       if (data?.signedUrl) photoUrls.set(photo.id, data.signedUrl);
     }
   }
+
+  const mappedCount = locations.filter(
+    (location) => location.xp !== null && location.yp !== null && location.is_active,
+  ).length;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 dt:px-10">
@@ -333,6 +341,86 @@ export default async function AdminPage({
               </article>
             ))
           )}
+        </div>
+      </section>
+
+      <section className="mt-14">
+        <h2 className="font-secondary text-[11px] uppercase text-ink/60">
+          [ CAMPUS PINS ]
+          {mappedCount > 0 && (
+            <span className="ml-3 bg-accent px-2 py-0.5 font-secondary text-[10px] text-white">
+              {mappedCount}
+            </span>
+          )}
+        </h2>
+        <p className="type-body mt-1 text-[12px] text-ink/60 uppercase">
+          Pins with a map position that are on the board appear on the landing within a
+          minute. Drag the dot to place one.
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3">
+          {locations.map((location) => {
+            const mapped = location.xp !== null && location.yp !== null;
+            return (
+              <article className="border border-line bg-panel" key={location.id}>
+                <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div className="flex items-center gap-4">
+                    {mapped ? (
+                      <span
+                        className="relative block aspect-[4/3] w-20 shrink-0 border border-line bg-[url(/campus-map.png)] bg-cover bg-center"
+                        title={`${location.xp}% / ${location.yp}%`}
+                      >
+                        <span
+                          className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#0c0906] bg-[#ffcf7a]"
+                          style={{ left: `${location.xp}%`, top: `${location.yp}%` }}
+                        />
+                      </span>
+                    ) : (
+                      <span className="flex aspect-[4/3] w-20 shrink-0 items-center justify-center border border-line font-secondary text-[8px] text-ink/40">
+                        NO MAP
+                      </span>
+                    )}
+                    <div>
+                      <p className="type-body-alt text-[13px] uppercase">{location.name}</p>
+                      <p className="type-body mt-1 text-[12px] uppercase text-ink/60">
+                        {location.description ?? "No description"}
+                      </p>
+                      <p className="font-secondary mt-1 text-[9px] text-ink/40">
+                        {mapped
+                          ? `MAP ${(location.xp as number).toFixed(1)}% / ${(location.yp as number).toFixed(1)}% · LABEL ${location.map_label.toUpperCase()}`
+                          : "NO MAP POSITION"}{" "}
+                        · {location.is_active ? "ON THE BOARD" : "HIDDEN"}
+                      </p>
+                    </div>
+                  </div>
+                  <form action={removePin}>
+                    <input name="id" type="hidden" value={location.id} />
+                    <SubmitButton pendingLabel="…" variant="danger">
+                      Remove
+                    </SubmitButton>
+                  </form>
+                </div>
+                <details>
+                  <summary className="cursor-pointer border-t border-line px-5 py-3 font-secondary text-[9px] text-ink/50 transition-colors hover:text-accent">
+                    [ EDIT PIN ]
+                  </summary>
+                  <div className="border-t border-line p-5">
+                    <PinForm action={savePin} pin={{ ...location }} submitLabel="Save pin" />
+                  </div>
+                </details>
+              </article>
+            );
+          })}
+
+          <div className="border border-line bg-panel p-5">
+            <h3 className="flex items-center gap-2 font-secondary text-[10px] text-ink/60">
+              <MapPin className="size-3.5 text-accent" />
+              [ ADD A PIN ]
+            </h3>
+            <div className="mt-4">
+              <PinForm action={savePin} submitLabel="Add pin" />
+            </div>
+          </div>
         </div>
       </section>
 

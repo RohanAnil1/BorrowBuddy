@@ -137,6 +137,13 @@ export async function getPickupLocations(): Promise<PickupLocation[]> {
   return (data as PickupLocation[] | null) ?? [];
 }
 
+/** Admin view: every pickup location, including hidden and unmapped rows. */
+export async function getAllPickupLocations(): Promise<PickupLocation[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("pickup_locations").select("*").order("name");
+  return (data as PickupLocation[] | null) ?? [];
+}
+
 export async function getPickupLocationStats(): Promise<
   { location: PickupLocation; availableCount: number }[]
 > {

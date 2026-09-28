@@ -20,7 +20,7 @@ import { GATE_1, IMAGE, SPOTS, routePath, type MapSpot } from "./map-data";
 const GATE_X = GATE_1.xp * 10;
 const GATE_Y = GATE_1.yp * 7.5;
 
-export function CampusMap() {
+export function CampusMap({ spots = SPOTS }: { spots?: MapSpot[] }) {
   const sectionRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<MapSpot | null>(null);
@@ -79,18 +79,17 @@ export function CampusMap() {
       ref={sectionRef}
     >
       <p className="sr-only">
-        Photograph of the Bennett University master plan board with seven BorrowBuddy
-        pickup points: Library Entrance, Student Activity Center, Academic Block A, Boys
-        Hostel Gate, Girls Hostel Gate, Sports Complex and Cafeteria. Selecting a point
-        dims the board, draws its arrival route from Gate 1 and shows its details.
+        Photograph of the Bennett University master plan board with {spots.length} BorrowBuddy
+        pickup points: {spots.map((spot) => spot.name).join(", ")}. Selecting a point dims the
+        board, draws its arrival route from Gate 1 and shows its details.
       </p>
 
       <div className="flex w-full flex-col justify-between gap-10 dt:flex-row dt:items-start">
         <h2 className="type-title title-arrow shrink-0">Where you pick up</h2>
         <p className="type-body w-full text-[15px] leading-7 uppercase dt:w-[40%] dt:text-lg">
           <span className="type-body-alt">
-            BorrowBuddy hands over at fixed campus spots — library steps, the SAC plaza,
-            hostel gates at Gate 1 &amp; 2, the sports complex and Food Street.
+            BorrowBuddy hands over at fixed campus spots — Maggi Hotspot by C1, Southern
+            Stories by D1, the D5 stage, the laundry desk and Quench by the sports complex.
           </span>{" "}
           Every listing pins its pickup point, and the board shows where the queue is
           open right now.{" "}
@@ -171,14 +170,18 @@ export function CampusMap() {
               )}
             </svg>
 
-            {/* pickup pins */}
-            {SPOTS.map((spot, index) => {
+            {/* pickup pins — display-only on phones, the spot rail drives selection */}
+            {spots.map((spot, index) => {
               const isActive = active?.id === spot.id;
               return (
                 <motion.button
-                  aria-label={`${spot.name} — ${spot.live} items live`}
+                  aria-label={
+                    spot.live === undefined
+                      ? spot.name
+                      : `${spot.name} — ${spot.live} items live`
+                  }
                   aria-pressed={isActive}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full p-[5px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full p-[5px] outline-none focus-visible:ring-2 focus-visible:ring-accent dt:pointer-events-auto dt:cursor-pointer ${
                     isActive ? "z-30" : "z-20"
                   }`}
                   data-pin={spot.id}
@@ -200,19 +203,19 @@ export function CampusMap() {
                 >
                   <span
                     aria-hidden
-                    className={`pointer-events-none absolute left-1/2 top-1/2 -ml-6 -mt-6 size-12 rounded-full bg-[radial-gradient(closest-side,rgba(255,178,77,0.5),transparent)] transition-opacity duration-300 ${
+                    className={`pointer-events-none absolute left-1/2 top-1/2 -ml-5 -mt-5 size-10 rounded-full bg-[radial-gradient(closest-side,rgba(255,178,77,0.5),transparent)] transition-opacity duration-300 dt:-ml-6 dt:-mt-6 dt:size-12 ${
                       isActive ? "opacity-100" : "opacity-70"
                     }`}
                   />
                   {!reduced && (
                     <span
                       aria-hidden
-                      className="pin-ring pointer-events-none absolute left-1/2 top-1/2 -ml-3 -mt-3 size-6 rounded-full border-2 border-accent"
+                      className="pin-ring pointer-events-none absolute left-1/2 top-1/2 -ml-2.5 -mt-2.5 size-5 rounded-full border-2 border-accent dt:-ml-3 dt:-mt-3 dt:size-6"
                     />
                   )}
                   <span
                     aria-hidden
-                    className={`relative block size-3.5 rounded-full border-2 border-[#0c0906] transition-colors duration-300 ${
+                    className={`relative block size-2.5 rounded-full border border-[#0c0906] transition-colors duration-300 dt:size-3.5 dt:border-2 ${
                       isActive ? "bg-[#ffe9c4]" : "bg-[#ffcf7a]"
                     }`}
                   />
@@ -224,6 +227,32 @@ export function CampusMap() {
                     {spot.name}
                   </span>
                 </motion.button>
+              );
+            })}
+          </div>
+
+          {/* spot rail — phones only; the pins above are too dense to tap there */}
+          <div
+            aria-label="Pickup points"
+            className="mt-3 flex flex-wrap gap-2 dt:hidden"
+            role="group"
+          >
+            {spots.map((spot) => {
+              const isActive = active?.id === spot.id;
+              return (
+                <button
+                  aria-pressed={isActive}
+                  className={`border px-3 py-2 font-label text-[10px] uppercase leading-none tracking-[0.08em] transition-colors ${
+                    isActive
+                      ? "border-accent bg-accent/15 text-[#ffcf7a]"
+                      : "border-line bg-black text-ink/60"
+                  }`}
+                  key={spot.id}
+                  onClick={() => select(spot)}
+                  type="button"
+                >
+                  {spot.name}
+                </button>
               );
             })}
           </div>
@@ -261,9 +290,11 @@ export function CampusMap() {
                 <p className="type-body-alt mt-2 text-[16px] uppercase text-ink">{active.name}</p>
                 <p className="type-body mt-1 text-[12px] uppercase text-ink/55">{active.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="border border-accent/60 bg-accent/10 px-2 py-1 font-secondary text-[9px] text-accent">
-                    {active.live} ITEMS LIVE
-                  </span>
+                  {active.live !== undefined && (
+                    <span className="border border-accent/60 bg-accent/10 px-2 py-1 font-secondary text-[9px] text-accent">
+                      {active.live} ITEMS LIVE
+                    </span>
+                  )}
                   <span className="border border-line px-2 py-1 font-secondary text-[9px] text-ink/50">
                     QUEUE OPEN
                   </span>

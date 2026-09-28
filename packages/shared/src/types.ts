@@ -104,6 +104,10 @@ export interface PickupLocation {
   lng: number | null;
   photo_path: string | null;
   is_active: boolean;
+  /** Position on the landing campus board, % of the photo (null = not pinned) */
+  xp: number | null;
+  yp: number | null;
+  map_label: "left" | "right";
 }
 
 export interface Item {
