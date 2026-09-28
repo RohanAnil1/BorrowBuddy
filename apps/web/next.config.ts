@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   async headers() {
     return [
       {
