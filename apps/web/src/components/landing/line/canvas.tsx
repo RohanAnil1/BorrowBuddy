@@ -280,10 +280,17 @@ function Scene({ onSync, reduced, rich, running, spread }: Props) {
         <meshStandardMaterial color="#0d0a07" metalness={0.1} roughness={0.95} />
       </mesh>
 
+      {/* corridor back wall — gives the band depth behind the stations */}
+      <mesh position={[0, 3.4, -2.8]}>
+        <planeGeometry args={[span + 12, 8]} />
+        <meshStandardMaterial color="#0e0b08" metalness={0.06} roughness={0.95} />
+      </mesh>
+
       <Belt reduced={reduced} span={span} speed={(span * 0.25) / 1.9} />
 
       {GATES.map((gate, index) => (
         <Station3D
+          compact={!spread}
           gate={gate}
           index={index}
           key={gate.code}
@@ -341,9 +348,11 @@ function CameraRig({ reduced, span }: { reduced: boolean; span: number }) {
   useLayoutEffect(() => {
     const aspect = size.width / size.height;
     const fov = (26 * Math.PI) / 180;
-    const z = Math.min(44, Math.max(13, (span + 2.6) / (2 * Math.tan(fov / 2) * aspect)));
-    camera.position.set(0, 3.0, z);
-    camera.lookAt(0, 2.35, 0);
+    const widthFit = (span + 2.6) / (2 * Math.tan(fov / 2) * aspect);
+    const heightFit = 8.6 / (2 * Math.tan(fov / 2));
+    const z = Math.min(44, Math.max(13, Math.max(widthFit, heightFit)));
+    camera.position.set(0, 3.1, z);
+    camera.lookAt(0, 2.6, 0);
     camera.updateProjectionMatrix();
   }, [camera, size, span]);
 
@@ -370,10 +379,10 @@ function CameraRig({ reduced, span }: { reduced: boolean; span: number }) {
     if (reduced) return;
     const delta = Math.min(rawDelta, 0.05);
     const targetX = pointer.current.x * 0.7;
-    const targetY = 3.0 - pointer.current.y * 0.3;
+    const targetY = 3.1 - pointer.current.y * 0.3;
     camera.position.x += (targetX - camera.position.x) * Math.min(1, delta * 2.4);
     camera.position.y += (targetY - camera.position.y) * Math.min(1, delta * 2.4);
-    camera.lookAt(0, 2.35, 0);
+    camera.lookAt(0, 2.6, 0);
   });
 
   return null;

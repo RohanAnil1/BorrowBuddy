@@ -265,30 +265,32 @@ export function paintIdPlate(canvas: HTMLCanvasElement, code: string, phase: str
   ctx.fillText(label, W / 2, 206);
 }
 
-export function paintSign(canvas: HTMLCanvasElement, code: string): void {
-  canvas.width = 560;
-  canvas.height = 128;
+export function paintSign(canvas: HTMLCanvasElement, code: string, label: string, phase: string): void {
+  canvas.width = 1120;
+  canvas.height = 256;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
   ctx.fillStyle = "#f4f2ee";
-  ctx.fillRect(0, 0, 560, 128);
+  ctx.fillRect(0, 0, 1120, 256);
   ctx.strokeStyle = "rgba(0,0,0,0.78)";
-  ctx.lineWidth = 6;
-  ctx.strokeRect(5, 5, 550, 118);
+  ctx.lineWidth = 12;
+  ctx.strokeRect(10, 10, 1100, 236);
 
-  ctx.fillStyle = BLACK;
+  // hero gate name — tints with the life-cycle
+  const tint = phase === "wake" || phase === "scan" ? ACCENT : phase === "after" ? OK : "#111111";
+  ctx.fillStyle = tint;
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.font = `700 46px ${condFamily()}`;
-  ctx.fillText("SCAN STATION", 30, 68);
+  ctx.font = `700 122px ${condFamily()}`;
+  ctx.fillText(label, 48, 140);
 
+  // code + arrow, right-aligned
+  ctx.fillStyle = BLACK;
   ctx.textAlign = "right";
-  ctx.font = `700 46px ${monoFamily()}`;
-  const codeWidth = ctx.measureText(code).width;
-  ctx.fillText(code, 530 - 66, 68);
-  drawArrow(ctx, 530 - 56, 66, 46, 22, BLACK);
-  void codeWidth;
+  ctx.font = `700 62px ${monoFamily()}`;
+  ctx.fillText(code, 1064 - 92, 140);
+  drawArrow(ctx, 1064 - 78, 138, 62, 30, BLACK);
 }
 
 export function paintHazard(canvas: HTMLCanvasElement): void {

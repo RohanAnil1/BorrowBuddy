@@ -28,6 +28,7 @@ const CURTAIN_COUNT = 8;
 const LED_COUNT = 12;
 
 export function Station3D({
+  compact,
   gate,
   index,
   phase,
@@ -35,6 +36,7 @@ export function Station3D({
   shared,
   x,
 }: {
+  compact: boolean;
   gate: GateDef;
   index: number;
   phase: GatePhase;
@@ -79,9 +81,9 @@ export function Station3D({
         canvas.height = 240;
         paintIdPlate(canvas, gate.code, "idle");
       }),
-      sign: make((canvas) => paintSign(canvas, gate.code)),
+      sign: make((canvas) => paintSign(canvas, gate.code, gate.label, "idle")),
     };
-  }, [gate.code]);
+  }, [gate.code, gate.label]);
 
   // fonts may land after first paint — repaint the text-bearing textures once
   useEffect(() => {
@@ -95,7 +97,7 @@ export function Station3D({
       textures.plate.image = canvas;
       textures.plate.needsUpdate = true;
       const signCanvas = document.createElement("canvas");
-      paintSign(signCanvas, gate.code);
+      paintSign(signCanvas, gate.code, gate.label, phase === "still" ? "still" : phase);
       textures.sign.image = signCanvas;
       textures.sign.needsUpdate = true;
       invalidate();
@@ -103,18 +105,22 @@ export function Station3D({
     return () => {
       alive = false;
     };
-  }, [gate.code, invalidate, phase, textures]);
+  }, [gate.code, gate.label, invalidate, phase, textures]);
 
-  // ID plate repaints on every phase change (data flip)
+  // ID plate + sign repaint on every phase change (data flip / name tint)
   useEffect(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 160;
-    canvas.height = 240;
-    paintIdPlate(canvas, gate.code, phase);
-    textures.plate.image = canvas;
+    const plateCanvas = document.createElement("canvas");
+    plateCanvas.width = 160;
+    plateCanvas.height = 240;
+    paintIdPlate(plateCanvas, gate.code, phase);
+    textures.plate.image = plateCanvas;
     textures.plate.needsUpdate = true;
+    const signCanvas = document.createElement("canvas");
+    paintSign(signCanvas, gate.code, gate.label, phase === "still" ? "still" : phase);
+    textures.sign.image = signCanvas;
+    textures.sign.needsUpdate = true;
     invalidate();
-  }, [gate.code, invalidate, phase, textures]);
+  }, [gate.code, gate.label, invalidate, phase, textures]);
 
   useFrame((state, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -417,19 +423,19 @@ export function Station3D({
         </group>
 
         {/* ------------------------------------------------------- signal sign */}
-        <group position={[0, 5.42, 0.06]}>
+        <group position={[0, 5.9, 0.06]} scale={compact ? 0.85 : 1}>
           <mesh>
-            <boxGeometry args={[3.2, 0.1, 0.16]} />
+            <boxGeometry args={[3.6, 0.1, 0.16]} />
             <meshStandardMaterial color={steelDark} metalness={0.4} roughness={0.6} />
           </mesh>
-          {[-0.85, 0.85].map((wx) => (
+          {[-1.1, 1.1].map((wx) => (
             <mesh key={wx} position={[wx, -0.24, 0]}>
               <cylinderGeometry args={[0.015, 0.015, 0.48, 8]} />
               <meshStandardMaterial color={bolt} metalness={0.7} roughness={0.35} />
             </mesh>
           ))}
           <mesh position={[0, -0.68, 0]}>
-            <planeGeometry args={[2.6, 0.6]} />
+            <planeGeometry args={[3.4, 0.78]} />
             <meshBasicMaterial map={textures.sign} side={THREE.DoubleSide} toneMapped={false} transparent />
           </mesh>
         </group>

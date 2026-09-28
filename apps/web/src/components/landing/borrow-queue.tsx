@@ -122,7 +122,7 @@ export function BorrowQueue() {
   return (
     <section
       aria-label="The borrowing line — how a loan moves through four gates"
-      className="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#0b0805]"
+      className="relative isolate flex min-h-[100svh] flex-col overflow-hidden"
       ref={sectionRef}
     >
       <p className="sr-only">
@@ -130,16 +130,6 @@ export function BorrowQueue() {
         accepted, handed over by QR scan, and returned — collecting a stamp at each gate and
         turning to show its custody chain at handover.
       </p>
-
-      {/* edge fades back into the page navy */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-canvas to-transparent"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-canvas to-transparent"
-      />
 
       <div className="relative z-[1] flex flex-col justify-between gap-6 px-4 pt-14 dt:flex-row dt:items-start dt:px-10 dt:pt-20">
         <div>
@@ -158,34 +148,51 @@ export function BorrowQueue() {
         </div>
       </div>
 
-      {/* the hall — full-bleed stage */}
+      {/* the hall — corridor band, softly fading into the page backdrop */}
       <div className="relative z-[1] flex flex-1 items-center py-6">
-        <div className="relative h-[430px] w-full dt:h-[540px]" data-line-stage>
-          {gpu === "webgl" ? (
-            <CargoLineCanvas
-              onSync={handleSync}
-              reduced={reduced}
-              rich={rich && !reduced}
-              running={running}
-              spread={spread}
-            />
-          ) : (
-            <LineFallback />
-          )}
-
-          {/* hall vignette */}
+        <div className="relative h-[360px] w-full dt:h-[440px]" data-line-stage>
           <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
+            className="absolute inset-0"
             style={{
-              background:
-                "radial-gradient(120% 95% at 50% 38%, transparent 52%, rgba(0,0,0,0.62) 100%)",
+              maskImage:
+                "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
             }}
-          />
+          >
+            {gpu === "webgl" ? (
+              <CargoLineCanvas
+                onSync={handleSync}
+                reduced={reduced}
+                rich={rich && !reduced}
+                running={running}
+                spread={spread}
+              />
+            ) : (
+              <LineFallback />
+            )}
+
+            {/* hall vignette */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(120% 95% at 50% 38%, transparent 52%, rgba(0,0,0,0.62) 100%)",
+              }}
+            />
+          </div>
 
           {/* probe mirrors */}
           {GATES.map((gate, index) => (
-            <span aria-hidden className="hidden" data-gate={index} data-phase={phaseFor(index)} key={gate.code} />
+            <span
+              aria-hidden
+              className="hidden"
+              data-gate={index}
+              data-label={gate.label}
+              data-phase={phaseFor(index)}
+              key={gate.code}
+            />
           ))}
           <span
             aria-hidden
