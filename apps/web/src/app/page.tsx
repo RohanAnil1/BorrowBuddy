@@ -2,7 +2,7 @@ import { BorrowQueue } from "@/components/landing/borrow-queue";
 import { CampusMap } from "@/components/landing/campus-map";
 import { LandingFooter } from "@/components/landing/footer";
 import { LandingHero } from "@/components/landing/hero";
-import { SPOTS, type MapSpot } from "@/lib/campus-map";
+import { SPOTS, spotPhoto, type MapSpot } from "@/lib/campus-map";
 import { Preloader } from "@/components/landing/preloader";
 import { StatusTicker } from "@/components/landing/status-ticker";
 import { TagWall } from "@/components/landing/tag-wall";
@@ -21,7 +21,7 @@ async function getPins(): Promise<MapSpot[]> {
     const supabase = createPublicClient();
     const { data, error } = await supabase
       .from("pickup_locations")
-      .select("id, name, description, xp, yp, map_label")
+      .select("id, name, description, xp, yp, map_label, photo_path")
       .eq("is_active", true)
       .not("xp", "is", null)
       .not("yp", "is", null)
@@ -37,6 +37,7 @@ async function getPins(): Promise<MapSpot[]> {
       xp: number;
       yp: number;
       map_label: string;
+      photo_path: string | null;
     }[];
 
     return rows.map((row) => ({
@@ -46,6 +47,7 @@ async function getPins(): Promise<MapSpot[]> {
       xp: row.xp,
       yp: row.yp,
       label: row.map_label === "left" ? "left" : "right",
+      photo: row.photo_path ?? spotPhoto(row.name),
     }));
   } catch {
     return SPOTS;

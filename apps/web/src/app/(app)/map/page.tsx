@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CampusBoard } from "@/components/app/campus-board";
 import { EmptyState } from "@/components/app/empty-state";
 import { requireVerified } from "@/lib/auth/guards";
-import { type MapSpot } from "@/lib/campus-map";
+import { spotPhoto, type MapSpot } from "@/lib/campus-map";
 import { getPickupLocationStats } from "@/lib/data/items";
 
 export const metadata = { title: "Pickup map" };
@@ -26,6 +26,7 @@ export default async function MapPage() {
     yp: location.yp as number,
     label: location.map_label,
     live: availableCount,
+    photo: location.photo_path ?? spotPhoto(location.name),
   }));
 
   if (spots.length === 0) {

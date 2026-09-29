@@ -26,7 +26,27 @@ export type MapSpot = {
   label: "left" | "right";
   /** optional decorative live count when a source provides one */
   live?: number;
+  /** optional photo of the spot, shown on the pin card */
+  photo?: string;
 };
+
+/**
+ * Photos of the five pinned spots, kept as static web copies in
+ * public/spots (originals live in Design/). Database rows win when their
+ * photo_path is set; otherwise the board falls back to this lookup by name,
+ * so the images appear even before the column is seeded.
+ */
+export const SPOT_PHOTOS: Record<string, string> = {
+  "maggi hotspot": "/spots/maggi-hotspot.jpg",
+  "southern stories": "/spots/southern-stories.jpg",
+  "d5 stage": "/spots/d5-stage.jpg",
+  laundry: "/spots/laundry.jpg",
+  quench: "/spots/quench.jpg",
+};
+
+export function spotPhoto(name: string): string | undefined {
+  return SPOT_PHOTOS[name.trim().toLowerCase()];
+}
 
 export const SPOTS: MapSpot[] = [
   {
@@ -36,6 +56,7 @@ export const SPOTS: MapSpot[] = [
     xp: 38.8,
     yp: 44.4,
     label: "right",
+    photo: "/spots/maggi-hotspot.jpg",
   },
   {
     id: "southern-stories",
@@ -44,6 +65,7 @@ export const SPOTS: MapSpot[] = [
     xp: 38.8,
     yp: 41.3,
     label: "left",
+    photo: "/spots/southern-stories.jpg",
   },
   {
     id: "d5-stage",
@@ -52,6 +74,7 @@ export const SPOTS: MapSpot[] = [
     xp: 37.5,
     yp: 35.7,
     label: "left",
+    photo: "/spots/d5-stage.jpg",
   },
   {
     id: "laundry",
@@ -60,6 +83,7 @@ export const SPOTS: MapSpot[] = [
     xp: 42.0,
     yp: 36.6,
     label: "right",
+    photo: "/spots/laundry.jpg",
   },
   {
     id: "quench",
@@ -68,6 +92,7 @@ export const SPOTS: MapSpot[] = [
     xp: 29.7,
     yp: 33.6,
     label: "left",
+    photo: "/spots/quench.jpg",
   },
 ];
 

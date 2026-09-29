@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { EASE } from "@/lib/motion/variants";
 import { GATE_1, IMAGE, routePath, type MapSpot } from "@/lib/campus-map";
 
@@ -32,7 +32,10 @@ export function CampusBoard({
   variant?: "landing" | "app";
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<MapSpot | null>(null);
+  const [cardTop, setCardTop] = useState<number | null>(null);
   const [reduced, setReduced] = useState(false);
   const isApp = variant === "app";
 
@@ -73,18 +76,53 @@ export function CampusBoard({
   }, [active]);
 
   const route = active ? routePath(active) : null;
-  const cardBelow = active ? active.yp < 36.7 : false;
   const cardX = active ? Math.min(Math.max(active.xp, 14), 86) : 50;
 
+  // Keep the (now photo-sized) desktop card inside the board frame: measure
+  // the card and pick a side with room, then clamp to the frame edges.
+  useLayoutEffect(() => {
+    if (!active) return;
+
+    const measure = () => {
+      const frame = frameRef.current;
+      const image = imageRef.current;
+      const card = cardRef.current;
+      if (!frame || !image || !card) return;
+
+      const gap = 22;
+      const pinY = image.offsetTop + (active.yp / 100) * image.clientHeight;
+      const frameH = frame.clientHeight;
+      const cardH = card.offsetHeight;
+      const above = pinY - gap - cardH;
+      const below = pinY + gap;
+      const spaceAbove = pinY - gap;
+      const spaceBelow = frameH - pinY - gap;
+
+      let top: number;
+      if (cardH <= spaceBelow) top = below;
+      else if (cardH <= spaceAbove) top = above;
+      else top = spaceBelow >= spaceAbove ? below : above;
+
+      setCardTop(Math.max(8, Math.min(top, Math.max(8, frameH - cardH - 8))));
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [active]);
+
   return (
-    <div className="relative mx-auto w-full max-w-6xl border border-line bg-[#0c0906] p-2 dt:p-3">
+    <div
+      className="relative mx-auto w-full max-w-6xl border border-line bg-[#0c0906] p-2 dt:p-3"
+      ref={frameRef}
+    >
       {/* scan corners */}
       <span aria-hidden className="pointer-events-none absolute -left-px -top-px z-10 size-5 border-l-2 border-t-2 border-ink/70" />
       <span aria-hidden className="pointer-events-none absolute -right-px -top-px z-10 size-5 border-r-2 border-t-2 border-ink/70" />
       <span aria-hidden className="pointer-events-none absolute -bottom-px -left-px z-10 size-5 border-b-2 border-l-2 border-ink/70" />
       <span aria-hidden className="pointer-events-none absolute -bottom-px -right-px z-10 size-5 border-b-2 border-r-2 border-ink/70" />
 
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden" ref={imageRef}>
         <Image
           alt="Photograph of the Bennett University master plan board, Greater Noida"
           className="h-auto w-full"
@@ -238,8 +276,10 @@ export function CampusBoard({
         {active && (
           <motion.div
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`relative mx-3 mb-3 z-30 border border-accent/60 bg-black p-3.5 dt:absolute dt:bottom-auto dt:left-[var(--pin-x)] dt:m-0 dt:top-[var(--pin-y)] dt:w-[330px] dt:-translate-x-1/2 dt:p-5 ${
-              cardBelow ? "dt:translate-y-[22px]" : "dt:-translate-y-[calc(100%+22px)]"
+            className={`relative mx-3 mb-3 z-30 overflow-hidden border border-accent/60 bg-black dt:absolute dt:bottom-auto dt:left-[var(--pin-x)] dt:m-0 dt:w-[330px] dt:-translate-x-1/2 ${
+              cardTop === null
+                ? "dt:top-[var(--pin-y)] dt:-translate-y-[calc(100%+22px)]"
+                : "dt:top-[var(--card-top)]"
             }`}
             data-map-card
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
@@ -250,38 +290,52 @@ export function CampusBoard({
               {
                 "--pin-x": `${cardX}%`,
                 "--pin-y": `${active.yp}%`,
+                "--card-top": `${cardTop ?? 0}px`,
               } as CSSProperties
             }
             transition={{ duration: 0.22, ease: EASE }}
           >
+            {active.photo && (
+              <div className="relative aspect-[3/4] w-full border-b border-line">
+                <Image
+                  alt={`${active.name} — ${active.description}`}
+                  className="object-cover"
+                  fill
+                  sizes="(max-width: 800px) 92vw, 330px"
+                  src={active.photo}
+                />
+              </div>
+            )}
             <button
               aria-label="Close pickup details"
-              className="absolute right-2 top-2 flex size-7 items-center justify-center border border-line font-primary text-[11px] text-ink/50 transition-colors hover:border-accent hover:text-accent"
+              className="absolute right-2 top-2 z-10 flex size-7 items-center justify-center border border-line bg-black/70 font-primary text-[11px] text-ink/60 backdrop-blur-sm transition-colors hover:border-accent hover:text-accent"
               onClick={() => setActive(null)}
               type="button"
             >
               ×
             </button>
-            <p className="status-bracket text-[10px]">[ PICKUP POINT ]</p>
-            <p className="type-body-alt mt-2 text-[16px] uppercase text-ink">{active.name}</p>
-            <p className="type-body mt-1 text-[12px] uppercase text-ink/55">{active.description}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {active.live !== undefined && (
-                <span className="border border-accent/60 bg-accent/10 px-2 py-1 font-secondary text-[9px] text-accent">
-                  {active.live} {active.live === 1 ? "ITEM" : "ITEMS"}{" "}
-                  {isApp ? "AVAILABLE" : "LIVE"}
+            <div className="p-3.5 dt:p-5">
+              <p className="status-bracket text-[10px]">[ PICKUP POINT ]</p>
+              <p className="type-body-alt mt-2 text-[16px] uppercase text-ink">{active.name}</p>
+              <p className="type-body mt-1 text-[12px] uppercase text-ink/55">{active.description}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {active.live !== undefined && (
+                  <span className="border border-accent/60 bg-accent/10 px-2 py-1 font-secondary text-[9px] text-accent">
+                    {active.live} {active.live === 1 ? "ITEM" : "ITEMS"}{" "}
+                    {isApp ? "AVAILABLE" : "LIVE"}
+                  </span>
+                )}
+                <span className="border border-line px-2 py-1 font-secondary text-[9px] text-ink/50">
+                  QUEUE OPEN
                 </span>
-              )}
-              <span className="border border-line px-2 py-1 font-secondary text-[9px] text-ink/50">
-                QUEUE OPEN
-              </span>
+              </div>
+              <Link
+                className="font-secondary mt-4 flex w-fit items-center gap-2 border border-accent/60 px-3 py-2 text-[10px] text-accent transition-colors hover:bg-accent/10"
+                href={isApp ? `/home?spot=${active.id}` : "/home"}
+              >
+                {isApp ? "BROWSE ITEMS →" : "OPEN IN CATALOG →"}
+              </Link>
             </div>
-            <Link
-              className="font-secondary mt-4 flex w-fit items-center gap-2 border border-accent/60 px-3 py-2 text-[10px] text-accent transition-colors hover:bg-accent/10"
-              href={isApp ? `/home?spot=${active.id}` : "/home"}
-            >
-              {isApp ? "BROWSE ITEMS →" : "OPEN IN CATALOG →"}
-            </Link>
           </motion.div>
         )}
       </AnimatePresence>
