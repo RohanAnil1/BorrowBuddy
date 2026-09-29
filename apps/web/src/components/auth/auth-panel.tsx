@@ -33,7 +33,7 @@ export function AuthPanel({
           initial="hidden"
           variants={fadeUp}
         >
-          <span className="typewriter text-accent">[ BENNETT UNIVERSITY · EST. 2025 ]</span>
+          <span className="typewriter text-accent">[ BENNETT UNIVERSITY · EST. 2016 ]</span>
         </motion.p>
 
         <motion.h1

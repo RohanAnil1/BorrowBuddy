@@ -1,10 +1,11 @@
 /* ---------------------------------------------------------------------------
-   Bennett University master plan — pickup points for the landing board.
-   Everything is expressed as a percentage of the 4000 × 3000 photograph, so a
-   pin can be nudged with two numbers: xp runs left to right, yp top to
-   bottom. Positions are traced from the printed plan (north-up: Gates 1/2 on
-   the east approach road, Gate 3 west, sports belt north-west, academic core
-   centre, hostel cluster east, fields south).
+   Bennett University master plan — shared data for the campus board, used by
+   the landing page and the in-app pickup map. Everything is expressed as a
+   percentage of the 4000 × 3000 photograph, so a pin can be nudged with two
+   numbers: xp runs left to right, yp top to bottom. Positions are traced from
+   the printed plan (north-up: Gates 1/2 on the east approach road, Gate 3
+   west, sports belt north-west, academic core centre, hostel cluster east,
+   fields south).
 
    The list below is the static fallback used when the database is not wired
    up; once it is, active pickup_locations rows with coordinates render here

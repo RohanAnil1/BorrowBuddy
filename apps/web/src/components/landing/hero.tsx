@@ -68,7 +68,7 @@ export function LandingHero() {
         <motion.div style={{ y: copyY, opacity: copyOpacity }}>
           <motion.div animate="show" initial="hidden" variants={staggerContainer}>
           <motion.p className="font-secondary text-[13px] text-accent dt:text-base" variants={fadeUp}>
-            <span className="typewriter">[ BENNETT UNIVERSITY · EST. 2025 ]</span>
+            <span className="typewriter">[ BENNETT UNIVERSITY · EST. 2016 ]</span>
           </motion.p>
 
           <motion.h1 className="type-title mt-8" variants={staggerContainer}>

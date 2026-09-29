@@ -2,7 +2,7 @@ import { BorrowQueue } from "@/components/landing/borrow-queue";
 import { CampusMap } from "@/components/landing/campus-map";
 import { LandingFooter } from "@/components/landing/footer";
 import { LandingHero } from "@/components/landing/hero";
-import { SPOTS, type MapSpot } from "@/components/landing/map-data";
+import { SPOTS, type MapSpot } from "@/lib/campus-map";
 import { Preloader } from "@/components/landing/preloader";
 import { StatusTicker } from "@/components/landing/status-ticker";
 import { TagWall } from "@/components/landing/tag-wall";
