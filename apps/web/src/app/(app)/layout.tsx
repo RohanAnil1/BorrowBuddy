@@ -7,7 +7,9 @@ import { getPendingRequestCount } from "@/lib/data/requests";
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const profile = await requireProfile();
 
-  if (!profile.full_name) {
+  // Bootstrap admins sign up with no name and should never be sent through
+  // onboarding; everyone else finishes onboarding before the portal opens.
+  if (!profile.full_name && !profile.is_admin) {
     redirect("/onboarding");
   }
 

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { profileSetupSchema } from "@borrowbuddy/shared";
 import type { ActionState } from "@/lib/action-state";
 import { requireProfile } from "@/lib/auth/guards";
+import { firstUploadPath } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 
 export async function completeOnboarding(
@@ -23,11 +24,14 @@ export async function completeOnboarding(
     return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the form." };
   }
 
-  // Compulsory student ID — PNG/JPG under the caller's own storage folder.
-  const studentIdPath = String(formData.get("student_id_path") ?? "").trim();
+  // Student ID is compulsory for unverified accounts — PNG/JPG under the
+  // caller's own storage folder. Already-verified accounts (bootstrap admins)
+  // keep their locked ID: submit_student_id would reject a re-submission.
+  const needsId = profile.verification_status !== "verified";
+  const studentIdPath = firstUploadPath(formData.get("student_id_path"));
   const idPattern = new RegExp(`^${profile.id}/[A-Za-z0-9-]+\\.(png|jpe?g)$`);
 
-  if (!idPattern.test(studentIdPath)) {
+  if (needsId && !idPattern.test(studentIdPath)) {
     return {
       status: "error",
       message: "Upload a PNG or JPG photo of your student ID — it's required to continue.",
@@ -50,11 +54,13 @@ export async function completeOnboarding(
     return { status: "error", message: error.message };
   }
 
-  const { error: idError } = await supabase.rpc("submit_student_id", {
-    p_path: studentIdPath,
-  });
-  if (idError) {
-    return { status: "error", message: idError.message };
+  if (needsId) {
+    const { error: idError } = await supabase.rpc("submit_student_id", {
+      p_path: studentIdPath,
+    });
+    if (idError) {
+      return { status: "error", message: idError.message };
+    }
   }
 
   // Verified accounts (e.g. the bootstrap admin) go straight in; everyone

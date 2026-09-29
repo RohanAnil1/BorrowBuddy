@@ -11,7 +11,7 @@ export const metadata = { title: "Verification" };
 export default async function PendingPage() {
   const profile = await requireProfile();
 
-  if (!profile.full_name) redirect("/onboarding");
+  if (!profile.full_name && !profile.is_admin) redirect("/onboarding");
   if (profile.verification_status === "verified") redirect("/home");
 
   const rejected = profile.verification_status === "rejected";

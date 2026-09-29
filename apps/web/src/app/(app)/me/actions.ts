@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { profileSetupSchema } from "@borrowbuddy/shared";
 import type { ActionState } from "@/lib/action-state";
 import { requireProfile } from "@/lib/auth/guards";
+import { firstUploadPath } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 
 export async function updateProfile(
@@ -47,7 +48,7 @@ export async function submitStudentId(
   formData: FormData,
 ): Promise<ActionState> {
   await requireProfile();
-  const path = String(formData.get("student_id_path") ?? "").trim();
+  const path = firstUploadPath(formData.get("student_id_path"));
 
   if (!path) {
     return { status: "error", message: "Upload a photo of your student ID first." };

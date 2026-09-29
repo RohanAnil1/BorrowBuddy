@@ -30,6 +30,8 @@ const labelClass = "font-secondary text-[10px] text-ink/60";
 export function OnboardingForm({ profile }: { profile: Profile }) {
   const [state, formAction] = useActionState(completeOnboarding, idleState);
   const [hasId, setHasId] = useState(Boolean(profile.student_id_path));
+  // Bootstrap admins arrive already verified; their ID is not re-reviewed.
+  const needsId = profile.verification_status !== "verified";
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
@@ -91,29 +93,31 @@ export function OnboardingForm({ profile }: { profile: Profile }) {
         </label>
       </section>
 
-      <section className="flex flex-col gap-5 border border-line bg-panel p-6">
-        <div>
-          <h2 className="type-title text-xl">
-            Student ID <span className="text-accent">·</span> required
-          </h2>
-          <p className="type-body mt-2 text-[13px] leading-6 text-ink/60 uppercase">
-            Upload a clear PNG or JPG photo of your Bennett University ID. A campus
-            admin reviews it — the portal and your profile unlock only after approval.
-          </p>
-        </div>
+      {needsId && (
+        <section className="flex flex-col gap-5 border border-line bg-panel p-6">
+          <div>
+            <h2 className="type-title text-xl">
+              Student ID <span className="text-accent">·</span> required
+            </h2>
+            <p className="type-body mt-2 text-[13px] leading-6 text-ink/60 uppercase">
+              Upload a clear PNG or JPG photo of your Bennett University ID. A campus
+              admin reviews it — the portal and your profile unlock only after approval.
+            </p>
+          </div>
 
-        <ImageUploader
-          accept="image/png,image/jpeg"
-          allowedTypes={[...STUDENT_ID_ALLOWED_TYPES]}
-          bucket={BUCKETS.studentIds}
-          hint="FRONT OF CARD · ALL 4 CORNERS VISIBLE · NO SCREENSHOTS · PNG OR JPG · UNDER 5MB. STORED PRIVATELY — ONLY YOU AND CAMPUS ADMINS CAN SEE IT."
-          max={1}
-          minBytes={STUDENT_ID_MIN_BYTES}
-          name="student_id_path"
-          onChange={(paths) => setHasId(paths.length > 0)}
-          ownerId={profile.id}
-        />
-      </section>
+          <ImageUploader
+            accept="image/png,image/jpeg"
+            allowedTypes={[...STUDENT_ID_ALLOWED_TYPES]}
+            bucket={BUCKETS.studentIds}
+            hint="FRONT OF CARD · ALL 4 CORNERS VISIBLE · NO SCREENSHOTS · PNG OR JPG · UNDER 5MB. STORED PRIVATELY — ONLY YOU AND CAMPUS ADMINS CAN SEE IT."
+            max={1}
+            minBytes={STUDENT_ID_MIN_BYTES}
+            name="student_id_path"
+            onChange={(paths) => setHasId(paths.length > 0)}
+            ownerId={profile.id}
+          />
+        </section>
+      )}
 
       {state.status === "error" && (
         <p className="border border-warn/50 bg-warn/10 px-4 py-3 font-secondary text-[10px] leading-5 text-warn">
@@ -122,13 +126,15 @@ export function OnboardingForm({ profile }: { profile: Profile }) {
       )}
 
       <div className="flex flex-wrap items-center gap-4">
-        <SubmitButton disabled={!hasId} pendingLabel="SUBMITTING…">
-          SUBMIT FOR ADMIN APPROVAL →
+        <SubmitButton disabled={needsId && !hasId} pendingLabel="SUBMITTING…">
+          {needsId ? "SUBMIT FOR ADMIN APPROVAL →" : "SAVE MY DETAILS →"}
         </SubmitButton>
         <p className="font-secondary text-[9px] text-ink/40">
-          {hasId
-            ? "REPLACE THE PHOTO ANY TIME BEFORE APPROVAL."
-            : "UPLOAD YOUR STUDENT ID TO CONTINUE."}
+          {!needsId
+            ? "YOUR ACCOUNT IS ALREADY VERIFIED."
+            : hasId
+              ? "REPLACE THE PHOTO ANY TIME BEFORE APPROVAL."
+              : "UPLOAD YOUR STUDENT ID TO CONTINUE."}
         </p>
       </div>
     </form>
