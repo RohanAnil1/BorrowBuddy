@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { Category, ItemCondition, ItemWithOwner, PickupLocation } from "@borrowbuddy/shared";
 import { ITEM_CONDITION_LABELS, MAX_LOAN_DAYS, MIN_LOAN_DAYS } from "@borrowbuddy/shared";
 import type { ActionState } from "@/lib/action-state";
@@ -27,6 +27,8 @@ export function ItemForm({
   item?: ItemWithOwner;
 }) {
   const [state, formAction] = useActionState(action, idleState);
+  // Publish stays locked until the first photo lands in the item-images bucket.
+  const [photoCount, setPhotoCount] = useState(item?.images.length ?? 0);
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
@@ -139,7 +141,11 @@ export function ItemForm({
 
       <section className="flex flex-col gap-5 border border-line bg-panel p-6">
         <h2 className="font-secondary text-[11px] uppercase text-ink/60">[ PHOTOS ]</h2>
-        <ImageUploader initialPaths={item?.images ?? []} ownerId={ownerId} />
+        <ImageUploader
+          initialPaths={item?.images ?? []}
+          onChange={(paths) => setPhotoCount(paths.length)}
+          ownerId={ownerId}
+        />
       </section>
 
       {state.status === "error" && (
@@ -149,11 +155,13 @@ export function ItemForm({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton pendingLabel="SAVING…">
+        <SubmitButton disabled={photoCount === 0} pendingLabel="SAVING…">
           {item ? "Save changes" : "Publish listing"}
         </SubmitButton>
         <p className="font-secondary text-[9px] text-ink/40">
-          YOU CAN PAUSE OR EDIT THIS LISTING AT ANY TIME.
+          {photoCount === 0
+            ? "ADD AT LEAST ONE PHOTO TO PUBLISH."
+            : "YOU CAN PAUSE OR EDIT THIS LISTING AT ANY TIME."}
         </p>
       </div>
     </form>

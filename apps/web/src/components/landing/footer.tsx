@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CargoMark } from "./hero";
+import { WordmarkLink } from "./wordmark-link";
 
 const LINKS = [
   { label: "HOW IT WORKS", href: "#queue" },
@@ -12,10 +13,10 @@ export function LandingFooter() {
     <footer className="relative bg-black">
       <div className="flex w-full flex-col items-start justify-between gap-10 px-4 py-12 dt:flex-row dt:items-end dt:px-10 dt:py-14">
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-3">
+          <WordmarkLink className="flex w-fit items-center gap-3 transition-opacity hover:opacity-80">
             <CargoMark className="size-9" />
             <span className="font-secondary text-ink">BORROWBUDDY</span>
-          </div>
+          </WordmarkLink>
           <p className="font-secondary text-[10px] leading-5 text-ink/50">
             THE CAMPUS LENDING NETWORK · BENNETT UNIVERSITY
             <br />

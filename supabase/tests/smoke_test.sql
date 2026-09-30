@@ -111,6 +111,17 @@ where i.title = 'Sony Projector';
 
 do $$
 begin
+  perform pg_temp.assert(
+    (select count(*) from public.notifications
+     where user_id = '11111111-1111-4111-8111-111111111111'
+       and type = 'request_received') = 1,
+    'a new request notifies the owner'
+  );
+end;
+$$;
+
+do $$
+begin
   begin
     insert into public.borrow_requests (item_id, borrower_id, start_date, end_date)
     select i.id, '11111111-1111-4111-8111-111111111111', current_date + 2, current_date + 3
@@ -350,6 +361,12 @@ begin
 
   perform pg_temp.assert(v_role = 'as_borrower', 'review role is derived automatically');
   perform pg_temp.assert(v_after > v_before, 'a 5-star review raises the trust score');
+  perform pg_temp.assert(
+    (select count(*) from public.notifications
+     where user_id = '11111111-1111-4111-8111-111111111111'
+       and type = 'new_review') = 1,
+    'a new review notifies the reviewee'
+  );
 end;
 $$;
 

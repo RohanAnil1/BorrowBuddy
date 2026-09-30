@@ -29,7 +29,7 @@ export function AppShell({
 
       <header className="sticky top-0 z-40 border-b border-line bg-black">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 px-4 pt-3 dt:flex-nowrap dt:px-10">
-          <Link className="flex items-center gap-2.5" href="/dashboard">
+          <Link aria-label="BorrowBuddy — home" className="flex items-center gap-2.5" href="/home">
             <CargoMark className="size-8" />
             <span className="font-secondary text-[12px] text-ink">BORROWBUDDY</span>
           </Link>

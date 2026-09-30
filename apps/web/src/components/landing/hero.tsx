@@ -6,6 +6,7 @@ import { useRef } from "react";
 import { bounceLeft, fadeUp, staggerContainer } from "@/lib/motion/variants";
 import { useParallaxY } from "@/lib/motion/use-parallax";
 import { DeviceStage } from "./device/stage";
+import { WordmarkLink } from "./wordmark-link";
 
 /** Boarding-pass notched top strip — the signature ticket header. */
 export function TicketTopBar({ className = "" }: { className?: string }) {
@@ -49,10 +50,10 @@ export function LandingHero() {
     <section ref={heroRef} className="relative isolate min-h-[100svh] overflow-hidden">
 
       <header className="relative z-10 flex items-center justify-between px-4 py-4 dt:px-10 dt:py-6">
-        <div className="flex items-center gap-3">
+        <WordmarkLink className="flex items-center gap-3 transition-opacity hover:opacity-80">
           <CargoMark className="size-9" />
           <span className="font-secondary text-ink">BORROWBUDDY</span>
-        </div>
+        </WordmarkLink>
         <span className="flex items-center gap-2 border border-ink/80 px-2 py-1.5">
           <span className="font-title text-xl text-accent">BB</span>
           <span className="font-label text-[9px] leading-tight text-ink">
