@@ -31,3 +31,24 @@ Thumbs.db
 npm-debug.log*
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Android local configuration, credentials and generated outputs
+.gradle/
+.kotlin/
+local.properties
+android.local.properties
+keystore.properties
+*.jks
+*.keystore
+.idea/
+captures/
+# Local demo-lender credentials are encrypted with Windows DPAPI.
+supabase/demo-catalog/*.local.*
+
+# Local artifact exports and generated verification captures
+/tmp/
+/output/
+/apps/android/verification/
+/apps/web/verification/
+__pycache__/
+*.py[cod]

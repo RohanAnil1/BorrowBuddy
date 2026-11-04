@@ -1,0 +1,1070 @@
+================================================================================
+        BORROWBUDDY - A CAMPUS-ONLY PEER-TO-PEER LENDING PLATFORM
+                            PROJECT REPORT
+
+  Team        : PixelPals
+  Institution : Bennett University, Greater Noida
+  Date        : September 29, 2026
+  Technology  : Next.js 16, React 19, TypeScript, Supabase (PostgreSQL 17), PWA
+================================================================================
+
+CONTENTS
+  1. Problem Motivation and Sophistication
+  2. Novelty of the Project
+  3. Target Users
+  4. Problem Domain Identification and Analysis
+  5. Review of Existing Systems and Project Feasibility
+  6. Database Schema
+  7. Requirements Table
+  8. Conclusion and Future Work
+  9. References
+
+
+ABSTRACT
+================================================================================
+
+BorrowBuddy is a lending platform for verified Bennett University students.
+It replaces the informal way students borrow things today, which is mostly
+messages in WhatsApp groups, with a proper system. The system shows when an
+item is free, records every handover with a one-time code, calculates a
+trust score for every student, tracks fines for late returns, and gives
+campus admins one place to manage verification, incidents and disputes.
+
+The product is built as a web application on Next.js and React, with
+Supabase as the backend (PostgreSQL database, login, file storage and live
+updates). The database itself enforces the rules. For example, the database
+makes double booking impossible, and only the two people in a loan can see
+that loan. A shared TypeScript package keeps the rules shown to users and
+the rules enforced in the database in agreement. Scheduled database jobs
+expire old requests, mark overdue loans, create fines, and notify students
+on waitlists. The whole core loop is verified by an automated SQL test with
+41 checks that runs on every push.
+
+The web application and the backend are complete. The Android application
+is planned for a later phase and will use the same backend.
+
+This report explains the motivation behind the project, the difficulty of
+the problem, the new ideas in the design, the intended users, an analysis of
+the problem domain, a review of existing systems with a feasibility study,
+the full database schema, and a table of all requirements. The requirements
+table marks clearly which features already exist in other systems and which
+ones are new contributions of this project.
+
+
+1. PROBLEM MOTIVATION AND SOPHISTICATION
+================================================================================
+
+1.1 How students borrow things today
+--------------------------------------------------------------------------------
+
+Students borrow things all the time. A student needs a projector for a club
+event, a calculator for one exam, a badminton racket for the weekend, or a
+kettle for a week. These items already exist on campus. They are sitting in
+hostel rooms and are used only a few times each semester. The real problem
+is not supply. The real problem is coordination.
+
+Today, coordination happens in three ways.
+
+First, WhatsApp and Telegram groups. Messaging is fast and free, but it has
+no structure. An item is "available" only until somebody claims it, and the
+claim exists only in the memory of the group.
+
+Second, friends and seniors. Most students borrow from people they already
+know. This works, but it limits the market to one social circle. A first
+year student with no senior network cannot reach hundreds of items that are
+physically nearby.
+
+Third, informal registers. Some clubs and hostels keep paper lists, but they
+are hard to update, hard to search and invisible to the rest of the campus.
+
+These channels solve the communication problem and fail at everything else.
+The failures repeat in the same way every time.
+
+1. There is no reliable availability information. Two students can be
+   promised the same camera for the same weekend, and the clash is found
+   only at the last minute.
+2. There is no proof of handover. "I already returned it" against "no you
+   did not" has no way to be settled, because nothing was recorded.
+3. There is no memory of behaviour. A student who returns everything on
+   time looks exactly like a student who returns a laptop with a cracked
+   screen.
+4. There is no structure for money. Deposits, damage and late returns are
+   handled socially, and amounts are decided by mood.
+5. There is no memory of demand. If an item is booked for the weekend, the
+   students who wanted it never learn when it becomes free again.
+
+The cost of these failures is real but spread out. Students buy cheap
+versions of things they need only once. Clubs run on favours. Owners lose
+items to promises that are never kept. Sharing happens far less than it
+could.
+
+1.2 Why this problem matters
+--------------------------------------------------------------------------------
+
+Four reasons make the problem worth solving.
+
+Affordability. Student budgets are small. Borrowing a projector or a
+calculator for a few days is much cheaper than buying one.
+
+Sustainability. Every item that is shared instead of bought is one less item
+manufactured, shipped and later thrown away. Sharing increases the use of
+things that already exist.
+
+Community. A structured system lets students who do not know each other
+trade fairly. Repeated fair behaviour becomes a visible asset through the
+trust score.
+
+Use of idle items. Campus inventory, whether owned by students, clubs or
+departments, is unused most of the year. Making that idle capacity visible
+helps everyone.
+
+1.3 Why the problem is hard
+--------------------------------------------------------------------------------
+
+It is easy to build a borrowing app that works in a demo and breaks in real
+use. The hard parts are the reason this is a serious project.
+
+Correctness when two people act at the same time. Borrowing is a scheduling
+problem. If two students request the same speaker for the same Friday, the
+system must never allow both. A simple check followed by a save is not
+enough, because another request can pass the check in between. BorrowBuddy
+solves this by making an overlap impossible in the database itself, so the
+calendar stays correct even if the application code has a bug.
+
+Identity against privacy. Lending between strangers needs real identities.
+At the same time, identity documents are the most sensitive data in the
+system. BorrowBuddy separates login (college email and password) from
+verification (a photo of the student ID reviewed by an admin), and stores ID
+photos in a private bucket that only the owner and admins can open.
+
+Trust from nothing. A new student has no history, so a simple rating average
+would punish them unfairly. The trust score starts at a neutral value and
+moves up or down with real events.
+
+Proof of handover without special hardware. The physical exchange is the
+weakest moment. The system must prove that a specific item changed hands
+between two specific people, using only the phones both already own.
+BorrowBuddy uses a one-time six digit code that is shown by one side and
+confirmed by the other. The code is stored hashed, expires in fifteen
+minutes, allows five wrong attempts, and stops working after one use.
+
+Many connected states. A loan passes through several states: request,
+approval, pickup, active loan, return, and possibly overdue or dispute. Each
+step has its own rules about who may act and what must happen next. All of
+these rules are enforced in the database, so no client, present or future,
+can break them.
+
+Limited admin time. Campus admins are volunteers with minutes to spare, not
+a support team. The system therefore does most of the routine work by
+itself: requests expire automatically, overdue loans are flagged, fines are
+created, and reminders are sent by scheduled database jobs.
+
+Money without payment processing. The platform tracks deposits and fines as
+amounts owed, and the actual payment happens offline. An admin records
+whether a fine was settled or waived. This keeps the books accurate without
+adding payment risk to a campus project.
+
+One set of rules for many surfaces. The web app exists today and an Android
+app is planned. If each client had its own copy of the rules, they would
+drift apart. Instead the rules live in the database and in one shared
+package that every client uses.
+
+Attention. A campus tool competes with group chats for student attention.
+BorrowBuddy therefore treats its public pages as a product. The landing page
+uses a surreal visual language and WebGL scenes to explain the system
+clearly and to be memorable.
+
+
+2. NOVELTY OF THE PROJECT
+================================================================================
+
+This section lists the parts of BorrowBuddy that are new compared to the
+existing systems reviewed in Section 5.
+
+Database-enforced booking. In most booking systems the application checks
+for conflicts before saving. BorrowBuddy instead places a rule inside the
+database (an exclusion constraint) that says: no two active loans for the
+same item may overlap in time. The database rejects the second booking no
+matter how it arrives, through the app, a script or a manual query. The
+calendar can never become wrong.
+
+Verified campus trust. Accounts use college email addresses, and a photo of
+the student ID must be approved by an admin before the account can borrow or
+lend. On top of this, the database calculates a trust score from real
+events. The formula is simple and visible to everyone:
+
+    score = 70
+          + (average rating - 3.5) x 8
+          + (on time return rate - 0.8) x 20
+          + up to 10 points for completed loans (0.5 per loan)
+          + 5 points if the account is verified
+          - 8 points for each confirmed incident
+
+The result is kept between 0 and 100. New students start from neutral
+values, so they are not punished for having no history. The score is
+recalculated by the database whenever a review, loan, incident or
+verification changes. Students cannot edit their own score.
+
+One-time handover codes. Every pickup and every return is proven with a
+six digit code. The system stores only a hash of the code, the code expires
+in fifteen minutes, and five wrong attempts end the attempt. The borrower
+shows the code and the owner confirms the pickup, and the reverse for the
+return. Each code works once and is then erased. This gives a clear custody
+record without any special hardware.
+
+Waitlists that wake themselves. When an item is fully booked, a student can
+join a waitlist with the dates they want. When dates become free, because a
+request was declined, cancelled or returned, the database notifies the
+waiting students automatically. Informal channels have no memory of demand.
+BorrowBuddy does.
+
+An incident and fine pipeline. Damage, loss, late returns and no-shows are
+proper records, not chat apologies. A student opens an incident with a
+description and photos. An admin resolves or rejects it with a written note
+and can add a fine for either side. Fines move through pending, settled and
+waived states. Every admin action is written to an audit log. Disputes
+therefore end with a decision instead of an endless argument.
+
+Automation instead of manual reminders. Four scheduled database jobs keep
+the system honest without any human effort. Requests expire every thirty
+minutes, overdue loans are flagged and fined nightly, due-soon reminders go
+out each morning, and stale waitlist entries are cleared. The overdue fine
+is INR 20 per day with a cap of INR 1,000 per loan.
+
+An admin-managed campus map. The landing page shows the real master plan
+photo of the university with five pickup pins, such as the eatery counters,
+the stage, the laundry desk and the sports complex. Each pin is a database
+row with position values, and admins can add, move or remove pins from the
+admin desk with a drag and drop editor. The public page refreshes at most
+once per minute.
+
+Strong engineering habits. All writes go through 22 database functions that
+check permissions themselves. 35 row level security policies decide who may
+read each row. A shared package keeps client rules and database rules in
+agreement. An automated SQL test with 41 checks exercises the full core
+loop, including a rejected double booking and a rejected non-admin action,
+and it runs in CI on every push.
+
+A designed product. The visual language is inspired by surreal painting,
+with a day to night arc across the landing page and two WebGL scenes: a
+conveyor of parcels moving through scanner gates, and the photographed
+campus map with live pins. Functional pages stay calm and readable. This
+matters because a campus tool must be understood in seconds to be adopted.
+
+
+3. TARGET USERS
+================================================================================
+
+BorrowBuddy is not an open marketplace. It is a closed community of one
+campus. All users are verified, handovers happen at fixed campus spots, and
+admins handle review and disputes.
+
+Primary users are students in two roles.
+
+The borrower needs things occasionally and briefly: a calculator for one
+exam, a projector for a club night, a cycle for a month. The borrower has
+limited money and no wish to own items they use twice. They need quick
+search, honest availability information, and a simple way to ask.
+
+The owner has items that sit unused: a camera, a mechanical keyboard, books,
+tools. They lend to friends today and have no calendar, no proof and no
+protection. They need control of their calendar, confidence that lending is
+safe, and recognition when they are reliable.
+
+Most students are both borrowers and owners at different times, so the
+platform treats both as two roles of one account.
+
+Secondary users are campus administrators. An admin may be a staff member,
+a warden or a trusted student worker with special rights. Admins verify
+student IDs, resolve incidents, settle or waive fines, and manage the map
+pins. Their time is the scarcest resource in the system, so every admin
+screen is a queue with clear decisions. All admin actions are recorded in
+the audit log.
+
+Tertiary users are community participants, who use campus chat channels and
+the campus map, and public visitors, who see only the landing page. A future
+phase may extend the same design to other campuses.
+
+Personas
+
+  Persona               Role               Main need
+  -------------------------------------------------------------------------
+  Aarav, first year     Borrower           A calculator for tomorrow, with
+                                           no seniors to ask.
+  Meera, final year     Owner              Lends a camera on weekends and
+                                           was once burned by a lost item.
+  Dev, hostel wing      Both               Runs game nights and wants
+                                           alerts when a projector frees up.
+  Sana, club secretary  Owner of many      Manages speakers and projectors
+                                           for the fest season.
+  Warden K.             Admin              Reviews new signups and wants
+                                           minimum manual work.
+  Public visitor        Guest              Understands the product and
+                                           where handovers happen.
+
+
+4. PROBLEM DOMAIN IDENTIFICATION AND ANALYSIS
+================================================================================
+
+4.1 The domain
+--------------------------------------------------------------------------------
+
+The problem domain is structured sharing inside a closed institution. It
+combines ideas from four areas: peer-to-peer marketplaces (listings and
+discovery), library circulation systems (availability and returns), trust
+systems (ratings and scores), and access control (who may see and do what).
+
+The important difference from all four is one property. The community is
+closed and verified by the institution, but the items are owned by the
+students themselves. Libraries own their books and do not know their users.
+Open marketplaces know their users only by claim. BorrowBuddy is the case
+where both sides are known. Almost every design decision follows from that
+property, including fixed handover spots, offline settlement of money, and
+admin adjudication of disputes.
+
+4.2 Actors and their goals
+--------------------------------------------------------------------------------
+
+  Actor            Goal
+  -------------------------------------------------------------------------
+  Borrower         Get an item for the exact dates from a trustworthy
+                   person, quickly.
+  Owner            Lend idle items without risk of loss or damage, and
+                   be recognised for being reliable.
+  Admin            Keep the community safe with as little manual work as
+                   possible.
+  System jobs      Keep records truthful over time: expire, flag, remind
+                   and sweep.
+  Visitor          Understand the product and find the handover spots.
+
+4.3 Main entities
+--------------------------------------------------------------------------------
+
+  Entity           Description                              States
+  -------------------------------------------------------------------------
+  Profile          A verified student or admin with a       persistent
+                   trust score and verification state.
+  Item             A lendable object with photos,           draft,
+                   condition, deposit guidance, maximum     available,
+                   loan days and a pickup spot.             paused,
+                                                            retired
+  Availability     Dates the owner has blocked.             attached
+  block
+  Borrow request   A dated request from a borrower.         pending,
+                                                            approved,
+                                                            declined,
+                                                            cancelled,
+                                                            expired,
+                                                            converted
+  Loan             The custody record for an approved       awaiting
+                   request, with codes and timestamps.      pickup,
+                                                            active,
+                                                            return
+                                                            pending,
+                                                            returned,
+                                                            overdue,
+                                                            disputed,
+                                                            lost,
+                                                            cancelled
+  Waitlist entry   A student waiting for dates to open.     waiting,
+                                                            notified,
+                                                            converted,
+                                                            expired,
+                                                            cancelled
+  Conversation     Private chat for a loan, or a            persistent
+                   community channel.
+  Review           A rating from one party after a loan.    permanent
+  Incident         A damage, loss, late or no-show          open, under
+                   report with photos.                      review,
+                                                            resolved,
+                                                            rejected
+  Fine             An amount owed, settled offline.         pending,
+                                                            settled,
+                                                            waived
+  Notification     A record of an event for one user.       read or
+                                                            unread
+  Audit entry      A permanent record of admin actions.     permanent
+
+4.4 Rules of the domain
+--------------------------------------------------------------------------------
+
+  - Only Bennett email addresses can create accounts, and only admin
+    approved accounts can borrow or lend.
+  - A student ID photo is required for verification. It must be a PNG or
+    JPG file between 50 KB and 5 MB, and it is stored privately.
+  - Active loans for the same item may never overlap.
+  - A loan lasts between 1 and 30 days, limited by the item setting. The
+    default is 14 days.
+  - A borrower may hold at most 5 active loans at once.
+  - A borrower may have only one pending request per item, and a request
+    expires after 48 hours.
+  - An overdue fine is INR 20 per day, capped at INR 1,000 per loan. Only
+    one automatic overdue fine can exist per loan.
+  - An item can have up to 6 photos of up to 5 MB each.
+  - Handover codes have six digits, last fifteen minutes, allow five wrong
+    attempts and work once.
+  - Incidents are resolved only by admins, with a written note, and every
+    such action is recorded in the audit log.
+
+4.5 Main state machines
+--------------------------------------------------------------------------------
+
+Verification:
+  pending -> verified (admin approves)
+  pending -> rejected (admin rejects, student may resubmit)
+  any -> suspended (admin action)
+
+Request:
+  pending -> approved -> converted into a loan
+  pending -> declined, cancelled, or expired after 48 hours
+
+Loan:
+  awaiting_pickup -> active (owner confirms the pickup code)
+  active -> return_pending -> returned (owner confirms the return code)
+  active -> overdue (due date passes), disputed or lost if an incident
+  opens, cancelled before pickup
+
+Incident:
+  open -> under_review -> resolved (with an optional fine) or rejected
+
+Fine:
+  pending -> settled or waived by an admin
+
+4.6 Risks and how they are handled
+--------------------------------------------------------------------------------
+
+  Risk                             Handling
+  -------------------------------------------------------------------------
+  Two bookings for the same item   The database exclusion constraint
+                                   rejects the second one.
+  Fake or shared accounts          College email signups plus student ID
+                                   review; suspension for abuse.
+  Stolen or replayed codes         Hashed codes, fifteen minute expiry,
+                                   five attempts, single use.
+  Disputes without evidence        Incident records with photos and
+                                   written admin decisions.
+  Admin overload                   Queues and scheduled automation.
+  Leaked identity documents        Private storage buckets, signed links
+                                   that expire, and database policies.
+  Low adoption                     A designed public page, installable
+                                   web app, and a clear map of handover
+                                   spots.
+
+5. REVIEW OF EXISTING SYSTEMS AND PROJECT FEASIBILITY
+================================================================================
+
+5.1 What students use today (informal systems)
+--------------------------------------------------------------------------------
+
+WhatsApp and Telegram groups are fast and free, but they have no availability
+state, no history and no accountability. Messages scroll away and the market
+resets every day. Google Forms and Sheets appear when a club keeps a list of
+its equipment, but a sheet has one custodian, no notifications and no
+lifecycle. Paper registers in hostels work for one person and are invisible
+to everyone else. Borrowing from friends is the most common method of all,
+and it works well, but it only reaches one social circle. All of these are
+strong at communication and weak at truth.
+
+5.2 Institutional systems
+--------------------------------------------------------------------------------
+
+Library systems such as Koha and Ex Libris Alma manage catalogue, checkout,
+returns and fines very well. However, the books belong to the institution.
+Students cannot lend a personal camera through a library system, and the
+borrowing rules are set by policy, not by two students agreeing. Equipment
+checkout tools such as WebCheckout, Cheqroom and MyTurn do the same for
+departmental gear, with checklists and maintenance records. They are priced
+for institutions, closed to student items, and centred on staff work.
+
+5.3 Commercial rental services
+--------------------------------------------------------------------------------
+
+Rentomojo and Furlenco in India, and Rent the Runway abroad, rent furniture
+and fashion from company-owned stock, with delivery and payments. The
+experience is good, but the model does not fit a hostel: there is no peer
+supply, delivery is not practical for a small campus handover, and every
+rental costs money. Textbook rental services such as Chegg run the same
+company-owned model for one category.
+
+5.4 Peer-to-peer platforms
+--------------------------------------------------------------------------------
+
+OLX and Facebook Marketplace allow students to sell items to each other, but
+they are sale platforms. Identities are self declared, meetings happen
+anywhere, and a sale has no returns and no custody record. ShareGrid and
+KitSplit are closer to BorrowBuddy: people rent their own cameras and
+equipment, with strong verification and insurance. They are commercial
+(rental fees and payment processing), tied to specific countries and
+industries, and they have no closed campus community or fixed handover
+spots. Peerby, a neighbourhood borrowing service in the Netherlands, proves
+that local sharing works when neighbours are dense, and Fat Lama, a British
+"rent anything" marketplace that ran from 2016 to 2020, showed both that the
+model is possible and how costly open trust is without a closed community.
+
+5.5 Comparison
+--------------------------------------------------------------------------------
+
+  Feature               WhatsApp  Library  Cheqroom  ShareGrid  OLX  This
+  -------------------------------------------------------------------------
+  Availability calendar    no       yes      yes       yes      no   yes
+  No double booking        no       yes      yes       yes      no   yes,
+                                                                via
+                                                                DB rule
+  Peer-owned items        yes       no       no        yes      yes  yes
+  Verified campus         no       n/a      n/a     part yes    no   yes
+  identity
+  Proof of handover       no      receipts checklist contract  no   yes,
+                                                                one-time
+                                                                code
+  Trust score             no       no       no      ratings  part yes,
+                                                                computed
+  Waitlist with alerts    no       yes      part      no       no   yes
+  Incident to fine flow   no       yes      yes     insurance no   yes
+  Campus handover map     no       no       no        no       no   yes
+  Private chat per loan  part      no       no        yes     part  yes
+  Cost to students       free     free   licensed   fees     free  free
+
+Every column solves part of the problem. Institutional systems have the
+lifecycle but not student-owned items. Commercial platforms have peer items
+but not a closed campus community or a free model. Informal channels have
+the community but no structure at all.
+
+5.6 The gap BorrowBuddy fills
+--------------------------------------------------------------------------------
+
+One, a borrowing lifecycle for student-owned items inside a closed verified
+community. No existing category does both. Two, availability enforced by the
+data layer instead of the user interface. Three, proof of handover that
+needs no hardware and no money movement. Four, a trust value that is
+computed from events and easy to explain. Five, an admin model designed for
+volunteers: queues plus automation. Six, a campus-native experience with
+fixed handover spots and an installable web app.
+
+5.7 Feasibility
+--------------------------------------------------------------------------------
+
+Technical feasibility is already demonstrated. The complete system is built:
+18 tables, 35 row level security policies, 42 database functions of which 22
+are callable by the app, 13 triggers, 5 storage buckets, 4 scheduled jobs, a
+web application and a WebGL landing page. A CI pipeline applies every
+migration to a fresh PostgreSQL 17 database, runs the 41-check smoke test,
+and also runs lint, type checks and a production build. The tools used,
+Next.js, React, TypeScript and Supabase, are mainstream and well documented.
+
+Economic feasibility is simple. A pilot costs almost nothing. The free
+Supabase tier (500 MB database and 1 GB file storage) is enough for a campus
+pilot, and the paid tier at about USD 25 per month adds backups and more
+space. Vercel hosts the web app on its free hobby tier. Photos are the main
+storage cost. For example, 400 items with 3 photos of 5 MB each is about
+6 GB over a semester, which is the first real cost line. Deposits and fines
+are settled offline, so there are no payment fees and no financial licences
+to worry about.
+
+Operational feasibility depends on the admins, and the design protects their
+time. Verification is a queue with the ID beside the decision. Requests
+expire, loans are flagged, and waitlists are woken by the system. The
+expected load for a pilot is about one admin hour per week, plus incident
+decisions when something goes wrong.
+
+Legal and ethical feasibility is built into the design. Identity photos are
+stored in a private bucket and opened only through links that expire after
+thirty minutes. Profile fields are protected by database privileges. No
+payment data is stored. Admin actions are recorded permanently. The system
+collects no location data and no third party analytics.
+
+Schedule feasibility is good because the work was phased, and the phases
+were respected.
+
+  Phase 0  Foundation: monorepo, database schema, security policies, designs
+  Phase 1  Core loop: accounts and verification, listings, search, requests,
+           loans, code handover
+  Phase 2  Trust and communication: chat, waitlist, reviews, incidents,
+           fines, overdue handling, campus map
+  Phase 3  Moderation and polish: admin desk, disputes, installable web app,
+           day and night themes, surreal design system, WebGL landing
+  Phase 4  Android application on the same backend            (planned)
+
+Phases 0 to 3 are complete and pass CI. Phase 4 needs no backend changes
+because the rules already live in the shared package and the database.
+
+Conclusion. The review shows a real gap: no existing system offers a closed
+campus community, student-owned items, database-enforced availability,
+hardware-free custody proof and a volunteer-sized administration model in
+one product. The feasibility study shows the project is affordable, light to
+operate, careful with private data, and already working end to end.
+
+
+6. DATABASE SCHEMA
+================================================================================
+
+6.1 Design principles
+--------------------------------------------------------------------------------
+
+One, the database is the authority. Every rule that must never break is a
+constraint, a trigger or a database function called by the app. Two, clients
+never write tables directly. All changes go through 22 functions that check
+permissions themselves. Three, privacy is structural. 35 row level security
+policies decide who may read each row, and private files live in private
+buckets. Four, history matters. The audit log records privileged actions
+permanently, and loans keep both hashed codes and confirmation timestamps.
+Five, enums give every lifecycle a clear vocabulary.
+
+6.2 Entity overview
+--------------------------------------------------------------------------------
+
+  auth.users 1 - 1 profiles
+  profiles 1 - * items                    (owner)
+  categories 1 - * items
+  pickup_locations 1 - * items            (handover spot)
+  items 1 - * availability_blocks
+  items 1 - * borrow_requests - * profiles (borrower)
+  borrow_requests 1 - 1 loans
+  items 1 - * loans
+  loans 1 - * conversations 1 - * messages
+  conversations 1 - * conversation_members - * profiles
+  loans 1 - * reviews, incidents (with photos), fines
+  profiles 1 - * notifications, reports
+  audit_log - profiles                    (actor, nullable)
+
+6.3 Enums (18)
+--------------------------------------------------------------------------------
+
+verification_status (pending, verified, rejected, suspended);
+item_condition (new, good, fair, worn); item_status (draft, available,
+paused, retired); availability_reason (manual, maintenance); request_status
+(pending, approved, declined, cancelled, expired, converted); loan_status
+(awaiting_pickup, active, return_pending, returned, overdue, disputed, lost,
+cancelled); handover_kind (pickup, return); conversation_type (private,
+community); waitlist_status (waiting, notified, converted, expired,
+cancelled); incident_type (damage, lost, late, no_show, other);
+incident_status (open, under_review, resolved, rejected); photo_phase
+(before, after); fine_status (pending, settled, waived); fine_source
+(overdue, damage, loss, no_show, other); review_role (as_owner, as_borrower);
+report_target (item, user, message); report_status (open, resolved,
+dismissed); notification_type (20 values for verification, requests, loans,
+waitlists, handovers, incidents, fines, messages, reviews and reports).
+
+6.4 Tables (18)
+--------------------------------------------------------------------------------
+
+profiles - one row per user, created automatically at signup. Holds name,
+email, phone, department, year, avatar and student ID paths, verification
+status and note, trust score (default 70), admin flag and timestamps.
+Column privileges stop users from editing their own trust score or
+verification fields.
+
+categories - reference list of 8 subjects such as Electronics and Books.
+Columns: id, name (unique), slug (unique), icon, sort order.
+
+pickup_locations - handover spots, also used as landing map pins. Columns:
+id, name (unique), description, latitude, longitude, photo path, active
+flag, and map position xp and yp (percent of the photo), and label side
+(left or right).
+
+items - a lendable object. Columns: id, owner, category, title (3 to 100
+characters), description, condition, up to 6 image paths, deposit guidance
+(0 to 100000), maximum loan days (1 to 30, default 14), pickup location,
+status, a generated search column built from title and description, and
+timestamps.
+
+availability_blocks - dates the owner blocked. Columns: id, item, start and
+end dates, reason, note and creator.
+
+borrow_requests - a dated request. Columns: id, item, borrower, start and
+end dates, message, status, decline reason, expiry time (48 hours after
+creation) and response time. A trigger checks eligibility and dates.
+
+loans - the custody record. Columns: id, request (unique), item, owner,
+borrower, start date, due date, return time, status, hashed pickup code with
+expiry and attempt count, hashed return code with expiry and attempt count,
+pickup and return confirmation times, and timestamps. The exclusion
+constraint loans_no_overlap prevents two active loans for the same item from
+overlapping in time.
+
+waitlist_entries - columns: id, item, user, desired start and end dates,
+status and creation time. A unique rule allows one active entry per user per
+item.
+
+conversations, conversation_members, messages - chat. A conversation is
+private (linked to a loan) or community (with a title). Membership rows hold
+the last read time. Messages hold the sender, body of up to 2000 characters
+or an image path, and a timestamp.
+
+reviews - columns: id, loan, reviewer, reviewee, role, rating (1 to 5),
+comment and time. One review per person per loan. A trigger verifies that
+the reviewer is a party and the loan is returned.
+
+incidents and incident_photos - columns: id, loan, reporter, type,
+description (10 to 2000 characters), status, resolution note, resolver and
+resolution time. Photos hold a path, a phase (before or after) and a time.
+
+fines - columns: id, loan, user, amount (1 to 100000), source, reason,
+status, settler and settlement time. A unique rule prevents more than one
+automatic overdue fine per loan.
+
+notifications - columns: id, user, type, title, body, JSON payload, read
+time and creation time.
+
+reports - user flags. Columns: id, reporter, target type (item, user or
+message), target id, reason, status, resolver and resolution time.
+
+audit_log - permanent record. Columns: id, actor (may be empty), action,
+entity, entity id, JSON metadata and time.
+
+6.5 Indexes
+--------------------------------------------------------------------------------
+
+29 indexes support the main queries. Search and browse: item owner,
+category, status with recency, a GIN index on the generated search column,
+and a fuzzy title index. Requests: item with status, borrower with recency,
+and a unique index allowing one pending request per item and borrower.
+Loans: item, borrower and owner with status, plus a partial index on due
+dates for open loans. Waitlist: item with status, and one active entry per
+user per item. Chat: one private chat per loan, unique community titles, a
+member index and a message timeline index. Trust: reviewee, incidents by
+loan and status, fines by user and status, and one overdue fine per loan.
+Others: notification timelines, unread notifications, report queues and
+audit lookups by entity and actor.
+
+6.6 Functions and triggers
+--------------------------------------------------------------------------------
+
+Support functions create notifications, write audit entries, check admin or
+verified status, check conversation membership and loan parties, and
+generate random digits.
+
+Trigger functions do the important work. handle_new_user creates a profile
+at signup. protect_profile_fields blocks edits to protected columns.
+enforce_loan_transition checks every loan state change. audit_loan_change
+writes loan transitions to the audit log. validate_borrow_request checks
+dates, eligibility and duplicates. validate_review allows only parties to
+review a returned loan. recompute_trust_score calculates the score, and four
+small triggers call it when reviews, loans, incidents or verification
+change. notify_waitlist_for_item wakes waiting students when dates free up.
+
+There are 13 table triggers in total, including automatic updated_at
+timestamps on profiles, items and loans. In total the migrations define 42
+functions, of which 22 are exposed as RPCs to the app or to scheduled jobs.
+
+6.7 RPCs (22)
+--------------------------------------------------------------------------------
+
+Requests: approve_request, decline_request, cancel_request.
+Handover: generate_handover_token, confirm_handover.
+Loans: cancel_loan. Waitlist: join_waitlist, leave_waitlist.
+Chat: mark_conversation_read, create_community_conversation.
+Incidents: open_incident, resolve_incident. Fines: settle_fine.
+Identity: submit_student_id. Administration: admin_set_verification,
+admin_resolve_report, admin_save_pickup_location,
+admin_delete_pickup_location.
+Scheduled jobs: expire_stale_requests, flag_overdue_loans, notify_due_soon,
+notify_waitlist_sweep. These four are removed from client access and given
+to the service role only.
+
+Every client call checks the signed in user, validates the input, performs
+its work atomically, sends notifications, and returns the updated row.
+
+6.8 Row level security (35 policies)
+--------------------------------------------------------------------------------
+
+  Table group              Who may read                       Writes
+  -------------------------------------------------------------------------
+  profiles                 self, verified users, admins       self only,
+                                                              limited
+                                                              columns
+  items                    everyone except drafts             owner only
+  availability_blocks      users who may see the item         owner only
+  borrow_requests          owner and borrower                 borrower
+                                                              inserts
+  loans                    the two parties and admins         via RPC only
+  chat tables              conversation members               sender only
+  reviews                  all signed in users                parties,
+                                                              once
+  incidents and photos     loan parties and admins            via RPC only
+  fines                    the charged user and admins        via RPC only
+  notifications            the owner of the row               mark read
+  reports                  the reporter and admins            reporter
+                                                              inserts
+  audit_log                admins only                        functions
+                                                              only
+  pickup_locations         signed in users, and anonymous     admins via
+                           users for active rows              RPC
+
+6.9 Storage buckets (5)
+--------------------------------------------------------------------------------
+
+  bucket           public   limit   allowed types            used for
+  -------------------------------------------------------------------------
+  item-images      yes      5 MB    jpeg, png, webp, heic    item photos
+  avatars          yes      2 MB    jpeg, png, webp          profile
+                                                              pictures
+  student-ids      no       5 MB    jpeg, png                identity
+                                                              review
+  incident-photos  no       5 MB    jpeg, png, webp          dispute
+                                                              evidence
+  chat-images      no       5 MB    jpeg, png, webp          chat
+                                                              attachments
+
+Files follow the path {user id}/{random}.{extension}. A user can only write
+inside their own folder. Private buckets are opened through links that
+expire after thirty minutes. The final version of submit_student_id also
+checks that the file really exists in the bucket before accepting it.
+
+6.10 Scheduled jobs and live updates
+--------------------------------------------------------------------------------
+
+Four scheduled jobs run in the database: requests expire every 30 minutes,
+overdue loans are flagged at 00:15 each day, due-soon reminders go out at
+09:00, and stale waitlists are cleared at 09:30.
+
+Live updates are enabled for 8 tables: messages, notifications, loans,
+borrow_requests, conversations, conversation_members, fines and incidents.
+Chats, inboxes and loan status therefore update without refreshing.
+
+6.11 Migrations, seed data and automated testing
+--------------------------------------------------------------------------------
+
+The schema is applied by 12 ordered migrations: extensions, enums, tables,
+indexes, functions and triggers, RPCs, row level security and privileges,
+storage buckets and policies, scheduled jobs and live updates, the student
+ID function, a stricter student ID check, and the campus pins extension.
+
+Seed data includes 8 categories, 12 pickup locations (7 campus landmarks
+with coordinates and the 5 landing pins with map positions) and one
+community channel named Campus Lending.
+
+The automated test supabase/tests/smoke_test.sql runs the whole core loop as
+41 checks inside a transaction that is rolled back. It covers signup,
+verification, listing, requests, a rejected double booking, handover codes
+including a wrong attempt, return, waitlist, reviews, trust score, overdue
+fines, security policy checks and the campus pin admin functions. CI applies
+every migration to a fresh PostgreSQL 17 database and runs this test, and
+separately runs lint, type checks and a production build of the web app.
+
+6.12 Trust score
+--------------------------------------------------------------------------------
+
+The score starts from 70. It adds up to 4 points for each star above 3.5 in
+the average rating (8 points per star), up to 20 points for the on time
+return rate compared to 80 percent, up to 10 points for completed loans
+(0.5 per loan), and 5 points for verification. It subtracts 8 points per
+confirmed incident. The result is kept between 0 and 100 and is recalculated
+whenever the inputs change.
+
+
+7. REQUIREMENTS TABLE
+================================================================================
+
+Class:  EXIST = behaviour already offered by systems reviewed in Section 5
+        NOVEL = new contribution of this project
+Status: IMPL = implemented and tested (web and backend)
+        PLAN = planned for a later phase
+
+7.1 Functional requirements
+--------------------------------------------------------------------------------
+
+  ID     Requirement                       Class  Phase  Status
+  -------------------------------------------------------------------------
+  FR-01  Sign up and sign in with college  EXIST    1    IMPL
+         email and password; signups
+         limited to the Bennett domain.
+  FR-02  Onboarding collects name, phone,   EXIST    1    IMPL
+         department and year before the
+         portal opens.
+  FR-03  Student ID verification: admin    NOVEL    1    IMPL
+         approves or rejects an ID photo
+         kept in a private bucket; the
+         account stays locked until
+         approval.
+  FR-04  Bootstrap admin: the admin email  NOVEL    1    IMPL
+         is promoted automatically on
+         first sign in, so the first
+         admin needs no manual setup.
+  FR-05  Create a listing with up to 6     EXIST    1    IMPL
+         photos, condition, deposit
+         guidance, maximum loan days and
+         a pickup spot.
+  FR-06  Edit, pause and retire listings   EXIST    1    IMPL
+         (draft, available, paused,
+         retired).
+  FR-07  Search and filter items by text,  EXIST    1    IMPL
+         category, condition, spot and
+         dates.
+  FR-08  Item page with photos, owner      EXIST    1    IMPL
+         trust, reviews and an
+         availability calendar.
+  FR-09  Owner availability blocks for     EXIST    1    IMPL
+         chosen dates.
+  FR-10  Borrow request with dates and a   EXIST    1    IMPL
+         message; one pending request per
+         item per borrower.
+  FR-11  Requests expire automatically     NOVEL    2    IMPL
+         after 48 hours.
+  FR-12  Owner approval turns the request  EXIST    1    IMPL
+         into a loan; decline records a
+         reason.
+  FR-13  No two active loans for the      NOVEL    1    IMPL
+         same item may overlap; enforced
+         by the database.
+  FR-14  Full loan lifecycle: awaiting     EXIST    1    IMPL
+         pickup, active, return pending,
+         returned, plus overdue, dispute,
+         lost and cancelled.
+  FR-15  One-time six digit handover and   NOVEL    1    IMPL
+         return codes, hashed at rest,
+         fifteen minute expiry, five
+         attempts, single use, with a
+         custody record.
+  FR-16  Waitlist with automatic alerts    NOVEL    2    IMPL
+         when dates open up.
+  FR-17  Private chat per loan and         EXIST    2    IMPL
+         community channels, both live.
+  FR-18  Reviews after returned loans,     EXIST    2    IMPL
+         one per party per loan.
+  FR-19  Computed trust score from         NOVEL    2    IMPL
+         ratings, on time returns,
+         completed loans, verification
+         and incidents.
+  FR-20  Public profiles for verified      EXIST    2    IMPL
+         students with trust score and
+         reviews.
+  FR-21  Incident reports for damage,      NOVEL    2    IMPL
+         loss, late returns and no-shows,
+         with photos.
+  FR-22  Admin resolution of incidents     NOVEL    2    IMPL
+         with a written note and an
+         optional fine for either party.
+  FR-23  Fines for overdue returns (INR   EXIST    2    IMPL
+         20 per day, cap INR 1,000) and
+         for incidents, with settle and
+         waive actions.
+  FR-24  User reports for items, users    EXIST    2    IMPL
+         and messages, resolved by
+         admins.
+  FR-25  Notifications with live updates   EXIST    2    IMPL
+         and unread counts.
+  FR-26  Admin desk for the verification   EXIST    3    IMPL
+         queue with ID preview and
+         approve or reject.
+  FR-27  Admin desk for incidents, fines  EXIST    3    IMPL
+         and reports with full history.
+  FR-28  Audit log of every privileged     EXIST    3    IMPL
+         action.
+  FR-29  In-app campus map with pickup    EXIST    2    IMPL
+         spots and live item counts.
+  FR-30  Public landing board on the      NOVEL    3    IMPL
+         real master plan photo with the
+         five pickup pins and the walk
+         from Gate 1.
+  FR-31  Admin-managed map pins with      NOVEL    3    IMPL
+         drag to place, add and remove.
+  FR-32  Installable web app with         EXIST    3    IMPL
+         offline page and day or night
+         theme.
+  FR-33  Android application on the       EXIST    4    PLAN
+         same backend.
+  FR-34  Email notifications for          EXIST    3    PLAN
+         verification and loan events.
+
+Summary: 34 functional requirements. 23 are classed EXIST, meaning the
+behaviour already exists in other systems, and 11 are classed NOVEL, meaning
+they are contributions of this project. 32 are implemented and tested today
+(web and backend) and 2 are planned. The novel items are FR-03, FR-04,
+FR-11, FR-13, FR-15, FR-16, FR-19, FR-21, FR-22, FR-30 and FR-31.
+
+7.2 Non-functional requirements
+--------------------------------------------------------------------------------
+
+  ID      Requirement                Target                     Status
+  -------------------------------------------------------------------------
+  NFR-01  Correctness                Double booking impossible; IMPL
+                                     state machines enforced in
+                                     the database; 41 automated
+                                     checks in CI.
+  NFR-02  Security                   All writes through checked  IMPL
+                                     functions; 35 security
+                                     policies; service key
+                                     server only.
+  NFR-03  Privacy                    Private ID storage, signed  IMPL
+                                     links that expire, minimum
+                                     data collection.
+  NFR-04  Auditability              Permanent audit log of all   IMPL
+                                     admin actions.
+  NFR-05  Performance                Indexed search, partial      IMPL
+                                     indexes, cached public page,
+                                     optimised images.
+  NFR-06  Availability               Hosted database and web app; IMPL
+                                     scheduled jobs run even if
+                                     the web app is idle.
+  NFR-07  Usability                  Mobile first layouts, three  IMPL
+                                     step requests, clear error
+                                     messages.
+  NFR-08  Accessibility              Focusable controls, screen   IMPL
+                                     reader text, reduced motion
+                                     respected.
+  NFR-09  Maintainability            12 ordered migrations, one   IMPL
+                                     shared rules package, lint,
+                                     type check and build in CI.
+  NFR-10  Cost                       Free tier pilot; about USD   IMPL
+                                     25 per month for production.
+  NFR-11  Extensibility              Ready for more campuses by   PART
+                                     adding an institution
+                                     column and per campus
+                                     admins.
+
+
+8. CONCLUSION AND FUTURE WORK
+================================================================================
+
+BorrowBuddy treats a familiar student problem, borrowing and lending without
+losing track, as a problem of correctness, identity and proof rather than a
+problem of messaging. The result is a working campus platform whose database
+guarantees that an item is never promised twice, proves every handover with
+a one-time code, computes trust from real events, gives incidents and fines
+a proper ending, and keeps the admin workload small through scheduled
+automation.
+
+The main new contributions are a closed verified community with
+student-owned items, availability enforced in the database, a handover
+protocol that needs no hardware, an explainable trust score, waitlists that
+wake themselves, and an administration model sized for volunteers. Careful
+engineering, such as checked database functions, 35 security policies, a
+shared rules package and a 41-check test in CI, keeps those promises true.
+
+Future work, in order of priority.
+
+One, the Android application on the unchanged backend. Two, outbound email
+for verification and loan events. Three, automatic removal of unused images
+when items, incidents or messages are deleted. Four, richer condition
+history with before and after photos per item. Five, multi-campus support
+through an institution column and per-campus admins. Six, dashboards for
+admins using the audit log that already exists. Seven, optional deposit
+escrow if the university ever wants money to move inside the system.
+
+Every statement in this report about implemented behaviour is backed by the
+code in the repository, by the 12 migrations that define the schema, and by
+the automated test that guards it.
+
+
+9. REFERENCES
+================================================================================
+
+  1. Supabase documentation: row level security, storage policies, realtime
+     and scheduled jobs. https://supabase.com/docs
+  2. PostgreSQL 17 documentation: exclusion constraints, GiST indexes,
+     generated columns and security definer functions.
+     https://www.postgresql.org/docs/17
+  3. Next.js 16 documentation: app router, server actions, revalidation and
+     image optimisation. https://nextjs.org/docs
+  4. Library and equipment systems reviewed for comparison: Koha
+     (https://koha-community.org), Ex Libris Alma, WebCheckout, Cheqroom
+     (https://www.cheqroom.com), MyTurn.
+  5. Rental and sharing platforms reviewed for comparison: Rentomojo,
+     Furlenco, Rent the Runway, OLX, ShareGrid, KitSplit, Peerby and
+     Fat Lama.
+  6. Project artifacts: supabase/migrations (12 migrations),
+     supabase/tests/smoke_test.sql (41 checks), packages/shared (constants
+     and validation schemas), apps/web (web application) and Design/
+     (design references).
+
+================================================================================

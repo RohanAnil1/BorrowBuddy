@@ -1,0 +1,21 @@
+
+=== a-return-b-v1.svg  (354 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #111111 · gradients 0 · anchors 20
+margins L48.0 R44.0 T32.0 B32.0 · bbox fill 0.48
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== b-buddy-brackets-v1.svg  (320 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #111111 · gradients 0 · anchors 30
+margins L32.0 R32.0 T48.0 B48.0 · bbox fill 0.469
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== c-cargo-fold-v1.svg  (248 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #111111 · gradients 0 · anchors 14
+margins L48.0 R40.0 T32.0 B32.0 · bbox fill 0.492
+· INFO [off-centre-x] Horizontal margins differ (left 48.0, right 40.0). Intentional optical centring? Otherwise centre it.
+production-readiness score: 99/100 (heuristic)

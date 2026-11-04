@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useScroll } from "motion/react";
 import { useRef } from "react";
+import { BORROWBUDDY_BRAND } from "@borrowbuddy/shared";
 import { bounceLeft, fadeUp, staggerContainer } from "@/lib/motion/variants";
 import { useParallaxY } from "@/lib/motion/use-parallax";
 import { DeviceStage } from "./device/stage";
@@ -24,12 +25,11 @@ export function CargoMark({ className = "" }: { className?: string }) {
     <svg
       className={className}
       fill="none"
-      viewBox="0 0 40 40"
+      viewBox={BORROWBUDDY_BRAND.viewBox.join(" ")}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <rect fill="#f0f0f0" height="34" width="34" x="3" y="3" />
-      <path d="M12 27V13h10l-6 7h6v7H12z" fill="#003993" />
-      <rect fill="#cb840e" height="4" width="14" x="13" y="23" />
+      <path d={BORROWBUDDY_BRAND.paths.left} fill={BORROWBUDDY_BRAND.palette.paper} />
+      <path d={BORROWBUDDY_BRAND.paths.right} fill={BORROWBUDDY_BRAND.palette.amber} />
     </svg>
   );
 }

@@ -1,0 +1,183 @@
+[
+  {
+    "sourceId": 78,
+    "category": "electronics",
+    "deposit": 3000,
+    "days": 7,
+    "pickup": "Library Entrance",
+    "kit": "14-inch MacBook Pro for coding, editing and presentations. Sample kit includes the laptop, power adapter and a protective sleeve.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 79,
+    "category": "electronics",
+    "deposit": 2500,
+    "days": 5,
+    "pickup": "Academic Block A",
+    "kit": "Asus Zenbook dual-screen laptop for design projects and multitasking. Sample kit includes its charger and carry sleeve; keep both screens protected during transport.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 81,
+    "category": "electronics",
+    "deposit": 2000,
+    "days": 7,
+    "pickup": "Library Entrance",
+    "kit": "Lenovo Yoga convertible laptop for note-taking and group presentations. Sample kit includes the laptop, charging adapter and sleeve.",
+    "condition": "fair"
+  },
+  {
+    "sourceId": 82,
+    "category": "electronics",
+    "deposit": 2500,
+    "days": 7,
+    "pickup": "Academic Block A",
+    "kit": "Compact Dell XPS 13 laptop for coursework and campus projects. Sample kit includes a USB-C charger and carry sleeve.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 159,
+    "category": "electronics",
+    "deposit": 1500,
+    "days": 5,
+    "pickup": "Library Entrance",
+    "kit": "iPad Mini for reading course material, sketching ideas and reviewing slides. Sample kit includes the tablet, protective case and charging cable; a stylus is not included.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 160,
+    "category": "electronics",
+    "deposit": 1800,
+    "days": 5,
+    "pickup": "Student Activity Center",
+    "kit": "Samsung Galaxy Tab S8 Plus for digital notes and portable presentations. Sample kit includes the tablet, protective cover and USB-C charging cable.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 104,
+    "category": "electronics",
+    "deposit": 200,
+    "days": 3,
+    "pickup": "Cafeteria",
+    "kit": "Apple iPhone charging adapter for a short campus charging emergency. Sample kit includes the pictured adapter; bring a compatible cable for your device.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 105,
+    "category": "electronics",
+    "deposit": 500,
+    "days": 3,
+    "pickup": "Student Activity Center",
+    "kit": "MagSafe battery pack for a compatible iPhone during a campus event or day trip. Sample kit includes the battery pack and charging cable; check device compatibility first.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 101,
+    "category": "cameras-audio",
+    "deposit": 1500,
+    "days": 3,
+    "pickup": "Library Entrance",
+    "kit": "Silver over-ear AirPods Max for focused editing or audio review. Sample kit includes the headphones, protective case and charging cable. Clean the ear cushions before returning.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 107,
+    "category": "cameras-audio",
+    "deposit": 300,
+    "days": 3,
+    "pickup": "Student Activity Center",
+    "kit": "Beats Flex wireless earphones for a rehearsal or online session. Sample kit includes the earphones and charging cable. Use your own clean ear tips for hygiene.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 109,
+    "category": "cameras-audio",
+    "deposit": 400,
+    "days": 5,
+    "pickup": "D5 Stage",
+    "kit": "Compact phone tripod/monopod for student interviews and short videos. Sample kit includes the stand and phone holder; a phone is not included. Place it on a stable surface and check the holder before filming.",
+    "condition": "fair",
+    "title": "Phone Tripod / Monopod Stand"
+  },
+  {
+    "sourceId": 110,
+    "category": "cameras-audio",
+    "deposit": 300,
+    "days": 3,
+    "pickup": "D5 Stage",
+    "kit": "Portable selfie lamp for video calls, interviews and student content. This demo listing is for the lamp and holder only; the phone shown in the illustrative photo is not included.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 140,
+    "category": "sports-fitness",
+    "deposit": 200,
+    "days": 2,
+    "pickup": "Sports Complex",
+    "kit": "Basketball for a friendly campus game or practice session. Sample kit includes one ball; a pump is not included. Return it dry and free of mud.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 147,
+    "category": "sports-fitness",
+    "deposit": 200,
+    "days": 2,
+    "pickup": "Sports Complex",
+    "kit": "Football for evening practice and casual campus matches. Sample kit includes one ball. Use on a suitable playing surface and return it clean and inflated.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 143,
+    "category": "sports-fitness",
+    "deposit": 400,
+    "days": 3,
+    "pickup": "Sports Complex",
+    "kit": "Cricket bat for nets and student matches. Sample kit includes one bat and a protective cover; balls, pads and gloves are separate. Avoid wet pitches.",
+    "condition": "fair"
+  },
+  {
+    "sourceId": 144,
+    "category": "sports-fitness",
+    "deposit": 300,
+    "days": 2,
+    "pickup": "Sports Complex",
+    "kit": "Cricket helmet for a demo match equipment set. The sample includes one helmet with grille. For real play, inspect fit, fastening and protective condition before use.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 145,
+    "category": "sports-fitness",
+    "deposit": 250,
+    "days": 3,
+    "pickup": "Sports Complex",
+    "kit": "Cricket wicket set for student practice sessions. Sample kit includes the pictured stumps and bails. Count every piece at pickup and return the set dry.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 152,
+    "category": "sports-fitness",
+    "deposit": 400,
+    "days": 3,
+    "pickup": "Sports Complex",
+    "kit": "Tennis racket for a court session or beginner practice. Sample kit includes one racket and a cover; tennis balls are separate. Protect the strings during transport.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 153,
+    "category": "sports-fitness",
+    "deposit": 150,
+    "days": 2,
+    "pickup": "Sports Complex",
+    "kit": "Volleyball for a friendly match at the sports complex. Sample kit includes one ball. Return it clean and dry after use.",
+    "condition": "good"
+  },
+  {
+    "sourceId": 139,
+    "category": "sports-fitness",
+    "deposit": 250,
+    "days": 3,
+    "pickup": "Sports Complex",
+    "kit": "Baseball glove for a student practice or introductory session. Sample kit includes one glove; a ball and bat are separate. Keep the glove dry and check the fit at pickup.",
+    "condition": "good"
+  }
+]

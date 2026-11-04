@@ -31,24 +31,24 @@ export function QrCodeTile({
   return (
     <div
       className="relative bg-white p-3"
-      style={{ width: size + 24 }}
+      style={{ width: size + 24, maxWidth: "100%" }}
     >
       {/* pulsing border ring */}
       <span
         aria-hidden
-        className="absolute -inset-1.5 animate-[pulse-soft_2.2s_ease-in-out_infinite] border-2 border-accent"
+        className="absolute -inset-1.5 animate-[pulse-soft_2.2s_ease-in-out_infinite] border-2 border-accent motion-reduce:animate-none"
       />
       {dataUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt={label}
-          className="block size-[208px]"
-          height={208}
+          className="block aspect-square h-auto w-full"
+          height={size}
           src={dataUrl}
-          width={208}
+          width={size}
         />
       ) : (
-        <span className="flex size-[208px] items-center justify-center bg-black font-secondary text-[9px] text-ink/40">
+        <span className="flex aspect-square w-full items-center justify-center bg-black font-secondary text-[9px] text-ink/40">
           RENDERING…
         </span>
       )}

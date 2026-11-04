@@ -1,0 +1,559 @@
+{
+  "batch": "borrowbuddy-demo-20261021",
+  "source": "https://dummyjson.com/docs/products",
+  "products": [
+    {
+      "sourceId": 78,
+      "category": "electronics",
+      "deposit": 3000,
+      "days": 7,
+      "pickup": "Library Entrance",
+      "kit": "14-inch MacBook Pro for coding, editing and presentations. Sample kit includes the laptop, power adapter and a protective sleeve.",
+      "condition": "good",
+      "id": "46efe663-87f3-4cb0-81dc-c8d01ff8661a",
+      "title": "Apple MacBook Pro 14 Inch Space Grey",
+      "images": [
+        {
+          "filename": "78-1.webp",
+          "contentType": "image/webp",
+          "bytes": 31540,
+          "sha256": "7aebd15251918e8bb96829c80ddce7f487c22e55fa6751b632ea596084c1d0e6",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/1.webp"
+        },
+        {
+          "filename": "78-2.webp",
+          "contentType": "image/webp",
+          "bytes": 45296,
+          "sha256": "8b5441c442d156fd10dd19b33e185806b783ff1053c7b44ac3292934bc72597d",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/2.webp"
+        },
+        {
+          "filename": "78-3.webp",
+          "contentType": "image/webp",
+          "bytes": 46018,
+          "sha256": "91185c877ab6efa333a3f043bbe49e1601971a21a2dfd259b826e74d3386c4cc",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/apple-macbook-pro-14-inch-space-grey/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\n14-inch MacBook Pro for coding, editing and presentations. Sample kit includes the laptop, power adapter and a protective sleeve.\n\nSample condition: good. Refundable demo deposit: ₹3000. Maximum loan: 7 days. Pickup/return: Library Entrance; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 79,
+      "category": "electronics",
+      "deposit": 2500,
+      "days": 5,
+      "pickup": "Academic Block A",
+      "kit": "Asus Zenbook dual-screen laptop for design projects and multitasking. Sample kit includes its charger and carry sleeve; keep both screens protected during transport.",
+      "condition": "good",
+      "id": "11768150-64a7-42da-9ba4-8e791e403f64",
+      "title": "Asus Zenbook Pro Dual Screen Laptop",
+      "images": [
+        {
+          "filename": "79-1.webp",
+          "contentType": "image/webp",
+          "bytes": 65468,
+          "sha256": "ec75d836338eb7c1352e94feb18a33d3c8f398061f5704bda0a38f5c86cb68e7",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/asus-zenbook-pro-dual-screen-laptop/1.webp"
+        },
+        {
+          "filename": "79-2.webp",
+          "contentType": "image/webp",
+          "bytes": 78426,
+          "sha256": "8632f625d45ffe48d02beb103b7a312614e3f6cd8e10182b73a77fd70b8c6dcc",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/asus-zenbook-pro-dual-screen-laptop/2.webp"
+        },
+        {
+          "filename": "79-3.webp",
+          "contentType": "image/webp",
+          "bytes": 75958,
+          "sha256": "d263e294b7c9aac690081ea2f0809e2553cd06e54957f6b21d7a5f69027c77a5",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/asus-zenbook-pro-dual-screen-laptop/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nAsus Zenbook dual-screen laptop for design projects and multitasking. Sample kit includes its charger and carry sleeve; keep both screens protected during transport.\n\nSample condition: good. Refundable demo deposit: ₹2500. Maximum loan: 5 days. Pickup/return: Academic Block A; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 81,
+      "category": "electronics",
+      "deposit": 2000,
+      "days": 7,
+      "pickup": "Library Entrance",
+      "kit": "Lenovo Yoga convertible laptop for note-taking and group presentations. Sample kit includes the laptop, charging adapter and sleeve.",
+      "condition": "fair",
+      "id": "a61e9357-14a9-4680-820c-8e177588a5ba",
+      "title": "Lenovo Yoga 920",
+      "images": [
+        {
+          "filename": "81-1.webp",
+          "contentType": "image/webp",
+          "bytes": 50310,
+          "sha256": "379d57cb6c5e0dbdcf212be0748c03d87de2636328679db1cec2fc35fddb7925",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/lenovo-yoga-920/1.webp"
+        },
+        {
+          "filename": "81-2.webp",
+          "contentType": "image/webp",
+          "bytes": 58284,
+          "sha256": "a08d2ecafff4153b3ccda675984f198247db4cea09a3829557b5d68cf52ad6da",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/lenovo-yoga-920/2.webp"
+        },
+        {
+          "filename": "81-3.webp",
+          "contentType": "image/webp",
+          "bytes": 57016,
+          "sha256": "ed038d839b49884bb12afedd3e40eda9a9e6df1d08355c90f92008230d3be219",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/lenovo-yoga-920/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nLenovo Yoga convertible laptop for note-taking and group presentations. Sample kit includes the laptop, charging adapter and sleeve.\n\nSample condition: fair. Refundable demo deposit: ₹2000. Maximum loan: 7 days. Pickup/return: Library Entrance; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 82,
+      "category": "electronics",
+      "deposit": 2500,
+      "days": 7,
+      "pickup": "Academic Block A",
+      "kit": "Compact Dell XPS 13 laptop for coursework and campus projects. Sample kit includes a USB-C charger and carry sleeve.",
+      "condition": "good",
+      "id": "720510cf-98c0-4026-b3b1-2cced6e2e910",
+      "title": "New DELL XPS 13 9300 Laptop",
+      "images": [
+        {
+          "filename": "82-1.webp",
+          "contentType": "image/webp",
+          "bytes": 56444,
+          "sha256": "d23fac25d3d26f41e34957c97014a64d8fdbaadae3ee71ac56d7f65e3c9a1389",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/1.webp"
+        },
+        {
+          "filename": "82-2.webp",
+          "contentType": "image/webp",
+          "bytes": 67172,
+          "sha256": "7ac1af7229952193c830fa5033ccd99fee9d648c7a1846f8ce579a39a38d0e67",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/2.webp"
+        },
+        {
+          "filename": "82-3.webp",
+          "contentType": "image/webp",
+          "bytes": 65618,
+          "sha256": "8e423238191e222cd99d6999c898503e6e64f1242887cfbf44f1b1b59ac00ab0",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/laptops/new-dell-xps-13-9300-laptop/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nCompact Dell XPS 13 laptop for coursework and campus projects. Sample kit includes a USB-C charger and carry sleeve.\n\nSample condition: good. Refundable demo deposit: ₹2500. Maximum loan: 7 days. Pickup/return: Academic Block A; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 159,
+      "category": "electronics",
+      "deposit": 1500,
+      "days": 5,
+      "pickup": "Library Entrance",
+      "kit": "iPad Mini for reading course material, sketching ideas and reviewing slides. Sample kit includes the tablet, protective case and charging cable; a stylus is not included.",
+      "condition": "good",
+      "id": "d3a128a0-afc0-4b01-92f3-0241483f48ff",
+      "title": "iPad Mini 2021 Starlight",
+      "images": [
+        {
+          "filename": "159-1.webp",
+          "contentType": "image/webp",
+          "bytes": 59022,
+          "sha256": "8d925f751c46358a5c82af8484c230ba4768346a4deb88e73e248dc7de32686c",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/tablets/ipad-mini-2021-starlight/1.webp"
+        },
+        {
+          "filename": "159-2.webp",
+          "contentType": "image/webp",
+          "bytes": 58996,
+          "sha256": "9b84283b9b8a15ba27b165169aba8e01119621e608ef4f3370ad97a79afe09e5",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/tablets/ipad-mini-2021-starlight/2.webp"
+        },
+        {
+          "filename": "159-3.webp",
+          "contentType": "image/webp",
+          "bytes": 40178,
+          "sha256": "7d75fe1b54779189870b6382b089f5eaa691d6a65d9f46b5b494425f9d60b541",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/tablets/ipad-mini-2021-starlight/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\niPad Mini for reading course material, sketching ideas and reviewing slides. Sample kit includes the tablet, protective case and charging cable; a stylus is not included.\n\nSample condition: good. Refundable demo deposit: ₹1500. Maximum loan: 5 days. Pickup/return: Library Entrance; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 160,
+      "category": "electronics",
+      "deposit": 1800,
+      "days": 5,
+      "pickup": "Student Activity Center",
+      "kit": "Samsung Galaxy Tab S8 Plus for digital notes and portable presentations. Sample kit includes the tablet, protective cover and USB-C charging cable.",
+      "condition": "good",
+      "id": "80d698d3-d8d0-4bfa-8018-b656ce130ed3",
+      "title": "Samsung Galaxy Tab S8 Plus Grey",
+      "images": [
+        {
+          "filename": "160-1.webp",
+          "contentType": "image/webp",
+          "bytes": 52020,
+          "sha256": "421c88a9ecd23668097f285c40ba5c4c2669b4d194a119fc0dddc179b09cbcdc",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-s8-plus-grey/1.webp"
+        },
+        {
+          "filename": "160-2.webp",
+          "contentType": "image/webp",
+          "bytes": 53150,
+          "sha256": "f36d93ad9b2cb03a53d11d3286f4723fd719a9d889edb17f41fa0c8a9b74b0cb",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-s8-plus-grey/2.webp"
+        },
+        {
+          "filename": "160-3.webp",
+          "contentType": "image/webp",
+          "bytes": 34002,
+          "sha256": "89db781d237d7534f9e5a82afda3336276e5bf8af43629c78258db7fea745d51",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-s8-plus-grey/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nSamsung Galaxy Tab S8 Plus for digital notes and portable presentations. Sample kit includes the tablet, protective cover and USB-C charging cable.\n\nSample condition: good. Refundable demo deposit: ₹1800. Maximum loan: 5 days. Pickup/return: Student Activity Center; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 104,
+      "category": "electronics",
+      "deposit": 200,
+      "days": 3,
+      "pickup": "Cafeteria",
+      "kit": "Apple iPhone charging adapter for a short campus charging emergency. Sample kit includes the pictured adapter; bring a compatible cable for your device.",
+      "condition": "good",
+      "id": "95673dce-a5c3-4eec-bab4-76706f9d5292",
+      "title": "Apple iPhone Charger",
+      "images": [
+        {
+          "filename": "104-1.webp",
+          "contentType": "image/webp",
+          "bytes": 37254,
+          "sha256": "0bf8663bf6aa96da1e060f4fde4ddc4745b4a9aa02f36c83e467743752522f4a",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/apple-iphone-charger/1.webp"
+        },
+        {
+          "filename": "104-2.webp",
+          "contentType": "image/webp",
+          "bytes": 47430,
+          "sha256": "55e25cfb83e0991cafd65c9b500f21419176a4b6648f73f1094785d5042a62a9",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/apple-iphone-charger/2.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nApple iPhone charging adapter for a short campus charging emergency. Sample kit includes the pictured adapter; bring a compatible cable for your device.\n\nSample condition: good. Refundable demo deposit: ₹200. Maximum loan: 3 days. Pickup/return: Cafeteria; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 105,
+      "category": "electronics",
+      "deposit": 500,
+      "days": 3,
+      "pickup": "Student Activity Center",
+      "kit": "MagSafe battery pack for a compatible iPhone during a campus event or day trip. Sample kit includes the battery pack and charging cable; check device compatibility first.",
+      "condition": "good",
+      "id": "e191f4d2-3cca-4435-90e6-8c3effbccbe0",
+      "title": "Apple MagSafe Battery Pack",
+      "images": [
+        {
+          "filename": "105-1.webp",
+          "contentType": "image/webp",
+          "bytes": 41686,
+          "sha256": "6358da20ed97a59466343687c7f179ee3edd5cdc0cd9797a420a17b3f19beaf5",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/apple-magsafe-battery-pack/1.webp"
+        },
+        {
+          "filename": "105-2.webp",
+          "contentType": "image/webp",
+          "bytes": 38924,
+          "sha256": "4182550f475bf5d5f69eed7cd6cb0fcda86f2876012e92aa84b34f12c7a701af",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/apple-magsafe-battery-pack/2.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nMagSafe battery pack for a compatible iPhone during a campus event or day trip. Sample kit includes the battery pack and charging cable; check device compatibility first.\n\nSample condition: good. Refundable demo deposit: ₹500. Maximum loan: 3 days. Pickup/return: Student Activity Center; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 101,
+      "category": "cameras-audio",
+      "deposit": 1500,
+      "days": 3,
+      "pickup": "Library Entrance",
+      "kit": "Silver over-ear AirPods Max for focused editing or audio review. Sample kit includes the headphones, protective case and charging cable. Clean the ear cushions before returning.",
+      "condition": "good",
+      "id": "0bd6cccf-67be-4c7a-a92d-227b1e96a955",
+      "title": "Apple AirPods Max Silver",
+      "images": [
+        {
+          "filename": "101-1.webp",
+          "contentType": "image/webp",
+          "bytes": 93266,
+          "sha256": "2a0219919fd758a1d466c18d138549aca34f000bb6850875d7d7956fea22b0da",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/apple-airpods-max-silver/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nSilver over-ear AirPods Max for focused editing or audio review. Sample kit includes the headphones, protective case and charging cable. Clean the ear cushions before returning.\n\nSample condition: good. Refundable demo deposit: ₹1500. Maximum loan: 3 days. Pickup/return: Library Entrance; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 107,
+      "category": "cameras-audio",
+      "deposit": 300,
+      "days": 3,
+      "pickup": "Student Activity Center",
+      "kit": "Beats Flex wireless earphones for a rehearsal or online session. Sample kit includes the earphones and charging cable. Use your own clean ear tips for hygiene.",
+      "condition": "good",
+      "id": "d6a6bcb5-a58e-4d65-a11b-fb9560dcd835",
+      "title": "Beats Flex Wireless Earphones",
+      "images": [
+        {
+          "filename": "107-1.webp",
+          "contentType": "image/webp",
+          "bytes": 47884,
+          "sha256": "f5c4e7da4732cf58bfe2927dd55f96c4dd8611871f4753fb835ab6cd030f07cd",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/beats-flex-wireless-earphones/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nBeats Flex wireless earphones for a rehearsal or online session. Sample kit includes the earphones and charging cable. Use your own clean ear tips for hygiene.\n\nSample condition: good. Refundable demo deposit: ₹300. Maximum loan: 3 days. Pickup/return: Student Activity Center; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 109,
+      "category": "cameras-audio",
+      "deposit": 400,
+      "days": 5,
+      "pickup": "D5 Stage",
+      "kit": "Compact phone tripod/monopod for student interviews and short videos. Sample kit includes the stand and phone holder; a phone is not included. Place it on a stable surface and check the holder before filming.",
+      "condition": "fair",
+      "id": "416f118a-b3fb-4edb-b3f9-b8abfc80b9c8",
+      "title": "Phone Tripod / Monopod Stand",
+      "images": [
+        {
+          "filename": "109-1.webp",
+          "contentType": "image/webp",
+          "bytes": 42108,
+          "sha256": "3a0a8fd8dc530cb4065dcff181072152f7f94784a197303701fae5b93651225a",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/monopod/1.webp"
+        },
+        {
+          "filename": "109-2.webp",
+          "contentType": "image/webp",
+          "bytes": 39650,
+          "sha256": "d09b7a8c869bfb2b612d6fd72a8c1aab9d0054cff261341b7fc655fa9455d807",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/monopod/2.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nCompact phone tripod/monopod for student interviews and short videos. Sample kit includes the stand and phone holder; a phone is not included. Place it on a stable surface and check the holder before filming.\n\nSample condition: fair. Refundable demo deposit: ₹400. Maximum loan: 5 days. Pickup/return: D5 Stage; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 110,
+      "category": "cameras-audio",
+      "deposit": 300,
+      "days": 3,
+      "pickup": "D5 Stage",
+      "kit": "Portable selfie lamp for video calls, interviews and student content. This demo listing is for the lamp and holder only; the phone shown in the illustrative photo is not included.",
+      "condition": "good",
+      "id": "9fcd797c-410e-45b5-b3ac-24682628a5a1",
+      "title": "Selfie Lamp with iPhone",
+      "images": [
+        {
+          "filename": "110-1.webp",
+          "contentType": "image/webp",
+          "bytes": 35032,
+          "sha256": "72f98f4a0c565cfef2a3c61f12e6d62e2bc641d286fe2c042f74251b296883ca",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/mobile-accessories/selfie-lamp-with-iphone/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nPortable selfie lamp for video calls, interviews and student content. This demo listing is for the lamp and holder only; the phone shown in the illustrative photo is not included.\n\nSample condition: good. Refundable demo deposit: ₹300. Maximum loan: 3 days. Pickup/return: D5 Stage; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 140,
+      "category": "sports-fitness",
+      "deposit": 200,
+      "days": 2,
+      "pickup": "Sports Complex",
+      "kit": "Basketball for a friendly campus game or practice session. Sample kit includes one ball; a pump is not included. Return it dry and free of mud.",
+      "condition": "good",
+      "id": "9d426934-21f9-4960-8093-a4b3c20ef500",
+      "title": "Basketball",
+      "images": [
+        {
+          "filename": "140-1.webp",
+          "contentType": "image/webp",
+          "bytes": 88440,
+          "sha256": "d39efb5baaa1ca6d63f9042016c6e52ff5ee986f7a50023fc818dea8955a81ba",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/basketball/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nBasketball for a friendly campus game or practice session. Sample kit includes one ball; a pump is not included. Return it dry and free of mud.\n\nSample condition: good. Refundable demo deposit: ₹200. Maximum loan: 2 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 147,
+      "category": "sports-fitness",
+      "deposit": 200,
+      "days": 2,
+      "pickup": "Sports Complex",
+      "kit": "Football for evening practice and casual campus matches. Sample kit includes one ball. Use on a suitable playing surface and return it clean and inflated.",
+      "condition": "good",
+      "id": "6d7d6b49-72fa-4167-9328-0bbae34883d0",
+      "title": "Football",
+      "images": [
+        {
+          "filename": "147-1.webp",
+          "contentType": "image/webp",
+          "bytes": 46872,
+          "sha256": "2b4e14ac21bb1109068ca02dbc47d2741f9042a1d237d1c2929c202c6afab901",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/football/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nFootball for evening practice and casual campus matches. Sample kit includes one ball. Use on a suitable playing surface and return it clean and inflated.\n\nSample condition: good. Refundable demo deposit: ₹200. Maximum loan: 2 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 143,
+      "category": "sports-fitness",
+      "deposit": 400,
+      "days": 3,
+      "pickup": "Sports Complex",
+      "kit": "Cricket bat for nets and student matches. Sample kit includes one bat and a protective cover; balls, pads and gloves are separate. Avoid wet pitches.",
+      "condition": "fair",
+      "id": "73e24898-3e80-4115-806e-12f024734145",
+      "title": "Cricket Bat",
+      "images": [
+        {
+          "filename": "143-1.webp",
+          "contentType": "image/webp",
+          "bytes": 38878,
+          "sha256": "236e2332648273e01f3b8c3145888d31b4ba6f5dced2df049bba13740c1fbd04",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/cricket-bat/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nCricket bat for nets and student matches. Sample kit includes one bat and a protective cover; balls, pads and gloves are separate. Avoid wet pitches.\n\nSample condition: fair. Refundable demo deposit: ₹400. Maximum loan: 3 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 144,
+      "category": "sports-fitness",
+      "deposit": 300,
+      "days": 2,
+      "pickup": "Sports Complex",
+      "kit": "Cricket helmet for a demo match equipment set. The sample includes one helmet with grille. For real play, inspect fit, fastening and protective condition before use.",
+      "condition": "good",
+      "id": "58c264a6-cea8-436f-987c-c8ff7275cf50",
+      "title": "Cricket Helmet",
+      "images": [
+        {
+          "filename": "144-1.webp",
+          "contentType": "image/webp",
+          "bytes": 83942,
+          "sha256": "4d1280f79ccef928adacfd3b9827ff5bbbd8d241dfedf51093e903ab3ecc4a68",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/cricket-helmet/1.webp"
+        },
+        {
+          "filename": "144-2.webp",
+          "contentType": "image/webp",
+          "bytes": 78806,
+          "sha256": "c13458954255c8835d885302a920b5ef9c75ad837157b259dd9639cf1a7de64a",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/cricket-helmet/2.webp"
+        },
+        {
+          "filename": "144-3.webp",
+          "contentType": "image/webp",
+          "bytes": 83398,
+          "sha256": "d1d829e82520d7f4c07cc6a8cee2a13906f6b026abbde87f49d14f12e02c1b77",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/cricket-helmet/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nCricket helmet for a demo match equipment set. The sample includes one helmet with grille. For real play, inspect fit, fastening and protective condition before use.\n\nSample condition: good. Refundable demo deposit: ₹300. Maximum loan: 2 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 145,
+      "category": "sports-fitness",
+      "deposit": 250,
+      "days": 3,
+      "pickup": "Sports Complex",
+      "kit": "Cricket wicket set for student practice sessions. Sample kit includes the pictured stumps and bails. Count every piece at pickup and return the set dry.",
+      "condition": "good",
+      "id": "f5490f33-dabc-499a-ba78-83c62fda4069",
+      "title": "Cricket Wicket",
+      "images": [
+        {
+          "filename": "145-1.webp",
+          "contentType": "image/webp",
+          "bytes": 64904,
+          "sha256": "22840fd5f850101b6cbb5293aa0dacedd52479723eab1a3a03bdb943b711d0b0",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/cricket-wicket/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nCricket wicket set for student practice sessions. Sample kit includes the pictured stumps and bails. Count every piece at pickup and return the set dry.\n\nSample condition: good. Refundable demo deposit: ₹250. Maximum loan: 3 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 152,
+      "category": "sports-fitness",
+      "deposit": 400,
+      "days": 3,
+      "pickup": "Sports Complex",
+      "kit": "Tennis racket for a court session or beginner practice. Sample kit includes one racket and a cover; tennis balls are separate. Protect the strings during transport.",
+      "condition": "good",
+      "id": "4395d9d7-c358-4be1-a35e-8dc677164605",
+      "title": "Tennis Racket",
+      "images": [
+        {
+          "filename": "152-1.webp",
+          "contentType": "image/webp",
+          "bytes": 109416,
+          "sha256": "747a22293decfda1e5a8ffcfcdf7b964b3d74ac43573123f8a9fd50144e8b2b2",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/tennis-racket/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nTennis racket for a court session or beginner practice. Sample kit includes one racket and a cover; tennis balls are separate. Protect the strings during transport.\n\nSample condition: good. Refundable demo deposit: ₹400. Maximum loan: 3 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 153,
+      "category": "sports-fitness",
+      "deposit": 150,
+      "days": 2,
+      "pickup": "Sports Complex",
+      "kit": "Volleyball for a friendly match at the sports complex. Sample kit includes one ball. Return it clean and dry after use.",
+      "condition": "good",
+      "id": "728fe5fb-17d6-4e87-9422-c7170b7dca5a",
+      "title": "Volleyball",
+      "images": [
+        {
+          "filename": "153-1.webp",
+          "contentType": "image/webp",
+          "bytes": 59190,
+          "sha256": "1498a5f8e82b17dee5fec470329b5303b2b35c0edb60aa8e5c67f7c1c7d7153e",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/volleyball/1.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nVolleyball for a friendly match at the sports complex. Sample kit includes one ball. Return it clean and dry after use.\n\nSample condition: good. Refundable demo deposit: ₹150. Maximum loan: 2 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    },
+    {
+      "sourceId": 139,
+      "category": "sports-fitness",
+      "deposit": 250,
+      "days": 3,
+      "pickup": "Sports Complex",
+      "kit": "Baseball glove for a student practice or introductory session. Sample kit includes one glove; a ball and bat are separate. Keep the glove dry and check the fit at pickup.",
+      "condition": "good",
+      "id": "371b940c-7c5e-4e3a-b6f5-3e1a2b967cb0",
+      "title": "Baseball Glove",
+      "images": [
+        {
+          "filename": "139-1.webp",
+          "contentType": "image/webp",
+          "bytes": 61812,
+          "sha256": "f70adc629d32ba619033f0e8f1e3c83a61545ca2ca77d56da4d93f3c66a8aa5b",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/1.webp"
+        },
+        {
+          "filename": "139-2.webp",
+          "contentType": "image/webp",
+          "bytes": 63860,
+          "sha256": "05c2a1031e41c0a710c1d2b5fb7e9ff00d9489b4e5cbc0f2f1f2cb4229cc4072",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/2.webp"
+        },
+        {
+          "filename": "139-3.webp",
+          "contentType": "image/webp",
+          "bytes": 64552,
+          "sha256": "8013f5ccaf75d57e229f5d60034e625272274b62abf6fd37763523dd962d674e",
+          "sourceUrl": "https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/3.webp"
+        }
+      ],
+      "description": "DEMO INVENTORY — sample listing for exploring BorrowBuddy, not an actual borrowing offer.\n\nBaseball glove for a student practice or introductory session. Sample kit includes one glove; a ball and bat are separate. Keep the glove dry and check the fit at pickup.\n\nSample condition: good. Refundable demo deposit: ₹250. Maximum loan: 3 days. Pickup/return: Sports Complex; arrange a time in the private loan chat. Return all included accessories together.\n\nIllustrative product images: DummyJSON (dummyjson.com)."
+    }
+  ]
+}

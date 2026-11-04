@@ -1,0 +1,17 @@
+{
+  "direction": "B \u2014 Buddy Brackets",
+  "svgMasters": 21,
+  "outlinedTypography": true,
+  "sharedGeometryMatchesNative": true,
+  "transparentSymbolPngs": true,
+  "opaqueWebIconTiles": true,
+  "nextCompatibleRgbaIcoSizes": [
+    16,
+    32,
+    48
+  ],
+  "webCopiesByteIdentical": true,
+  "androidMinimumApi": 31,
+  "adaptiveRoundAndThemedResources": true,
+  "appAcceptance": "Separate; see apps/android/verification/brand-checkpoint.json"
+}

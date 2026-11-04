@@ -2,6 +2,8 @@ import { CalendarCheck, MapPin, PackageSearch, ShieldCheck, Star } from "lucide-
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/app/empty-state";
 import { ItemCard } from "@/components/app/item-card";
+import { MemberIdCard } from "@/components/app/member-id-card";
+import { toMemberCardProfile } from "@/components/app/member-card-profile";
 import { StarRating } from "@/components/app/star-rating";
 import { StatusBadge } from "@/components/app/status-badge";
 import { relativeTime } from "@/lib/format";
@@ -74,6 +76,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           </div>
         </div>
       </section>
+
+      <MemberIdCard profile={toMemberCardProfile(profile)} />
 
       <section className="mt-10">
         <div className="flex items-center justify-between">

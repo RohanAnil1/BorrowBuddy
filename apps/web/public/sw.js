@@ -1,14 +1,40 @@
 /* BorrowBuddy service worker — offline shell + static asset cache.
    Supabase API and storage requests are never cached. */
 
-const VERSION = "borrowbuddy-v1";
-const OFFLINE_URL = "/offline";
+// Retire v1's cached authenticated HTML as part of this upgrade.
+const VERSION = "borrowbuddy-v3";
+const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   OFFLINE_URL,
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/offline-assets/title.woff2",
+  "/offline-assets/body.woff2",
+  "/offline-assets/label.woff2",
 ];
+
+function cacheable(response) {
+  return response.ok && !response.redirected &&
+    !/\b(?:private|no-store)\b/i.test(response.headers.get("Cache-Control") || "");
+}
+
+async function cachedResponse(request) {
+  try {
+    return await (await caches.open(VERSION)).match(request);
+  } catch {
+    return undefined;
+  }
+}
+
+async function storePublicResponse(request, response) {
+  if (!cacheable(response)) return;
+  try {
+    await (await caches.open(VERSION)).put(request, response.clone());
+  } catch {
+    // Storage denial/quota must not hide a usable live network response.
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -23,7 +49,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== VERSION).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("borrowbuddy-") && key !== VERSION).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -38,33 +64,32 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   if (request.mode === "navigate") {
+    const publicPage = url.pathname === "/" || url.pathname === OFFLINE_URL;
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(VERSION).then((cache) => cache.put(request, copy));
+        .then(async (response) => {
+          if (publicPage) await storePublicResponse(request, response);
           return response;
         })
         .catch(async () => {
-          const cached = await caches.match(request);
-          return cached || caches.match(OFFLINE_URL);
+          const cached = publicPage ? await cachedResponse(request) : undefined;
+          return cached || await cachedResponse(OFFLINE_URL) || Response.error();
         }),
     );
     return;
   }
 
-  if (url.pathname.startsWith("/_next/static") || url.pathname.startsWith("/icons")) {
+  if (url.pathname.startsWith("/_next/static") || url.pathname.startsWith("/icons") || url.pathname.startsWith("/offline-assets/")) {
+    const network = fetch(request)
+      .then(async (response) => {
+        await storePublicResponse(request, response);
+        return response;
+      })
+      .catch(() => undefined);
+    // Finish revalidation even when the cached asset is returned immediately.
+    event.waitUntil(network.then(() => undefined));
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const network = fetch(request)
-          .then((response) => {
-            const copy = response.clone();
-            caches.open(VERSION).then((cache) => cache.put(request, copy));
-            return response;
-          })
-          .catch(() => cached);
-        return cached || network;
-      }),
+      cachedResponse(request).then(async (cached) => cached || await network || Response.error()),
     );
   }
 });

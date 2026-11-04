@@ -1,0 +1,152 @@
+{
+  "products": 20,
+  "hostedImages": 39,
+  "decodedHostedImages": 39,
+  "catalogWidths": [
+    411,
+    1024
+  ],
+  "details": [
+    {
+      "id": "46efe663-87f3-4cb0-81dc-c8d01ff8661a",
+      "title": "Apple MacBook Pro 14 Inch Space Grey",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "11768150-64a7-42da-9ba4-8e791e403f64",
+      "title": "Asus Zenbook Pro Dual Screen Laptop",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "a61e9357-14a9-4680-820c-8e177588a5ba",
+      "title": "Lenovo Yoga 920",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "720510cf-98c0-4026-b3b1-2cced6e2e910",
+      "title": "New DELL XPS 13 9300 Laptop",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "d3a128a0-afc0-4b01-92f3-0241483f48ff",
+      "title": "iPad Mini 2021 Starlight",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "80d698d3-d8d0-4bfa-8018-b656ce130ed3",
+      "title": "Samsung Galaxy Tab S8 Plus Grey",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "95673dce-a5c3-4eec-bab4-76706f9d5292",
+      "title": "Apple iPhone Charger",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "e191f4d2-3cca-4435-90e6-8c3effbccbe0",
+      "title": "Apple MagSafe Battery Pack",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "0bd6cccf-67be-4c7a-a92d-227b1e96a955",
+      "title": "Apple AirPods Max Silver",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "d6a6bcb5-a58e-4d65-a11b-fb9560dcd835",
+      "title": "Beats Flex Wireless Earphones",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "416f118a-b3fb-4edb-b3f9-b8abfc80b9c8",
+      "title": "Phone Tripod / Monopod Stand",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "9fcd797c-410e-45b5-b3ac-24682628a5a1",
+      "title": "Selfie Lamp with iPhone",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "9d426934-21f9-4960-8093-a4b3c20ef500",
+      "title": "Basketball",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "6d7d6b49-72fa-4167-9328-0bbae34883d0",
+      "title": "Football",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "73e24898-3e80-4115-806e-12f024734145",
+      "title": "Cricket Bat",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "58c264a6-cea8-436f-987c-c8ff7275cf50",
+      "title": "Cricket Helmet",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "f5490f33-dabc-499a-ba78-83c62fda4069",
+      "title": "Cricket Wicket",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "4395d9d7-c358-4be1-a35e-8dc677164605",
+      "title": "Tennis Racket",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "728fe5fb-17d6-4e87-9422-c7170b7dca5a",
+      "title": "Volleyball",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    },
+    {
+      "id": "371b940c-7c5e-4e3a-b6f5-3e1a2b967cb0",
+      "title": "Baseball Glove",
+      "imageLoaded": true,
+      "demoDescription": true,
+      "pickupVisible": true
+    }
+  ],
+  "signedOut": true
+}

@@ -45,6 +45,8 @@ export type ReportTarget = "item" | "user" | "message";
 export type ReportStatus = "open" | "resolved" | "dismissed";
 
 export type NotificationType =
+  | "campus_update"
+  | "campus_message"
   | "verification_approved"
   | "verification_rejected"
   | "request_received"
@@ -161,10 +163,10 @@ export interface Loan {
   due_date: DateString;
   returned_at: Timestamp | null;
   status: LoanStatus;
-  handover_token_hash: string | null;
   handover_token_expires_at: Timestamp | null;
-  return_token_hash: string | null;
   return_token_expires_at: Timestamp | null;
+  handover_attempts: number;
+  return_attempts: number;
   pickup_confirmed_at: Timestamp | null;
   return_confirmed_at: Timestamp | null;
   created_at: Timestamp;

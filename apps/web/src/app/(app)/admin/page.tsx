@@ -66,6 +66,10 @@ export default async function AdminPage({
       <p className="status-bracket text-[10px]">[ CONTROL ROOM — ADMIN ONLY ]</p>
       <h1 className="type-title mt-3 text-[2rem] dt:text-[2.5rem]">Moderation desk</h1>
 
+      <Link href="/campus/admin" className="mt-6 inline-flex items-center gap-3 border border-accent/40 bg-black px-5 py-4 font-secondary text-xs text-accent hover:border-accent">
+        <ShieldCheck className="size-5" /> CAMPUS OWNERSHIP CLAIMS & COLLECTION REVIEWS →
+      </Link>
+
       {error && (
         <p className="mt-6 border border-warn/50 bg-warn/10 px-4 py-3 font-secondary text-[10px] leading-5 text-warn">
           [ {error} ]

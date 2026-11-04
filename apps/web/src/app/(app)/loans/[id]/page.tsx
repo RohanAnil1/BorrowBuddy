@@ -2,6 +2,8 @@ import { ArrowLeftRight, CalendarDays, MapPin, MessageSquare, Star, Wallet } fro
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HandoverPanel } from "@/components/app/handover-panel";
+import { AppointmentPicker } from "@/components/campus/campus-scheduling";
+import { campusAppointments } from "@/lib/data/campus";
 import { IncidentForm } from "@/components/app/incident-form";
 import { ReviewForm } from "@/components/app/review-form";
 import { StarRating } from "@/components/app/star-rating";
@@ -27,6 +29,7 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
 
   const loan = await getLoan(id);
   if (!loan) notFound();
+  const appointments = await campusAppointments({ loan: id });
 
   const [conversationId, reviews, incidents] = await Promise.all([
     getLoanConversationId(loan.id),
@@ -95,6 +98,7 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
         {confirmPickup && <HandoverPanel kind="pickup" loanId={loan.id} mode="confirm" />}
         {showReturnCode && <HandoverPanel kind="return" loanId={loan.id} mode="show" />}
         {confirmReturn && <HandoverPanel kind="return" loanId={loan.id} mode="confirm" />}
+        {(showPickupCode || confirmPickup || showReturnCode || confirmReturn) && <div className="mt-6"><AppointmentPicker hostId={loan.owner_id} loanId={loan.id} kind={loan.status === "awaiting_pickup" ? "pickup" : "return"} appointments={appointments} /></div>}
 
         {loan.status === "returned" && (
           <div className="border border-accent/40 bg-accent/5 p-6">

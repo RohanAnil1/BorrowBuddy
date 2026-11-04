@@ -10,6 +10,7 @@ const DESKTOP_LINKS = [
   { href: "/home", label: "Browse" },
   { href: "/chat", label: "Chat" },
   { href: "/map", label: "Map" },
+  { href: "/campus", label: "Campus" },
 ];
 
 export function AppShell({

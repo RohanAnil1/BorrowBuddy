@@ -61,3 +61,24 @@ jobs:
 
       - name: Run smoke test
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/smoke_test.sql
+
+      - name: Validate campus availability privacy
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/mobile_availability.sql
+
+      - name: Validate persistent handover attempt limits
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/handover_attempts.sql
+
+      - name: Validate private handover secrets and public response privacy
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/private_handover_secrets.sql
+
+      - name: Validate internal helper role boundaries
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/internal_helper_permissions.sql
+
+      - name: Validate chat read cursors and channel privacy
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/chat_read_tracking.sql
+
+      - name: Validate public reputation aggregates and privacy
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/public_profile_stats.sql
+
+      - name: Validate campus exchange security and scheduling contract
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/campus_contract.sql

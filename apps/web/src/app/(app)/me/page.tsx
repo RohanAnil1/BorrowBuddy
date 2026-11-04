@@ -1,6 +1,8 @@
 import { LogOut, Map, Receipt, ShieldCheck, ShieldX } from "lucide-react";
 import Link from "next/link";
 import { ProfileForm, StudentIdForm } from "@/components/app/account-forms";
+import { MemberIdCard } from "@/components/app/member-id-card";
+import { toMemberCardProfile } from "@/components/app/member-card-profile";
 import { StatusBadge } from "@/components/app/status-badge";
 import { SubmitButton } from "@/components/app/submit-button";
 import { VERIFICATION_STATUS_LABELS } from "@borrowbuddy/shared";
@@ -49,6 +51,8 @@ export default async function MePage() {
           Requests unlock once you&apos;re verified.
         </p>
       )}
+
+      <MemberIdCard profile={toMemberCardProfile(profile)} />
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
         <Link

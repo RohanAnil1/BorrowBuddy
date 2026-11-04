@@ -151,6 +151,8 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 };
 
 export const NOTIFICATION_TYPES: readonly NotificationType[] = [
+  "campus_update",
+  "campus_message",
   "verification_approved",
   "verification_rejected",
   "request_received",

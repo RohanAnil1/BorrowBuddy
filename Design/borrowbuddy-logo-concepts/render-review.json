@@ -1,0 +1,115 @@
+{
+  "renderer": "Chromium",
+  "deviceScaleFactor": 1,
+  "conceptVersions": 2,
+  "groups": [
+    {
+      "version": "v1",
+      "group": "scale",
+      "concept": 1,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-scale-1.png"
+    },
+    {
+      "version": "v1",
+      "group": "scale",
+      "concept": 2,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-scale-2.png"
+    },
+    {
+      "version": "v1",
+      "group": "scale",
+      "concept": 3,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-scale-3.png"
+    },
+    {
+      "version": "v1",
+      "group": "treatments",
+      "concept": 1,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-treatments-1.png"
+    },
+    {
+      "version": "v1",
+      "group": "treatments",
+      "concept": 2,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-treatments-2.png"
+    },
+    {
+      "version": "v1",
+      "group": "treatments",
+      "concept": 3,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-treatments-3.png"
+    },
+    {
+      "version": "v1",
+      "group": "contexts",
+      "concept": 1,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-contexts-1.png"
+    },
+    {
+      "version": "v1",
+      "group": "contexts",
+      "concept": 2,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-contexts-2.png"
+    },
+    {
+      "version": "v1",
+      "group": "contexts",
+      "concept": 3,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v1-contexts-3.png"
+    },
+    {
+      "version": "v2",
+      "group": "scale",
+      "concept": 1,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-scale-1.png"
+    },
+    {
+      "version": "v2",
+      "group": "scale",
+      "concept": 2,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-scale-2.png"
+    },
+    {
+      "version": "v2",
+      "group": "scale",
+      "concept": 3,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-scale-3.png"
+    },
+    {
+      "version": "v2",
+      "group": "treatments",
+      "concept": 1,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-treatments-1.png"
+    },
+    {
+      "version": "v2",
+      "group": "treatments",
+      "concept": 2,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-treatments-2.png"
+    },
+    {
+      "version": "v2",
+      "group": "treatments",
+      "concept": 3,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-treatments-3.png"
+    },
+    {
+      "version": "v2",
+      "group": "contexts",
+      "concept": 1,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-contexts-1.png"
+    },
+    {
+      "version": "v2",
+      "group": "contexts",
+      "concept": 2,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-contexts-2.png"
+    },
+    {
+      "version": "v2",
+      "group": "contexts",
+      "concept": 3,
+      "image": "D:\\GITHUB PROJECTS\\BorrowBuddy\\Design\\borrowbuddy-logo-concepts\\review-v2-contexts-3.png"
+    }
+  ]
+}

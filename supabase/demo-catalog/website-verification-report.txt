@@ -1,0 +1,1 @@
+PASS normal non-admin login, all 20 demo cards/images at phone/tablet sizes, all 20 detail pages, pickup/descriptions and sign-out.

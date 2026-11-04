@@ -54,7 +54,7 @@ export async function confirmHandover(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("confirm_handover", {
+  const { data, error } = await supabase.rpc("confirm_handover_v2", {
     p_loan_id: parsed.data.loan_id,
     p_token: token.data,
     p_kind: parsed.data.kind,
@@ -62,6 +62,11 @@ export async function confirmHandover(
 
   if (error) {
     return { status: "error", message: error.message };
+  }
+
+  const result = data as { ok?: boolean; error?: string } | null;
+  if (result?.ok !== true) {
+    return { status: "error", message: result?.error ?? "Unable to confirm this code." };
   }
 
   revalidatePath(`/loans/${parsed.data.loan_id}`);

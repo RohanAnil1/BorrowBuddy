@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#003993">
+  <meta name="robots" content="noindex">
+  <title>Signal lost · BorrowBuddy</title>
+  <link rel="icon" href="/icons/icon-192.png">
+  <style>
+    @font-face{font-family:CargoTitle;src:url('/offline-assets/title.woff2') format('woff2');font-display:swap}
+    @font-face{font-family:CargoBody;src:url('/offline-assets/body.woff2') format('woff2');font-display:swap}
+    @font-face{font-family:CargoLabel;src:url('/offline-assets/label.woff2') format('woff2');font-display:swap}
+    :root{color-scheme:dark;--blue:#003993;--navy:#021249;--amber:#cb840e;--paper:#f0f0f0;--ease:cubic-bezier(.4,0,.2,1)}
+    *{box-sizing:border-box}body{margin:0;background:var(--blue);color:var(--paper);font-family:CargoBody,system-ui,sans-serif;min-height:100svh;padding:clamp(20px,4vw,52px);display:flex;flex-direction:column}
+    a{color:inherit}button,a{-webkit-tap-highlight-color:transparent}:focus-visible{outline:2px solid var(--amber);outline-offset:5px}
+    .mono{font-family:CargoLabel,monospace;text-transform:uppercase;letter-spacing:.07em}.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-size:12px}.brand svg{width:34px;height:34px}.header{display:flex;justify-content:space-between;align-items:center;gap:20px}.header>span{font-size:10px;color:#ffffff90}
+    main{width:min(1080px,100%);margin:auto;padding:48px 0}.ticket{border:1px solid #ffffff3b;background:#000;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.copy{min-width:0;overflow-wrap:anywhere;padding:clamp(24px,5vw,64px);display:flex;flex-direction:column;justify-content:center}.status{color:#ffaf30;font-size:10px;margin:0;display:flex;align-items:center;gap:10px}.led{width:7px;height:7px;border-radius:50%;background:var(--amber)}
+    h1{font-family:CargoTitle,'Arial Narrow',sans-serif;text-transform:uppercase;font-size:clamp(56px,7.5vw,100px);font-weight:400;line-height:.98;letter-spacing:.005em;margin:24px 0}h1 span{display:block;color:var(--amber)}.description{font-size:14px;line-height:1.8;color:#ffffffad;margin:0;max-width:34ch;text-transform:none}
+    .actions>*{min-width:0;max-width:100%;overflow-wrap:anywhere}.actions{margin-top:32px;display:flex;flex-wrap:wrap;gap:12px}button,.home{min-height:48px;padding:14px 20px;border:1px solid var(--amber);font-family:CargoLabel,monospace;font-size:11px;letter-spacing:.05em;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none}button{background:var(--amber);color:#080b10}button:disabled{cursor:wait;opacity:.65}.home{background:transparent;border-color:#ffffff40;color:#fff}.actions svg{width:16px;height:16px}.connection{font-size:11px;line-height:1.7;min-height:3.4em;margin:20px 0 0;color:#ffffff90;text-transform:none;max-width:38ch}
+    .art{position:relative;min-width:0;background:var(--navy);border-left:1px dashed #ffffff3b;display:flex;flex-direction:column;justify-content:center;overflow:hidden;background-image:radial-gradient(#ffffff20 .7px,transparent .7px);background-size:20px 20px}.art:before,.art:after{content:'';position:absolute;left:-11px;width:20px;height:20px;border:1px solid #ffffff3b;border-radius:50%;background:var(--blue);z-index:1}.art:before{top:-11px}.art:after{bottom:-11px}.art-label{padding:24px 24px 0;font-size:9px;color:#ffffff70;display:flex;justify-content:space-between;gap:8px}.scene{width:100%;height:auto;aspect-ratio:1.15;padding:12px}.floor{stroke:#ffffff25}.route{stroke:var(--amber);stroke-width:2;stroke-dasharray:5 9;fill:none;animation:route 2.4s linear infinite}.parcel{animation:float 2.4s var(--ease) infinite}.signal{animation:signal 2.4s var(--ease) infinite;transform-origin:250px 108px}.signal.two{animation-delay:.3s}.signal.three{animation-delay:.6s}.broken{stroke:#ffaf30}.art-bottom{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #ffffff25;margin:0 24px;padding:20px 0;font-size:9px;line-height:1.8;color:#ffffff80}.art-bottom>span{min-width:0;overflow-wrap:anywhere}.art-bottom b{color:var(--paper);font-weight:400;display:block}
+    .footer{display:flex;justify-content:space-between;gap:20px;font-size:9px;line-height:1.8;color:#ffffff90;margin-top:22px}.footer span:last-child{text-align:right}.paused .scene *{animation-play-state:paused!important}.motion{align-self:flex-end;margin:0 24px 12px;padding:8px;min-height:32px;font-size:9px;background:#021249;border-color:#ffffff50;color:#fff}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}@keyframes signal{0%,100%{opacity:.2}50%{opacity:1}}@keyframes route{to{stroke-dashoffset:-56}}
+    @media(max-width:700px){body{padding:20px 16px}.header>span{display:none}main{padding:32px 0}.ticket{grid-template-columns:minmax(0,1fr)}.copy{order:1;padding:28px 24px}.art{border-left:0;border-bottom:1px dashed #ffffff3b}.art:before,.art:after{display:none}.scene{max-height:245px;padding:0 24px}.art-label{padding:18px 20px 0}.art-bottom{padding:12px 0}h1{font-size:clamp(56px,15vw,84px);margin-top:20px}.description{max-width:42ch}.actions>*{flex:1}.footer{flex-wrap:wrap}.footer span:last-child{text-align:left}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}.motion{display:none}}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a class="brand mono" href="/home" aria-label="BorrowBuddy home">
+      <svg viewBox="0 0 256 256" fill="none" aria-hidden="true"><path fill="#f0f0f0" d="M32 48H96L116 68V104H88V80H64V176H88V152H116V208H64L32 176Z"/><path fill="#cb840e" d="M224 208H160L140 188V152H168V176H192V80H168V104H140V48H192L224 80Z"/></svg>
+      BorrowBuddy
+    </a>
+    <span class="mono">Campus Cargo / Connection desk</span>
+  </header>
+  <main>
+    <article class="ticket" aria-labelledby="title">
+      <div class="copy">
+        <p class="status mono"><span class="led" aria-hidden="true"></span><span id="status">[ Signal lost ]</span></p>
+        <h1 id="title">A little out<span>of reach.</span></h1>
+        <p class="description">Your campus is still there. Your connection just took a detour. Reconnect to pick up where you left off.</p>
+        <div class="actions">
+          <button id="retry" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg><span>Try again</span></button>
+          <a class="home" href="/home">Campus home ↗</a>
+        </div>
+        <p id="connection" class="connection" role="status" aria-live="polite">Check Wi-Fi or mobile data, then try again.</p>
+        <noscript><p class="connection">Reconnect, then refresh this page or open Campus home.</p></noscript>
+      </div>
+      <div class="art">
+        <div class="art-label mono"><span>Dispatch paused</span><span>BB / — —</span></div>
+        <svg class="scene" viewBox="0 0 420 350" fill="none" aria-hidden="true">
+          <path class="floor" d="M44 258H376M66 280H354M96 300H324"/>
+          <ellipse cx="210" cy="258" rx="113" ry="21" stroke="#ffffff30" stroke-dasharray="3 7"/>
+          <path class="route" d="M52 221C52 170 101 140 148 140M272 140C321 140 368 170 368 221"/>
+          <g class="signal"><path d="M208 87Q250 45 292 87" stroke="#cb840e" stroke-width="3" stroke-linecap="round"/></g>
+          <g class="signal two"><path d="M220 99Q250 69 280 99" stroke="#cb840e" stroke-width="3" stroke-linecap="round"/></g>
+          <g class="signal three"><path d="M233 111Q250 94 267 111" stroke="#cb840e" stroke-width="3" stroke-linecap="round"/></g>
+          <path class="broken" d="M246 119l8 8m0-8-8 8" stroke-width="2" stroke-linecap="round"/>
+          <g class="parcel">
+            <path d="m134 160 76-39 76 39v79l-76 39-76-39z" fill="#021249" stroke="#f0f0f0" stroke-width="2"/>
+            <path d="m134 160 76 39 76-39M210 199v79M176 139l76 39v22l-16 8v-22l-76-39" stroke="#f0f0f0" stroke-width="2"/>
+            <path d="m232 233 30-15v19l-30 15z" fill="#cb840e"/>
+            <path d="m153 192 32 16m-32-6 20 10" stroke="#ffffff70" stroke-width="2"/>
+          </g>
+          <circle cx="52" cy="221" r="5" fill="#f0f0f0"/><circle cx="368" cy="221" r="5" fill="#cb840e"/>
+          <path d="M38 66h18m-9-9v18M355 286h18m-9-9v18" stroke="#ffffff50"/>
+        </svg>
+        <button class="motion mono" id="motion" type="button" aria-pressed="false">Pause animation</button>
+        <div class="art-bottom mono"><span>Route status<b>Awaiting connection</b></span><span>Destination<b>Your campus</b></span></div>
+      </div>
+    </article>
+    <footer class="footer mono"><span>[ Good things find their way back. ]</span><span>Listings · Messages · Handovers<br>Need a live connection.</span></footer>
+  </main>
+  <script>
+    (() => {
+      const retry = document.getElementById('retry'), note = document.getElementById('connection'), status = document.getElementById('status');
+      const target = ['/offline', '/offline.html'].includes(location.pathname) ? '/home' : location.pathname + location.search + location.hash;
+      let checking = false;
+      async function check(resume = false) {
+        if (checking) return;
+        checking = true; retry.disabled = true; note.textContent = 'Checking your connection…';
+        try {
+          if (!navigator.onLine) throw new Error('offline');
+          const response = await fetch('/manifest.webmanifest?connection-check=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(7000) });
+          if (!response.ok) throw new Error('unavailable');
+          status.textContent = '[ Connection restored ]'; note.textContent = 'You’re back online. Resume when you’re ready.'; retry.querySelector('span').textContent = 'Resume my page';
+          if (resume) location.replace(target);
+        } catch {
+          status.textContent = '[ Signal lost ]'; note.textContent = 'Still out of reach. Check Wi-Fi or mobile data and try again.'; retry.querySelector('span').textContent = 'Try again';
+        } finally { checking = false; retry.disabled = false; }
+      }
+      retry.addEventListener('click', () => check(true));
+      window.addEventListener('online', () => check());
+      window.addEventListener('offline', () => { status.textContent = '[ Signal lost ]'; note.textContent = 'Connection interrupted. Reconnect, then try again.'; retry.querySelector('span').textContent = 'Try again'; });
+      document.getElementById('motion').addEventListener('click', (event) => { const paused = document.body.classList.toggle('paused'); event.currentTarget.setAttribute('aria-pressed', String(paused)); event.currentTarget.textContent = paused ? 'Play animation' : 'Pause animation'; });
+    })();
+  </script>
+</body>
+</html>

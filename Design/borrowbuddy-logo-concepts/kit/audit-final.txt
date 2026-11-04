@@ -1,0 +1,182 @@
+
+=== borrowbuddy-horizontal-black.svg  (15499 bytes)
+viewBox 0 0 945 256 · aspect 3.691 (horizontal)
+colours 1: #000000 · gradients 0 · anchors 313
+margins L32.0 R45.5 T48.0 B48.0 · bbox fill 0.574
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 98/100 (heuristic)
+
+=== borrowbuddy-horizontal-color.svg  (15499 bytes)
+viewBox 0 0 945 256 · aspect 3.691 (horizontal)
+colours 3: #003993 #cb840e #021249 · gradients 0 · anchors 313
+margins L32.0 R45.5 T48.0 B48.0 · bbox fill 0.574
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 98/100 (heuristic)
+
+=== borrowbuddy-horizontal-dark.svg  (15498 bytes)
+viewBox 0 0 945 256 · aspect 3.691 (horizontal)
+colours 2: #f0f0f0 #cb840e · gradients 0 · anchors 313
+margins L32.0 R45.5 T48.0 B48.0 · bbox fill 0.574
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 98/100 (heuristic)
+
+=== borrowbuddy-horizontal-navy.svg  (15498 bytes)
+viewBox 0 0 945 256 · aspect 3.691 (horizontal)
+colours 1: #021249 · gradients 0 · anchors 313
+margins L32.0 R45.5 T48.0 B48.0 · bbox fill 0.574
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 98/100 (heuristic)
+
+=== borrowbuddy-horizontal-white.svg  (15804 bytes)
+viewBox 0 0 945 256 · aspect 3.691 (horizontal)
+colours 1: #ffffff · gradients 0 · anchors 313
+margins L32.5 R45.5 T48.5 B48.5 · bbox fill 0.57
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 98/100 (heuristic)
+
+=== borrowbuddy-stacked-black.svg  (15601 bytes)
+viewBox 0 0 512 368 · aspect 1.391 (wide)
+colours 1: #000000 · gradients 0 · anchors 313
+margins L68.5 R66.2 T48.0 B47.4 · bbox fill 0.546
+▲ WARN [tiny-detail] 6 sub-shape(s) smaller than 1/32 of the lockup height (≈1 px at 32 px tall): 10.9×10.7 at (76,303); 10.3×9.1 at (76,287); 9.0×11.2 at (146,287); 9.0×11.2 at (181,287) …. They vanish when small — enlarge, merge or remove them, or provide a small-size version.
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 90/100 (heuristic)
+
+=== borrowbuddy-stacked-color.svg  (15601 bytes)
+viewBox 0 0 512 368 · aspect 1.391 (wide)
+colours 3: #003993 #cb840e #021249 · gradients 0 · anchors 313
+margins L68.5 R66.2 T48.0 B47.4 · bbox fill 0.546
+▲ WARN [tiny-detail] 6 sub-shape(s) smaller than 1/32 of the lockup height (≈1 px at 32 px tall): 10.9×10.7 at (76,303); 10.3×9.1 at (76,287); 9.0×11.2 at (146,287); 9.0×11.2 at (181,287) …. They vanish when small — enlarge, merge or remove them, or provide a small-size version.
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 90/100 (heuristic)
+
+=== borrowbuddy-stacked-dark.svg  (15600 bytes)
+viewBox 0 0 512 368 · aspect 1.391 (wide)
+colours 2: #f0f0f0 #cb840e · gradients 0 · anchors 313
+margins L68.5 R66.2 T48.0 B47.4 · bbox fill 0.546
+▲ WARN [tiny-detail] 6 sub-shape(s) smaller than 1/32 of the lockup height (≈1 px at 32 px tall): 10.9×10.7 at (76,303); 10.3×9.1 at (76,287); 9.0×11.2 at (146,287); 9.0×11.2 at (181,287) …. They vanish when small — enlarge, merge or remove them, or provide a small-size version.
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 90/100 (heuristic)
+
+=== borrowbuddy-stacked-navy.svg  (15600 bytes)
+viewBox 0 0 512 368 · aspect 1.391 (wide)
+colours 1: #021249 · gradients 0 · anchors 313
+margins L68.5 R66.2 T48.0 B47.4 · bbox fill 0.546
+▲ WARN [tiny-detail] 6 sub-shape(s) smaller than 1/32 of the lockup height (≈1 px at 32 px tall): 10.9×10.7 at (76,303); 10.3×9.1 at (76,287); 9.0×11.2 at (146,287); 9.0×11.2 at (181,287) …. They vanish when small — enlarge, merge or remove them, or provide a small-size version.
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 90/100 (heuristic)
+
+=== borrowbuddy-stacked-white.svg  (15906 bytes)
+viewBox 0 0 512 368 · aspect 1.391 (wide)
+colours 1: #ffffff · gradients 0 · anchors 313
+margins L68.5 R66.2 T48.5 B47.4 · bbox fill 0.545
+▲ WARN [tiny-detail] 6 sub-shape(s) smaller than 1/32 of the lockup height (≈1 px at 32 px tall): 10.9×10.7 at (76,303); 10.3×9.1 at (76,287); 9.0×11.2 at (146,287); 9.0×11.2 at (181,287) …. They vanish when small — enlarge, merge or remove them, or provide a small-size version.
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 313 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 90/100 (heuristic)
+
+=== borrowbuddy-symbol-black.svg  (342 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #000000 · gradients 0 · anchors 30
+margins L32.0 R32.0 T48.0 B48.0 · bbox fill 0.469
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== borrowbuddy-symbol-color.svg  (342 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 2: #003993 #cb840e · gradients 0 · anchors 30
+margins L32.0 R32.0 T48.0 B48.0 · bbox fill 0.469
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== borrowbuddy-symbol-dark.svg  (341 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 2: #f0f0f0 #cb840e · gradients 0 · anchors 30
+margins L32.0 R32.0 T48.0 B48.0 · bbox fill 0.469
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== borrowbuddy-symbol-navy.svg  (341 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #021249 · gradients 0 · anchors 30
+margins L32.0 R32.0 T48.0 B48.0 · bbox fill 0.469
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== borrowbuddy-symbol-small-dark.svg  (339 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 2: #f0f0f0 #cb840e · gradients 0 · anchors 30
+margins L32.0 R32.0 T48.0 B48.0 · bbox fill 0.469
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== borrowbuddy-symbol-white.svg  (647 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #ffffff · gradients 0 · anchors 30
+margins L32.5 R32.5 T48.5 B48.5 · bbox fill 0.463
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
+
+=== borrowbuddy-wordmark-black.svg  (15356 bytes)
+viewBox 0 0 687 96 · aspect 7.156 (extra-wide)
+colours 1: #000000 · gradients 0 · anchors 283
+margins L23.2 R61.5 T14.9 B15.1 · bbox fill 0.603
+▲ WARN [near-miss-angle] 2 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 61.0° (→60°) len 27.6 at (166,80); 61.0° (→60°) len 27.6 at (222,80). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 283 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+· INFO [off-centre-x] Horizontal margins differ (left 23.2, right 61.5). Intentional optical centring? Otherwise centre it.
+· INFO [extra-wide] Extra-wide lockup (>4.5:1) shrinks badly; provide a stacked lockup and a standalone symbol.
+production-readiness score: 88/100 (heuristic)
+
+=== borrowbuddy-wordmark-color.svg  (15356 bytes)
+viewBox 0 0 687 96 · aspect 7.156 (extra-wide)
+colours 1: #021249 · gradients 0 · anchors 283
+margins L23.2 R61.5 T14.9 B15.1 · bbox fill 0.603
+▲ WARN [near-miss-angle] 2 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 61.0° (→60°) len 27.6 at (166,80); 61.0° (→60°) len 27.6 at (222,80). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 283 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+· INFO [off-centre-x] Horizontal margins differ (left 23.2, right 61.5). Intentional optical centring? Otherwise centre it.
+· INFO [extra-wide] Extra-wide lockup (>4.5:1) shrinks badly; provide a stacked lockup and a standalone symbol.
+production-readiness score: 88/100 (heuristic)
+
+=== borrowbuddy-wordmark-dark.svg  (15355 bytes)
+viewBox 0 0 687 96 · aspect 7.156 (extra-wide)
+colours 1: #f0f0f0 · gradients 0 · anchors 283
+margins L23.2 R61.5 T14.9 B15.1 · bbox fill 0.603
+▲ WARN [near-miss-angle] 2 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 61.0° (→60°) len 27.6 at (166,80); 61.0° (→60°) len 27.6 at (222,80). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 283 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+· INFO [off-centre-x] Horizontal margins differ (left 23.2, right 61.5). Intentional optical centring? Otherwise centre it.
+· INFO [extra-wide] Extra-wide lockup (>4.5:1) shrinks badly; provide a stacked lockup and a standalone symbol.
+production-readiness score: 88/100 (heuristic)
+
+=== borrowbuddy-wordmark-navy.svg  (15355 bytes)
+viewBox 0 0 687 96 · aspect 7.156 (extra-wide)
+colours 1: #021249 · gradients 0 · anchors 283
+margins L23.2 R61.5 T14.9 B15.1 · bbox fill 0.603
+▲ WARN [near-miss-angle] 2 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 61.0° (→60°) len 27.6 at (166,80); 61.0° (→60°) len 27.6 at (222,80). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 283 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+· INFO [off-centre-x] Horizontal margins differ (left 23.2, right 61.5). Intentional optical centring? Otherwise centre it.
+· INFO [extra-wide] Extra-wide lockup (>4.5:1) shrinks badly; provide a stacked lockup and a standalone symbol.
+production-readiness score: 88/100 (heuristic)
+
+=== borrowbuddy-wordmark-white.svg  (15356 bytes)
+viewBox 0 0 687 96 · aspect 7.156 (extra-wide)
+colours 1: #ffffff · gradients 0 · anchors 283
+margins L23.2 R61.5 T14.9 B15.1 · bbox fill 0.603
+▲ WARN [near-miss-angle] 2 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 61.0° (→60°) len 27.6 at (166,80); 61.0° (→60°) len 27.6 at (222,80). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [precision] Coordinates with 4+ decimals: round to 0–2 decimals to reduce size and reveal misalignments.
+· INFO [complexity] 283 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+· INFO [off-centre-x] Horizontal margins differ (left 23.2, right 61.5). Intentional optical centring? Otherwise centre it.
+· INFO [extra-wide] Extra-wide lockup (>4.5:1) shrinks badly; provide a stacked lockup and a standalone symbol.
+production-readiness score: 88/100 (heuristic)

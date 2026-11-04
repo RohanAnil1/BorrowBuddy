@@ -30,6 +30,7 @@ export function IncidentForm({
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [type, setType] = useState<IncidentType | null>(null);
+  const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [state, formAction] = useActionState(openIncident, idleState);
 
   if (!open) {
@@ -87,6 +88,7 @@ export function IncidentForm({
 
       <input name="loan_id" type="hidden" value={loanId} />
       <input name="type" type="hidden" value={type ?? ""} />
+      <input name="photo_paths" type="hidden" value={JSON.stringify(photoPaths)} />
 
       <div className="relative mt-6 min-h-[320px]">
         <AnimatePresence initial={false} mode="wait">
@@ -143,7 +145,9 @@ export function IncidentForm({
               <ImageUploader
                 bucket={BUCKETS.incidentPhotos}
                 max={6}
-                name="photo_paths"
+                initialPaths={photoPaths}
+                name="evidence_preview_paths"
+                onChange={setPhotoPaths}
                 ownerId={ownerId}
               />
             </motion.div>

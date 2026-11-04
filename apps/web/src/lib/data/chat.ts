@@ -55,12 +55,7 @@ export async function getConversations(userId: string): Promise<ConversationSumm
   const ids = [...entries.keys()];
 
   const [recentMessages, memberRows] = await Promise.all([
-    supabase
-      .from("messages")
-      .select("conversation_id, body, created_at, sender_id")
-      .in("conversation_id", ids)
-      .order("created_at", { ascending: false })
-      .limit(300),
+    supabase.rpc("get_conversation_message_heads"),
     supabase
       .from("conversation_members")
       .select("conversation_id, user_id, profile:profiles(id, full_name, avatar_path)")

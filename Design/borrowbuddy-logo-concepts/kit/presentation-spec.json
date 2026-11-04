@@ -1,0 +1,28 @@
+{
+  "brand": "BorrowBuddy",
+  "brief": "Verified university students lend and borrow useful things with clear pickup, return and accountability workflows. Preserve the existing campus cargo identity and navy/amber palette.",
+  "adjectives": ["resourceful", "dependable", "social", "direct"],
+  "criteria": "A clear shared-space mark that reads at small sizes and works across website, Android launcher and membership cards.",
+  "industry": "education",
+  "mockups": ["website", "badge", "app-icon", "favicon-tab", "social", "sticker"],
+  "nav": ["Browse", "Chat", "Map"],
+  "brand_color": "#003993",
+  "tile_color": "#021249",
+  "greyscale": false,
+  "designer": "BorrowBuddy",
+  "round": 2,
+  "label": "Selected direction B",
+  "final": true,
+  "deck_title": "BorrowBuddy / Buddy Brackets",
+  "concepts": [{
+    "name": "Buddy Brackets / selected",
+    "symbol": "source/borrowbuddy-symbol-color.svg",
+    "symbol_on_tile": "source/borrowbuddy-symbol-dark.svg",
+    "lockup": "source/borrowbuddy-horizontal-color.svg",
+    "lockup_on_dark": "source/borrowbuddy-horizontal-dark.svg",
+    "idea": "Two equal sides hold a shared space.",
+    "rationale": ["Equal opposing modules express lending between peers.", "A widened compact cut keeps the centre open in a favicon.", "Original navy, blue, amber and outlined Noto Sans Mono preserve the website's identity."]
+  }],
+  "recommendation": "The user selected Buddy Brackets. Keep the two modules equal, the central opening clear, and the original navy/amber contrast.",
+  "next_steps": ["Use the supplied light/dark artwork for its specified background.", "Keep all website and Android workflows and membership-card gestures unchanged.", "Refer to the usage guide for clear space, minimum sizes and export choices."]
+}

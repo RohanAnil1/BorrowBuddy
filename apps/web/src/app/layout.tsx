@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
+    icon: { url: "/icons/favicon.svg", type: "image/svg+xml" },
     apple: "/icons/apple-touch-icon.png",
   },
 };
@@ -32,8 +33,6 @@ export const viewport: Viewport = {
   themeColor: "#003993",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

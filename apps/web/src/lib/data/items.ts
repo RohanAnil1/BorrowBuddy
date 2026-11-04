@@ -6,7 +6,6 @@ import type {
   ItemWithOwner,
   PickupLocation,
 } from "@borrowbuddy/shared";
-import { BLOCKING_LOAN_STATUSES } from "@borrowbuddy/shared";
 import { createClient } from "@/lib/supabase/server";
 
 const ITEM_SELECT = `
@@ -34,24 +33,12 @@ export async function searchItems(filters: ItemSearchFilters): Promise<ItemWithO
   let excludedIds: string[] = [];
 
   if (filters.startDate && filters.endDate) {
-    const [busyLoans, blocked] = await Promise.all([
-      supabase
-        .from("loans")
-        .select("item_id")
-        .in("status", [...BLOCKING_LOAN_STATUSES])
-        .lte("start_date", filters.endDate)
-        .gte("due_date", filters.startDate),
-      supabase
-        .from("availability_blocks")
-        .select("item_id")
-        .lte("start_date", filters.endDate)
-        .gte("end_date", filters.startDate),
-    ]);
-
-    const ids = new Set<string>();
-    for (const row of (busyLoans.data as { item_id: string }[] | null) ?? []) ids.add(row.item_id);
-    for (const row of (blocked.data as { item_id: string }[] | null) ?? []) ids.add(row.item_id);
-    excludedIds = [...ids];
+    const { data, error } = await supabase.rpc("get_busy_item_ids", {
+      p_start: filters.startDate,
+      p_end: filters.endDate,
+    });
+    if (error) throw new Error(`Availability lookup failed: ${error.message}`);
+    excludedIds = ((data as { item_id: string }[] | null) ?? []).map((row) => row.item_id);
   }
 
   let query = supabase
@@ -97,28 +84,9 @@ export async function getMyItems(ownerId: string): Promise<ItemWithOwner[]> {
 export async function getItemAvailability(itemId: string): Promise<AvailabilityWindow[]> {
   const supabase = await createClient();
 
-  const [loans, blocks] = await Promise.all([
-    supabase
-      .from("loans")
-      .select("start_date, due_date")
-      .eq("item_id", itemId)
-      .in("status", [...BLOCKING_LOAN_STATUSES]),
-    supabase
-      .from("availability_blocks")
-      .select("start_date, end_date")
-      .eq("item_id", itemId),
-  ]);
-
-  const windows: AvailabilityWindow[] = [];
-
-  for (const loan of (loans.data as { start_date: string; due_date: string }[] | null) ?? []) {
-    windows.push({ start_date: loan.start_date, end_date: loan.due_date, kind: "loan" });
-  }
-  for (const block of (blocks.data as { start_date: string; end_date: string }[] | null) ?? []) {
-    windows.push({ start_date: block.start_date, end_date: block.end_date, kind: "block" });
-  }
-
-  return windows;
+  const { data, error } = await supabase.rpc("get_item_availability", { p_item_id: itemId });
+  if (error) throw new Error(`Availability lookup failed: ${error.message}`);
+  return (data as AvailabilityWindow[] | null) ?? [];
 }
 
 export async function getCategories(): Promise<Category[]> {

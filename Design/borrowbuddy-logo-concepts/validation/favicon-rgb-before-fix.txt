@@ -1,0 +1,1 @@
+Next /login returned 500: Format error decoding Ico: The PNG is not in RGBA format!
