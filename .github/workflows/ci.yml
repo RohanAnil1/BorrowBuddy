@@ -86,5 +86,8 @@ jobs:
       - name: Validate saved items privacy
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/wishlist.sql
 
+      - name: Validate loan extensions and handover reminders
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/loan_extensions.sql
+
       - name: Validate campus exchange security and scheduling contract
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/campus_contract.sql

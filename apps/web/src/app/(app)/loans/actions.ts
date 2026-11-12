@@ -81,3 +81,67 @@ export async function confirmHandover(
         : "Return confirmed. Leave a rating for the other student.",
   };
 }
+
+const UUID = /^[0-9a-f-]{36}$/i;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function friendly(message: string) {
+  // RPC errors are written for students; anything else gets a generic line.
+  return message.length < 160 && !/violates|syntax|function|relation/i.test(message)
+    ? message
+    : "Something went wrong. Try again in a moment.";
+}
+
+export async function requestExtension(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  await requireVerified();
+  const loanId = String(formData.get("loan_id") ?? "");
+  const newDue = String(formData.get("new_due_date") ?? "");
+  const message = String(formData.get("message") ?? "").trim().slice(0, 300);
+  if (!UUID.test(loanId) || !ISO_DATE.test(newDue)) {
+    return { status: "error", message: "Pick a new return date." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_loan_extension", {
+    p_loan_id: loanId,
+    p_new_due_date: newDue,
+    p_message: message || null,
+  });
+  if (error) return { status: "error", message: friendly(error.message) };
+
+  revalidatePath(`/loans/${loanId}`);
+  revalidatePath("/dashboard");
+  return { status: "success", message: "Request sent. You'll get a notification when they answer." };
+}
+
+export async function respondExtension(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  await requireVerified();
+  const extensionId = String(formData.get("extension_id") ?? "");
+  const loanId = String(formData.get("loan_id") ?? "");
+  const approve = formData.get("decision") === "approve";
+  if (!UUID.test(extensionId) || !UUID.test(loanId)) return { status: "error", message: "That request is no longer valid." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_loan_extension", { p_extension_id: extensionId, p_approve: approve });
+  if (error) return { status: "error", message: friendly(error.message) };
+
+  revalidatePath(`/loans/${loanId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/my/items");
+  return { status: "success", message: approve ? "Approved. The new due date is set." : "Declined. The due date stays the same." };
+}
+
+export async function cancelExtension(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  await requireVerified();
+  const extensionId = String(formData.get("extension_id") ?? "");
+  const loanId = String(formData.get("loan_id") ?? "");
+  if (!UUID.test(extensionId) || !UUID.test(loanId)) return { status: "error", message: "That request is no longer valid." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_loan_extension", { p_extension_id: extensionId });
+  if (error) return { status: "error", message: friendly(error.message) };
+
+  revalidatePath(`/loans/${loanId}`);
+  revalidatePath("/dashboard");
+  return { status: "success", message: "Request withdrawn." };
+}

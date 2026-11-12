@@ -18,6 +18,8 @@ export type BoardingPassLoan = {
   pickupSpot: string | null;
   startDate: string;
   dueDate: string;
+  /** A request for more days is waiting for the owner. */
+  extensionPending?: boolean;
 };
 
 type Tone = "calm" | "soon" | "late" | "done";
@@ -98,7 +100,7 @@ export function LoanBoardingPass({
 
   return (
     <article
-      aria-label={`Boarding pass for ${loan.title}, ${loan.statusLabel}, due ${shortDate(loan.dueDate)}`}
+      aria-label={`Boarding pass for ${loan.title}, ${loan.statusLabel}, due ${shortDate(loan.dueDate)}${loan.extensionPending ? ", extension pending" : ""}`}
       className={cn("boarding-pass relative w-[19rem] shrink-0 snap-start text-black", className)}
     >
       <Link className="block focus-visible:outline-offset-4" href={`/loans/${loan.id}`}>
@@ -139,7 +141,14 @@ export function LoanBoardingPass({
               <dd className="font-strong text-[12px]">{shortDate(loan.dueDate)}</dd>
             </div>
             <div className="col-span-2">
-              <dt className="font-secondary text-[10px] text-black/50">STATUS</dt>
+              <dt className="flex items-center gap-2 font-secondary text-[10px] text-black/50">
+                STATUS
+                {loan.extensionPending && (
+                  <span className="rounded-sm bg-[#b25e00] px-1.5 py-px text-[9px] tracking-[0.08em] text-white">
+                    {loan.role === "lending" ? "EXTENSION ASKED" : "EXTENSION PENDING"}
+                  </span>
+                )}
+              </dt>
               <dd className="flex items-center gap-2 font-strong text-[12px] uppercase">
                 {loan.statusLabel}
                 {due && <span className={cn("font-secondary text-[11px] normal-case", TONE[due.tone])}>· {due.text}</span>}
