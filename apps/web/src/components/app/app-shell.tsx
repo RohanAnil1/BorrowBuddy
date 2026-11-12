@@ -11,6 +11,7 @@ const DESKTOP_LINKS = [
   { href: "/chat", label: "Chat" },
   { href: "/map", label: "Map" },
   { href: "/campus", label: "Campus" },
+  { href: "/assistant", label: "Buddy" },
 ];
 
 export function AppShell({

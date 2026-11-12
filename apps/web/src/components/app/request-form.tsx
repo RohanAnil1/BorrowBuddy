@@ -17,18 +17,21 @@ export function RequestForm({
   maxLoanDays,
   canRequest,
   isOwner,
+  initialRange = null,
 }: {
   itemId: string;
   windows: AvailabilityWindow[];
   maxLoanDays: number;
   canRequest: boolean;
   isOwner: boolean;
+  /** Dates suggested by Buddy; the student still reviews and submits. */
+  initialRange?: { start: string; end: string } | null;
 }) {
   const [range, setRange] = useState<{ start: string | null; end: string | null }>({
-    start: null,
-    end: null,
+    start: initialRange?.start ?? null,
+    end: initialRange?.end ?? null,
   });
-  const [verified, setVerified] = useState<Verify>("idle");
+  const [verified, setVerified] = useState<Verify>(initialRange ? "ok" : "idle");
   const [requestState, requestAction] = useActionState(createBorrowRequest, idleState);
   const [waitlistState, waitlistAction] = useActionState(joinWaitlist, idleState);
 
