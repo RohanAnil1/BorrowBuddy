@@ -128,7 +128,7 @@ fun buddyRoute(href: String): String? {
     return when {
         path == "home" -> query["category"]?.takeIf(uuid::matches)?.let { "home?category=$it" } ?: "home"
         path in setOf("dashboard", "my/borrows", "my/items", "items/new", "fines", "map", "chat", "campus", "campus/lost-found",
-            "campus/giveaways", "campus/activity", "campus/handovers", "notifications", "me") -> path
+            "campus/giveaways", "campus/activity", "campus/handovers", "notifications", "me", "my/saved", "impact") -> path
         path.startsWith("items/") && uuid.matches(path.removePrefix("items/")) -> {
             val start = query["start"]?.takeIf(date::matches); val end = query["end"]?.takeIf(date::matches)
             if (start != null && end != null) "$path?start=$start&end=$end" else path

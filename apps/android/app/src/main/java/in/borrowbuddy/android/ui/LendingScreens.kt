@@ -66,8 +66,11 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
             }
             Spacer(Modifier.height(32.dp))
             LoanFacts(loan, profile.id)
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(16.dp))
+            LoanCalendarButtons(loan, profile.id)
+            Spacer(Modifier.height(24.dp))
             Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+            ExtensionPanel(repository, profile, loan, actions)
             if (confirmedHandover == "pickup" && loan.status in listOf("active", "return_pending", "overdue"))
                 HandoverSuccess("Pickup confirmed. The item is now on loan.")
             if (confirmedHandover == "return" && loan.status == "returned" && mine == null)

@@ -42,6 +42,7 @@ import `in`.borrowbuddy.android.R
 import `in`.borrowbuddy.android.data.BorrowRepository
 import `in`.borrowbuddy.android.domain.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -58,7 +59,9 @@ val CatalogLoading = SemanticsPropertyKey<Boolean>("CatalogLoading")
 val CatalogResultCount = SemanticsPropertyKey<Int>("CatalogResultCount")
 val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
 
-@Composable fun ItemCard(item: Item, repository: BorrowRepository, open: (String) -> Unit, modifier: Modifier = Modifier) {
+/** Pass `saved` and `toggleSave` to show the heart; leave them null where saving makes no sense. */
+@Composable fun ItemCard(item: Item, repository: BorrowRepository, open: (String) -> Unit, modifier: Modifier = Modifier,
+    saved: Boolean? = null, toggleSave: (() -> Unit)? = null) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val focused by interaction.collectIsFocusedAsState()
@@ -76,6 +79,7 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
             else Icon(painterResource(R.drawable.ic_image_off), null, Modifier.align(Alignment.Center).size(32.dp), tint = Cargo.Ink.copy(alpha = .4f))
             Text((Rules.conditions[item.condition] ?: item.condition).uppercase(), Modifier.padding(12.dp).background(Cargo.Panel).padding(horizontal = 8.dp, vertical = 4.dp),
                 color = Cargo.Accent, style = mono(9))
+            if (saved != null && toggleSave != null) SaveHeart(saved, item.title, toggleSave, Modifier.align(Alignment.TopEnd).padding(8.dp))
         }
         Column(Modifier.padding(16.dp).fillMaxWidth()) {
             Text(normalText(item.title), style = TextStyle(fontFamily = Cargo.Strong, fontSize = 16.sp, lineHeight = 22.sp, lineHeightStyle = cssLineHeight, lineBreak = LineBreak.Paragraph), color = Cargo.Ink)
@@ -102,7 +106,7 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
 }
 
 @Composable fun CatalogScreen(repository: BorrowRepository, profile: Profile, locationId: String?, categoryId: String?, open: (String) -> Unit,
-    listItem: () -> Unit, pending: Int, manage: () -> Unit) {
+    listItem: () -> Unit, pending: Int, manage: () -> Unit, openSaved: () -> Unit = {}) {
     var query by rememberSaveable { mutableStateOf("") }
     var appliedQuery by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable(categoryId) { mutableStateOf(categoryId.orEmpty()) }
@@ -110,18 +114,41 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
     var location by rememberSaveable(locationId) { mutableStateOf(locationId.orEmpty()) }
     var from by rememberSaveable { mutableStateOf("") }
     var to by rememberSaveable { mutableStateOf("") }
-    val filters = CatalogFilters(appliedQuery, category.ifBlank { null }, condition.ifBlank { null }, location.ifBlank { null }, from.ifBlank { null }, to.ifBlank { null })
+    var sortKey by rememberSaveable { mutableStateOf(ItemSort.Newest.key) }
+    val sort = ItemSort.entries.firstOrNull { it.key == sortKey } ?: ItemSort.Newest
+    val filters = CatalogFilters(appliedQuery, category.ifBlank { null }, condition.ifBlank { null }, location.ifBlank { null }, from.ifBlank { null }, to.ifBlank { null }, sort)
+    // "Load more" re-reads every page so far; any filter change starts again from page 1.
+    var page by rememberSaveable(filters) { mutableIntStateOf(1) }
+    var hasMore by remember { mutableStateOf(false) }
+    var savedIds by remember { mutableStateOf<Set<String>?>(null) }
+    val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<Item>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
     val revision = LocalPortalRevision.current
-    LaunchedEffect(filters, revision, retry) {
+    LaunchedEffect(filters, revision, retry, page) {
         loading = true; error = null
-        try { items = repository.catalog(filters) }
+        try {
+            val shown = page * CatalogPageSize
+            val rows = repository.catalog(filters, 0, shown + 1)
+            hasMore = rows.size > shown && page < CatalogMaxPages
+            items = rows.take(shown)
+        }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { error = friendlyError(failure) }
         finally { loading = false }
+    }
+    LaunchedEffect(profile.id, revision) { savedIds = repository.savedItemIds(profile.id) }
+    fun toggleSave(item: Item) {
+        val current = savedIds ?: return
+        val next = item.id !in current
+        savedIds = if (next) current + item.id else current - item.id
+        scope.launch {
+            try { repository.setSaved(profile.id, item.id, next) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { savedIds = current } // roll back the optimistic flip
+        }
     }
     LoadScreen(Unit, { repository.categories() to repository.locations() }) { (categories, locations) ->
         BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
@@ -136,12 +163,13 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
             }, contentPadding = PaddingValues(horizontal = gutter, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item(key = "intro") {
                     Column {
-                        CatalogIntro(profile, pending, titleSize, horizontalIntro, manage)
+                        CatalogIntro(profile, pending, titleSize, horizontalIntro, manage, savedIds?.size, openSaved)
                         Spacer(Modifier.height(32.dp))
                         CatalogFilters(query, { query = it }, { appliedQuery = query.trim() }, loading, categories, locations,
                             category, { category = it }, condition, { condition = it }, location, { location = it }, from, { from = it }, to, { to = it },
-                            appliedQuery.isNotBlank() || listOf(category, condition, location, from, to).any { it.isNotBlank() }) {
-                            query = ""; appliedQuery = ""; category = ""; condition = ""; location = ""; from = ""; to = ""
+                            sortKey, { sortKey = it },
+                            appliedQuery.isNotBlank() || sortKey != ItemSort.Newest.key || listOf(category, condition, location, from, to).any { it.isNotBlank() }) {
+                            query = ""; appliedQuery = ""; category = ""; condition = ""; location = ""; from = ""; to = ""; sortKey = ItemSort.Newest.key
                         }
                         Spacer(Modifier.height(16.dp))
                     }
@@ -153,8 +181,21 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
                 }
                 items(items.chunked(columns), key = { row -> row.first().id }) { row ->
                     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        row.forEach { item -> ItemCard(item, repository, open, Modifier.weight(1f).fillMaxHeight()) }
+                        row.forEach { item ->
+                            val mine = item.owner_id == profile.id
+                            ItemCard(item, repository, open, Modifier.weight(1f).fillMaxHeight(),
+                                saved = if (mine) null else savedIds?.contains(item.id), toggleSave = { toggleSave(item) })
+                        }
                         repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                if (items.isNotEmpty() && error == null) item(key = "more") {
+                    Column(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("SHOWING ${items.size} ${if (items.size == 1) "ITEM" else "ITEMS"}", Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                            style = mono(10), color = Cargo.Ink.copy(alpha = .5f))
+                        if (hasMore) Text("LOAD MORE", Modifier.testTag("catalog-load-more").border(1.dp, Cargo.Line, RoundedCornerShape(8.dp))
+                            .clickable(enabled = !loading) { page += 1 }.padding(horizontal = 20.dp, vertical = 12.dp),
+                            style = TextStyle(fontFamily = Cargo.Strong, fontSize = 12.sp), color = Cargo.Ink)
                     }
                 }
             }
@@ -162,7 +203,8 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
     }
 }
 
-@Composable private fun CatalogIntro(profile: Profile, pending: Int, titleSize: Float, horizontal: Boolean, manage: () -> Unit) {
+@Composable private fun CatalogIntro(profile: Profile, pending: Int, titleSize: Float, horizontal: Boolean, manage: () -> Unit,
+    savedCount: Int?, openSaved: () -> Unit) {
     val heading: @Composable () -> Unit = {
         Text("[ CAMPUS CATALOG ]", style = mono(10), color = Cargo.Accent)
         Text("WHAT'S ON THE SHELF TODAY", Modifier.padding(top = 12.dp), color = Cargo.Ink,
@@ -170,11 +212,17 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
         Text("SIGNED IN AS ${profile.full_name.uppercase()} · TRUST SCORE ${profile.trust_score.roundToInt()}",
             Modifier.padding(top = 8.dp), color = Cargo.Ink.copy(alpha = .5f), style = mono(10))
     }
-    val requests: @Composable () -> Unit = {
+    val requests: @Composable () -> Unit = { FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (savedCount != null) Row(Modifier.testTag("catalog-saved").border(1.dp, Cargo.Line).clickable(onClick = openSaved)
+            .padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(if (savedCount > 0) R.drawable.ic_heart_filled else R.drawable.ic_heart), null, Modifier.size(14.dp),
+                tint = if (savedCount > 0) Cargo.Accent else Cargo.Ink.copy(alpha = .75f))
+            Text(if (savedCount > 0) "SAVED ($savedCount)" else "SAVED", style = mono(10), color = Cargo.Ink.copy(alpha = .75f))
+        }
         if (pending > 0) Text("[ $pending REQUEST${if (pending == 1) "" else "S"} WAITING ON YOU ]",
             Modifier.testTag("catalog-pending-requests").border(1.dp, Cargo.Accent.copy(alpha = .6f))
                 .background(Cargo.Accent.copy(alpha = .1f)).clickable(onClick = manage).padding(horizontal = 16.dp, vertical = 10.dp), style = mono(10), color = Cargo.Accent)
-    }
+    } }
     if (horizontal) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(Modifier.weight(1f)) { heading() }; requests()
     } else Column(verticalArrangement = Arrangement.spacedBy(24.dp)) { Column { heading() }; requests() }
@@ -183,7 +231,8 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
 @Composable private fun CatalogFilters(query: String, changeQuery: (String) -> Unit, search: () -> Unit, loading: Boolean,
     categories: List<Category>, locations: List<PickupLocation>, category: String, selectCategory: (String) -> Unit,
     condition: String, selectCondition: (String) -> Unit, location: String, selectLocation: (String) -> Unit,
-    from: String, selectFrom: (String) -> Unit, to: String, selectTo: (String) -> Unit, hasFilters: Boolean, clear: () -> Unit) {
+    from: String, selectFrom: (String) -> Unit, to: String, selectTo: (String) -> Unit, sort: String, selectSort: (String) -> Unit,
+    hasFilters: Boolean, clear: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val focus = LocalFocusManager.current
         val keyboard = LocalSoftwareKeyboardController.current
@@ -209,6 +258,7 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
             CatalogSelect("location", "Pickup", location, listOf("" to "Any pickup spot") + locations.map { it.id to it.name }, selectLocation)
             CatalogDate("FROM", from, selectFrom)
             CatalogDate("TO", to, selectTo)
+            CatalogSelect("sort", "Sort", sort, ItemSort.entries.map { it.key to it.label }, selectSort)
             if (hasFilters) Row(Modifier.testTag("catalog-clear").border(1.dp, Cargo.Line, RoundedCornerShape(8.dp)).clickable { focus.clearFocus(); keyboard?.hide(); clear() }.padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(painterResource(R.drawable.ic_x), null, Modifier.size(12.dp), tint = Cargo.Ink.copy(alpha = .5f))
@@ -269,6 +319,31 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(painterResource(R.drawable.ic_plus_circle), null, Modifier.size(16.dp), tint = Cargo.Ink)
             Text("LIST AN ITEM", style = TextStyle(fontFamily = Cargo.Strong, fontSize = 12.sp), color = Cargo.Ink)
+        }
+    }
+}
+
+
+internal const val CatalogPageSize = 24
+internal const val CatalogMaxPages = 20
+
+/** Heart toggle for saving an item; a 48dp target with a short pop when saved. */
+@Composable fun SaveHeart(saved: Boolean, title: String, toggle: () -> Unit, modifier: Modifier = Modifier, inline: Boolean = false) {
+    val reduced = rememberReducedMotion()
+    val pop = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(saved) {
+        if (saved && !reduced) { pop.snapTo(1.3f); pop.animateTo(1f, tween(300)) } else pop.snapTo(1f)
+    }
+    val label = if (saved) "Remove $title from saved" else "Save $title for later"
+    if (inline) Row(modifier.testTag("item-save").border(1.dp, Cargo.Line, RoundedCornerShape(8.dp)).semantics { contentDescription = label; this.selected = saved }
+        .clickable(onClick = toggle).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(painterResource(if (saved) R.drawable.ic_heart_filled else R.drawable.ic_heart), null, Modifier.size(18.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+            tint = if (saved) Cargo.Accent else Cargo.Ink)
+        Text(if (saved) "SAVED" else "SAVE", style = TextStyle(fontFamily = Cargo.Strong, fontSize = 11.sp), color = Cargo.Ink)
+    } else Box(modifier.size(48.dp).semantics { contentDescription = label; this.selected = saved }.clickable(onClick = toggle), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(38.dp).background(Color.Black.copy(alpha = .7f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+            Icon(painterResource(if (saved) R.drawable.ic_heart_filled else R.drawable.ic_heart), null,
+                Modifier.size(18.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }, tint = if (saved) Cargo.Accent else Cargo.Ink)
         }
     }
 }

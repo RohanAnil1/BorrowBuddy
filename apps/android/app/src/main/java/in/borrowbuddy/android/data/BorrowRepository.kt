@@ -90,7 +90,8 @@ class BorrowRepository(private val context: Context) {
         if (!admin) filter { eq("is_active", true) }
         order("name", Order.ASCENDING)
     }.decodeList()
-    suspend fun catalog(filters: CatalogFilters = CatalogFilters()): List<Item> {
+    /** One catalog page. Ask for one row more than you show to learn whether more exist. */
+    suspend fun catalog(filters: CatalogFilters = CatalogFilters(), offset: Int = 0, limit: Int = 48): List<Item> {
         val busy = if (filters.from != null && filters.to != null) {
             val start = java.time.LocalDate.parse(filters.from)
             val end = java.time.LocalDate.parse(filters.to)
@@ -108,8 +109,65 @@ class BorrowRepository(private val context: Context) {
                 val term = filters.query.replace(Regex("[%,()]"), " ").trim()
                 if (term.isNotBlank()) or { ilike("title", "%$term%"); ilike("description", "%$term%") }
             }
-            order("created_at", Order.DESCENDING); limit(48)
+            // Tie-break on newest, then id, so pages never shuffle between requests.
+            when (filters.sort) {
+                ItemSort.DepositLow -> order("deposit_amount", Order.ASCENDING)
+                ItemSort.Trust -> order("owner(trust_score)", Order.DESCENDING)
+                ItemSort.Newest -> Unit
+            }
+            order("created_at", Order.DESCENDING); order("id", Order.ASCENDING)
+            range(offset.toLong(), (offset + limit - 1).toLong())
         }.decodeList<Item>()
+    }
+    suspend fun similarItems(item: Item, viewerId: String): List<Item> = client.from("items").select(itemColumns) {
+        filter { eq("status", "available"); eq("category_id", item.category_id); neq("id", item.id); neq("owner_id", viewerId) }
+        order("created_at", Order.DESCENDING); limit(6)
+    }.decodeList()
+
+    // Saved items (wishlist). Null ids mean saving is unavailable, so hearts hide.
+    suspend fun savedItemIds(userId: String): Set<String>? = try {
+        client.from("wishlist_items").select(Columns.raw("item_id")) { filter { eq("user_id", userId) } }
+            .decodeList<JsonObject>().map { it.getValue("item_id").jsonPrimitive.content }.toSet()
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { null }
+    suspend fun setSaved(userId: String, itemId: String, saved: Boolean) {
+        if (saved) client.from("wishlist_items").upsert(buildJsonObject { put("user_id", userId); put("item_id", itemId) }) {
+            onConflict = "user_id,item_id"; ignoreDuplicates = true
+        } else client.from("wishlist_items").delete { filter { eq("user_id", userId); eq("item_id", itemId) } }
+    }
+    suspend fun savedItems(userId: String): List<Item> = client.from("wishlist_items")
+        .select(Columns.raw("created_at,item:items(*,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*))")) {
+            filter { eq("user_id", userId) }; order("created_at", Order.DESCENDING); limit(100)
+        }.decodeList<SavedRow>().mapNotNull { it.item }
+
+    // Loan extensions. A missing table reads as "no extensions".
+    suspend fun extensions(loanId: String): List<LoanExtension> = try {
+        client.from("loan_extensions").select { filter { eq("loan_id", loanId) }; order("created_at", Order.DESCENDING); limit(10) }.decodeList()
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { emptyList() }
+    suspend fun pendingExtensionLoanIds(loanIds: List<String>): Set<String> = if (loanIds.isEmpty()) emptySet() else try {
+        client.from("loan_extensions").select(Columns.raw("loan_id")) { filter { eq("status", "pending"); isIn("loan_id", loanIds) } }
+            .decodeList<JsonObject>().map { it.getValue("loan_id").jsonPrimitive.content }.toSet()
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { emptySet() }
+    suspend fun requestExtension(loanId: String, newDue: String, message: String) {
+        require(message.length <= 300) { "Keep the note under 300 characters." }
+        rpc("request_loan_extension", buildJsonObject {
+            put("p_loan_id", loanId); put("p_new_due_date", newDue)
+            put("p_message", message.trim().takeIf { it.isNotBlank() }?.let(::JsonPrimitive) ?: JsonNull)
+        })
+    }
+    suspend fun respondExtension(extensionId: String, approve: Boolean) {
+        rpc("respond_loan_extension", buildJsonObject { put("p_extension_id", extensionId); put("p_approve", approve) })
+    }
+    suspend fun cancelExtension(extensionId: String) { rpc("cancel_loan_extension", buildJsonObject { put("p_extension_id", extensionId) }) }
+
+    // Impact, reputation and email.
+    suspend fun impact(scope: String): ImpactStats? = try {
+        rpc("get_impact_stats", buildJsonObject { put("p_scope", scope) }).decodeAs<ImpactStats>()
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { null }
+    /** Track record for trust hints; null when hidden or unavailable. */
+    suspend fun reputation(userId: String): ProfileStats? = try { profileStats(userId) }
+        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { null }
+    suspend fun setEmailNotifications(userId: String, enabled: Boolean) {
+        client.from("profiles").update(buildJsonObject { put("email_notifications", enabled) }) { filter { eq("id", userId) } }
     }
     suspend fun item(id: String): Item? = client.from("items").select(itemColumns) { filter { eq("id", id) } }.decodeSingleOrNull()
     suspend fun myItems(id: String): List<Item> = client.from("items").select(itemColumns) { filter { eq("owner_id", id) }; order("created_at", Order.DESCENDING) }.decodeList()
@@ -258,4 +316,5 @@ class BorrowRepository(private val context: Context) {
         path
     }
     @kotlinx.serialization.Serializable private data class BusyItem(val item_id: String)
+    @kotlinx.serialization.Serializable private data class SavedRow(val created_at: String = "", val item: Item? = null)
 }

@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import `in`.borrowbuddy.android.R
 import `in`.borrowbuddy.android.data.BorrowRepository
+import `in`.borrowbuddy.android.data.BuddyMood
 import `in`.borrowbuddy.android.domain.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -58,14 +59,25 @@ internal fun dashboardGreeting(hour: Int) = when {
 val DashboardCategoryColumns = SemanticsPropertyKey<Int>("DashboardCategoryColumns")
 val DashboardLoanCount = SemanticsPropertyKey<Int>("DashboardLoanCount")
 val DashboardPulseAlpha = SemanticsPropertyKey<Float>("DashboardPulseAlpha")
-private data class DashboardData(val loans: List<Loan>, val categories: List<Category>)
+private data class DashboardData(val loans: List<Loan>, val categories: List<Category>, val owed: Int, val pendingExtensions: Set<String>)
+
+/** Borrowed loans that are overdue or due within two days (campus time). */
+internal fun dueSoonCount(loans: List<Loan>, viewerId: String, today: LocalDate): Int = loans.count { loan ->
+    loan.borrower_id == viewerId && loan.status in Rules.activeStatuses &&
+        (loan.status == "overdue" || LocalDate.parse(loan.due_date) <= today.plusDays(2))
+}
 
 @Composable fun DashboardScreen(repository: BorrowRepository, profile: Profile, openLoan: (String) -> Unit,
-    browse: (String?) -> Unit, borrows: () -> Unit) {
+    browse: (String?) -> Unit, borrows: () -> Unit, pendingRequests: Int = 0, unreadChats: Int = 0, openPath: (String) -> Unit = {},
+    openBuddy: () -> Unit = {}) {
     LoadScreen(profile.id, { coroutineScope {
         val loans = async { repository.loans(profile.id) }; val categories = async { repository.categories() }
-        DashboardData(loans.await(), categories.await())
-    } }) { (loans, categories) ->
+        val fines = async { runCatching { repository.fines(profile.id) }.getOrDefault(emptyList()) }
+        val all = loans.await()
+        val open = all.filter { it.status in Rules.activeStatuses }.map { it.id }
+        DashboardData(all, categories.await(), fines.await().filter { it.status == "pending" }.sumOf { it.amount },
+            repository.pendingExtensionLoanIds(open))
+    } }) { (loans, categories, owed, pendingExtensions) ->
         val open = loans.filter { it.status in Rules.activeStatuses }
         val borrowing = open.filter { it.borrower_id == profile.id }
         val lending = open.filter { it.owner_id == profile.id }
@@ -121,23 +133,42 @@ private data class DashboardData(val loans: List<Loan>, val categories: List<Cat
                         }
                     }
                 }
+                item(key = "today") {
+                    val campusToday = LocalDate.now(Rules.campusZone)
+                    val dueSoon = dueSoonCount(loans, profile.id, campusToday)
+                    val needs = listOf(dueSoon, pendingRequests, unreadChats, owed).count { it > 0 }
+                    val first = profile.full_name.substringBefore(' ')
+                    Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ParcelGreeting(if (needs == 0) "All clear, $first. Want to lend something today?"
+                            else "$needs ${if (needs == 1) "thing needs" else "things need"} you today. Tap me if you get stuck.",
+                            if (needs == 0) BuddyMood.Happy else BuddyMood.Wave, openBuddy)
+                        TodayStrip(listOf(
+                            TodayCard("Due soon", "$dueSoon", if (dueSoon > 0) "Return in the next 2 days" else "Nothing due", R.drawable.ic_calendar_clock, dueSoon > 0, borrows, "today-due"),
+                            TodayCard("Requests", "$pendingRequests", if (pendingRequests > 0) "Waiting for your answer" else "No one waiting", R.drawable.ic_inbox, pendingRequests > 0, { openPath("my/items") }, "today-requests"),
+                            TodayCard("Unread", "$unreadChats", if (unreadChats > 0) "New messages" else "Inbox zero", R.drawable.ic_messages_square, unreadChats > 0, { openPath("chat") }, "today-unread"),
+                            TodayCard("Fines", ledgerMoney(owed), if (owed > 0) "Settle with an admin" else "Clean ledger", R.drawable.ic_receipt, owed > 0, { openPath("fines") }, "today-fines"),
+                        ), columns)
+                    }
+                }
                 item(key = "loans") {
                     Row(Modifier.fillMaxWidth().padding(top = 40.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("LOANS IN MOTION", style = loanMono(11), color = Cargo.Ink.copy(alpha = .6f))
                         Text("FULL LOGBOOK →", Modifier.testTag("dashboard-logbook").clickable(onClick = borrows), style = loanMono(10), color = Cargo.Accent)
                     }
                     Spacer(Modifier.height(16.dp))
-                    if (ticker.isEmpty()) Text("[ NOTHING MOVING RIGHT NOW — BROWSE THE CATALOG ]",
-                        Modifier.fillMaxWidth().background(Cargo.Panel).border(1.dp, Cargo.Line).padding(horizontal = 17.dp, vertical = 21.dp),
-                        style = loanMono(10), color = Cargo.Ink.copy(alpha = .5f))
+                    if (ticker.isEmpty()) ParcelEmpty(BuddyMood.Sleepy, "NOTHING IN TRANSIT", "No loans on the move",
+                        "When you borrow or lend something, its boarding pass shows up here with a live countdown.") {
+                        CargoButton("Browse the shelf", { browse(null) })
+                    }
                     else {
                         val tickerState = rememberLazyListState()
                         LazyRow(Modifier.testTag("dashboard-loan-ticker").fillMaxWidth().padding(bottom = 4.dp), state = tickerState,
                             flingBehavior = rememberSnapFlingBehavior(tickerState, snapPosition = SnapPosition.Start), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(ticker, key = { it.id }) { loan -> DashboardTicket(loan, profile.id, dashboardTone(loan, today), openLoan) }
+                            items(ticker, key = { it.id }) { loan -> LoanBoardingPass(loan, profile.id, loan.id in pendingExtensions, openLoan) }
                         }
                     }
                 }
+                item(key = "impact") { Box(Modifier.padding(top = 32.dp)) { ImpactLinkCard { openPath("impact") } } }
                 item(key = "category-heading") { DashboardHeading("QUICK SEARCH") }
                 itemsIndexed(categories.chunked(columns), key = { _, group -> "category-${group.first().id}" }) { index, group ->
                     Row(Modifier.fillMaxWidth().padding(top = if (index > 0) 12.dp else 0.dp).height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -142,7 +142,7 @@ internal fun depositLabel(amount: Int): String = if (amount > 0) ledgerMoney(amo
     }
 }
 
-@Composable fun AccountScreen(model: SessionViewModel, profile: Profile, publicProfile: () -> Unit, fines: () -> Unit, map: () -> Unit) {
+@Composable fun AccountScreen(model: SessionViewModel, profile: Profile, publicProfile: () -> Unit, fines: () -> Unit, map: () -> Unit, impact: () -> Unit = {}) {
     val actions = rememberActions()
     val session by model.state.collectAsState()
     var submitting by remember { mutableStateOf(false) }
@@ -192,6 +192,13 @@ internal fun depositLabel(amount: Int): String = if (amount > 0) ledgerMoney(amo
                     AccountLink("[ FINES ]", if (outstanding > 0) "₹$outstanding OUTSTANDING" else "NOTHING OUTSTANDING", R.drawable.ic_receipt, fines, Modifier.fillMaxWidth().testTag("account-fines"))
                     AccountLink("[ PICKUP MAP ]", "CAMPUS HANDOVER SPOTS", R.drawable.ic_map, map, Modifier.fillMaxWidth().testTag("account-map"))
                 }
+                if (profile.verification_status == "verified") AccountLink("[ CAMPUS IMPACT ]", "WHAT YOUR LENDING AND BORROWING SAVED", R.drawable.ic_sprout, impact,
+                    Modifier.padding(top = 12.dp).fillMaxWidth().testTag("account-impact"))
+                profile.email_notifications?.let { enabled -> EmailUpdatesPanel(enabled, profile.email, busy) { next ->
+                    actions.run(if (next) "Email updates are on." else "Email updates are off.") {
+                        model.repository.setEmailNotifications(profile.id, next); model.refresh()
+                    }
+                } }
                 Column(Modifier.padding(top = 32.dp).fillMaxWidth().background(Cargo.Panel).border(1.dp, Cargo.Line).padding(25.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("[ YOUR DETAILS ]", style = loanMono(11), color = Cargo.Ink.copy(alpha = .6f))
                     if (viewport >= 640) {
@@ -287,5 +294,16 @@ internal fun depositLabel(amount: Int): String = if (amount > 0) ledgerMoney(amo
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         icon?.let { Icon(painterResource(it), null, Modifier.size(16.dp), tint = color) }
         Text(text.uppercase(), style = loanBody(13).copy(fontFamily = Cargo.Strong, letterSpacing = .52.sp), color = color)
+    }
+}
+
+/** Email on/off for important updates, matching the web profile page. */
+@Composable private fun EmailUpdatesPanel(enabled: Boolean, email: String, busy: Boolean, toggle: (Boolean) -> Unit) {
+    Column(Modifier.padding(top = 32.dp).fillMaxWidth().testTag("account-email").background(Cargo.Panel).border(1.dp, Cargo.Line).padding(25.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("[ EMAIL UPDATES ]", style = loanMono(11), color = Cargo.Ink)
+        Text(if (enabled) "On. Requests, due dates, extensions and fines you haven't seen in the app go to $email, at most one email every 5 minutes."
+            else "Off. You'll still see everything in the app and on the bell.", style = loanBody(13), color = Cargo.Ink.copy(alpha = .7f))
+        SourceSubmitButton(if (enabled) "Turn off" else "Turn on", { toggle(!enabled) }, enabled = !busy, secondary = enabled)
     }
 }

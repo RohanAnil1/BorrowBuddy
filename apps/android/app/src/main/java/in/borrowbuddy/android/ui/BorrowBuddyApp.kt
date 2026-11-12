@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -93,9 +94,11 @@ import `in`.borrowbuddy.android.domain.Profile
         CompositionLocalProvider(LocalPortalRevision provides updates.revision) {
         NavHost(nav, startDestination = "home", modifier = Modifier.weight(1f)) {
             composable("home?spot={spot}&category={category}", arguments = listOf(navArgument("spot") { type = NavType.StringType; nullable = true; defaultValue = null }, navArgument("category") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStack ->
-                CatalogScreen(repository, profile, backStack.arguments?.getString("spot"), backStack.arguments?.getString("category"), { open("items/$it") }, { open("items/new") }, updates.pendingRequests, { open("my/items") })
+                CatalogScreen(repository, profile, backStack.arguments?.getString("spot"), backStack.arguments?.getString("category"), { open("items/$it") }, { open("items/new") }, updates.pendingRequests, { open("my/items") }, { open("my/saved") })
             }
-            composable("dashboard") { DashboardScreen(repository, profile, { open("loans/$it") }, { category -> open(if (category == null) "home" else "home?category=$category") }, { open("my/borrows") }) }
+            composable("dashboard") { DashboardScreen(repository, profile, { open("loans/$it") }, { category -> open(if (category == null) "home" else "home?category=$category") }, { open("my/borrows") },
+                updates.pendingRequests, updates.chats, ::open) { buddy.setOpen(true) } }
+            composable("impact") { ImpactScreen(repository, profile, ::open) }
             composable("items/new") { ListingScreen(repository, profile, null) { open("items/$it") } }
             composable("items/{id}?start={start}&end={end}", arguments = listOf(
                 navArgument("start") { type = NavType.StringType; nullable = true; defaultValue = null },
@@ -103,15 +106,16 @@ import `in`.borrowbuddy.android.domain.Profile
                 val id = backStack.arguments!!.getString("id")!!
                 // Buddy's request action pre-selects dates; the student still reviews and sends.
                 ItemScreen(repository, profile, id, { open("items/$id/edit") }, { open("users/$it") }, { open("my/items") },
-                    backStack.arguments?.getString("start"), backStack.arguments?.getString("end"))
+                    backStack.arguments?.getString("start"), backStack.arguments?.getString("end"), { open("items/$it") })
             }
             composable("items/{id}/edit") { backStack -> ListingScreen(repository, profile, backStack.arguments!!.getString("id")) { open("items/$it") } }
             composable("my/borrows") { BorrowsScreen(repository, profile, { open("loans/$it") }, { open("items/$it") }, { section("home") }) }
-            composable("my/items") { MyItemsScreen(repository, profile, { open("items/$it") }, { open("loans/$it") }, { open("items/$it/edit") }, { open("items/new") }) }
+            composable("my/saved") { SavedScreen(repository, profile, { open("items/$it") }, { section("home") }) }
+            composable("my/items") { MyItemsScreen(repository, profile, { open("items/$it") }, { open("loans/$it") }, { open("items/$it/edit") }, { open("items/new") }, { open("users/$it") }) }
             composable("loans/{id}") { backStack -> LoanScreen(repository, profile, backStack.arguments!!.getString("id")!!,
                 logbook = { owner -> section(if (owner) "my/items" else "my/borrows") }, chat = { open("chat/$it") }) }
             composable("notifications") { NotificationsScreen(repository, profile, ::open) }
-            composable("me") { AccountScreen(model, profile, { open("users/${profile.id}") }, { open("fines") }, { open("map") }) }
+            composable("me") { AccountScreen(model, profile, { open("users/${profile.id}") }, { open("fines") }, { open("map") }, { open("impact") }) }
             composable("users/{id}") { backStack -> StudentScreen(repository, backStack.arguments!!.getString("id")!!) { open("items/$it") } }
             composable("fines") { FinesScreen(repository, profile) { open("loans/$it") } }
             composable("chat") { ChatsScreen(repository, profile) { open("chat/$it") } }
@@ -134,6 +138,7 @@ import `in`.borrowbuddy.android.domain.Profile
         }
         }
     }
+    NotificationToastHost(repository, profile.id, updates.notificationEvents, ::open, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 96.dp))
     if (buddy.configured) BuddyLauncher(buddy, firstName, route, hidden = route == "buddy" || route.startsWith("chat"), open = ::open)
     }
 }
