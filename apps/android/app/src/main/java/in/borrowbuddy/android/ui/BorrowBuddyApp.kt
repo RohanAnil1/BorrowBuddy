@@ -67,6 +67,9 @@ import `in`.borrowbuddy.android.domain.Profile
     val homeRequest by model.homeRequests.collectAsStateWithLifecycle()
     LaunchedEffect(homeRequest) { if (homeRequest > 0) section("home") }
     val repository = model.repository
+    val buddy = repository.buddy
+    LaunchedEffect(profile.id) { buddy.bind(profile.id) }
+    val firstName = profile.full_name.trim().substringBefore(' ')
     val updates = rememberPortalUpdates(repository, profile.id)
     val ticker = rememberPortalTicker(entry)
     Box(Modifier.fillMaxSize()) {
@@ -92,9 +95,13 @@ import `in`.borrowbuddy.android.domain.Profile
             }
             composable("dashboard") { DashboardScreen(repository, profile, { open("loans/$it") }, { category -> open(if (category == null) "home" else "home?category=$category") }, { open("my/borrows") }) }
             composable("items/new") { ListingScreen(repository, profile, null) { open("items/$it") } }
-            composable("items/{id}") { backStack ->
+            composable("items/{id}?start={start}&end={end}", arguments = listOf(
+                navArgument("start") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("end") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStack ->
                 val id = backStack.arguments!!.getString("id")!!
-                ItemScreen(repository, profile, id, { open("items/$id/edit") }, { open("users/$it") }, { open("my/items") })
+                // Buddy's request action pre-selects dates; the student still reviews and sends.
+                ItemScreen(repository, profile, id, { open("items/$id/edit") }, { open("users/$it") }, { open("my/items") },
+                    backStack.arguments?.getString("start"), backStack.arguments?.getString("end"))
             }
             composable("items/{id}/edit") { backStack -> ListingScreen(repository, profile, backStack.arguments!!.getString("id")) { open("items/$it") } }
             composable("my/borrows") { BorrowsScreen(repository, profile, { open("loans/$it") }, { open("items/$it") }, { section("home") }) }
@@ -121,8 +128,10 @@ import `in`.borrowbuddy.android.domain.Profile
                 composable("campus/$section/{id}") { backStack -> CampusPostScreen(repository, profile, backStack.arguments!!.getString("id")!!, ::open) }
             }
             composable("admin") { AdminScreen(repository, profile) { open("loans/$it") } }
+            composable("buddy") { BuddyScreen(buddy, firstName, "buddy", ::open) }
         }
         }
     }
+    if (buddy.configured) BuddyLauncher(buddy, firstName, route, hidden = route == "buddy" || route.startsWith("chat"), open = ::open)
     }
 }

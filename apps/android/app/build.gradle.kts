@@ -32,6 +32,8 @@ android {
         System.getenv("BORROWBUDDY_QA_ITEM_TITLE")?.let { testInstrumentationRunnerArguments["qaItemTitle"] = it }
         buildConfigField("String", "SUPABASE_URL", quoted(setting("SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_ANON_KEY", quoted(setting("SUPABASE_ANON_KEY")))
+        // The web app that serves /api/assistant (Buddy). Release builds must set it.
+        buildConfigField("String", "BORROWBUDDY_WEB_URL", quoted(setting("BORROWBUDDY_WEB_URL")))
     }
     signingConfigs {
         if (signing.isNotEmpty()) create("production") {

@@ -24,7 +24,10 @@ export function suggestionsFor(path: string): string[] {
 /** Tiny, safe formatter: paragraphs, "- " lists and **bold**. No HTML. */
 function RichText({ text }: { text: string }) {
   // Models sometimes write markdown links; real links only come from cards.
-  const plain = text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\*\*\[([^\]]+)\]\*\*/g, "**$1**");
+  const plain = text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    // A line that is only a "[Button]" the model typed itself: real buttons are cards.
+    .replace(/^\s*(\*\*)?\[[^\]\n]{1,60}\](\*\*)?\s*$/gm, "");
   const blocks = plain.trim().split(/\n{2,}/);
   const inline = (line: string, key: number) => (
     <Fragment key={key}>
