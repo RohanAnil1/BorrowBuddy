@@ -3,13 +3,16 @@ import Link from "next/link";
 import type { ItemWithOwner } from "@borrowbuddy/shared";
 import { conditionLabel, depositTag } from "@/lib/format";
 import { BUCKETS, publicUrl } from "@/lib/storage";
+import { SaveButton } from "./save-button";
 
-export function ItemCard({ item }: { item: ItemWithOwner }) {
+/** Pass `saved` to show the heart toggle (omit it where saving makes no sense). */
+export function ItemCard({ item, saved }: { item: ItemWithOwner; saved?: boolean }) {
   const cover = publicUrl(BUCKETS.itemImages, item.images[0]);
 
   return (
+    <div className="relative h-full">
     <Link
-      className="group flex flex-col overflow-hidden border border-line bg-panel transition-colors hover:border-accent"
+      className="group flex h-full flex-col overflow-hidden border border-line bg-panel transition-colors hover:border-accent"
       href={`/items/${item.id}`}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-black">
@@ -60,5 +63,11 @@ export function ItemCard({ item }: { item: ItemWithOwner }) {
         </div>
       </div>
     </Link>
+      {saved !== undefined && (
+        <div className="absolute right-3 top-3">
+          <SaveButton itemId={item.id} saved={saved} title={item.title} />
+        </div>
+      )}
+    </div>
   );
 }

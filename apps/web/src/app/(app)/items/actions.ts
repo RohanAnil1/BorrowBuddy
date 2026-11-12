@@ -194,3 +194,23 @@ export async function joinWaitlist(
   revalidatePath(`/items/${parsed.data.item_id}`);
   return { status: "success", message: "You're on the waitlist." };
 }
+
+/** Save or unsave an item for later. RLS limits rows to the signed-in student. */
+export async function toggleSavedItem(formData: FormData): Promise<void> {
+  const profile = await requireVerified();
+  const itemId = String(formData.get("item_id") ?? "");
+  const save = formData.get("save") === "1";
+  if (!/^[0-9a-f-]{36}$/i.test(itemId)) return;
+
+  const supabase = await createClient();
+  if (save) {
+    const { error } = await supabase
+      .from("wishlist_items")
+      .upsert({ user_id: profile.id, item_id: itemId }, { onConflict: "user_id,item_id", ignoreDuplicates: true });
+    if (error) throw new Error("Couldn't save that item. Try again.");
+  } else {
+    await supabase.from("wishlist_items").delete().eq("user_id", profile.id).eq("item_id", itemId);
+  }
+
+  revalidatePath("/my/saved");
+}
