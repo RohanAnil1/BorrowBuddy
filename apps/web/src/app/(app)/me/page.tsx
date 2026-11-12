@@ -1,4 +1,4 @@
-import { LogOut, Map, Receipt, ShieldCheck, ShieldX } from "lucide-react";
+import { LogOut, Mail, Map, Receipt, ShieldCheck, ShieldX } from "lucide-react";
 import Link from "next/link";
 import { ProfileForm, StudentIdForm } from "@/components/app/account-forms";
 import { MemberIdCard } from "@/components/app/member-id-card";
@@ -10,6 +10,7 @@ import { requireProfile } from "@/lib/auth/guards";
 import { getOutstandingTotal } from "@/lib/data/fines";
 import { getProfileStamps } from "@/lib/data/stamps";
 import { signOut } from "../actions";
+import { setEmailNotifications } from "./actions";
 
 export const metadata = { title: "You" };
 
@@ -90,6 +91,29 @@ export default async function MePage() {
           <span className="font-secondary text-[9px] text-ink/40">OPEN →</span>
         </Link>
       </div>
+
+      {profile.email_notifications !== undefined && (
+        <section aria-labelledby="email-heading" className="mt-8 scroll-mt-24 border border-line bg-panel p-5" id="email">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="max-w-md">
+              <h2 className="flex items-center gap-2 font-secondary text-[11px] uppercase text-ink" id="email-heading">
+                <Mail className="size-4 text-accent" /> [ EMAIL UPDATES ]
+              </h2>
+              <p className="mt-2 text-[13px] normal-case leading-6 text-ink/70">
+                {profile.email_notifications
+                  ? `On. Requests, due dates, extensions and fines you haven't seen in the app go to ${profile.email}, at most one email every 5 minutes.`
+                  : "Off. You'll still see everything in the app and on the bell."}
+              </p>
+            </div>
+            <form action={setEmailNotifications}>
+              <input name="enabled" type="hidden" value={profile.email_notifications ? "0" : "1"} />
+              <SubmitButton pendingLabel="SAVING…" variant={profile.email_notifications ? "secondary" : "primary"}>
+                {profile.email_notifications ? "Turn off" : "Turn on"}
+              </SubmitButton>
+            </form>
+          </div>
+        </section>
+      )}
 
       <div className="mt-8 flex flex-col gap-6">
         <ProfileForm profile={profile} />

@@ -6,22 +6,10 @@ import type { Notification } from "@borrowbuddy/shared";
 import { relativeTime } from "@/lib/format";
 import { requireProfile } from "@/lib/auth/guards";
 import { getNotifications } from "@/lib/data/notifications";
+import { notificationHref } from "@/lib/notification-links";
 import { markAllRead } from "./actions";
 
 export const metadata = { title: "Notifications" };
-
-function notificationHref(notification: Notification): string | null {
-  const payload = notification.payload as Record<string, unknown>;
-  const loanId = payload.loan_id;
-  const itemId = payload.item_id;
-  if (typeof payload.campus_transfer_id === "string") return `/campus/collections/${encodeURIComponent(payload.campus_transfer_id)}`;
-  if (typeof payload.campus_claim_id === "string") return "/campus/admin";
-  if (typeof payload.campus_post_id === "string") return `/campus/activity`;
-
-  if (typeof loanId === "string") return `/loans/${loanId}`;
-  if (typeof itemId === "string") return `/items/${itemId}`;
-  return null;
-}
 
 export default async function NotificationsPage() {
   const profile = await requireProfile();
