@@ -92,5 +92,8 @@ jobs:
       - name: Validate notification privileges and email job
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/notification_email.sql
 
+      - name: Validate impact stats
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/impact_stats.sql
+
       - name: Validate campus exchange security and scheduling contract
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/campus_contract.sql

@@ -1,4 +1,4 @@
-import { AlarmClock, ArrowRight, Inbox, MessagesSquare, Receipt } from "lucide-react";
+import { AlarmClock, ArrowRight, Inbox, MessagesSquare, Receipt, Sprout } from "lucide-react";
 import Link from "next/link";
 import { CategoryGrid } from "@/components/app/category-grid";
 import { DashboardTabs } from "@/components/app/dashboard-tabs";
@@ -204,6 +204,20 @@ export default async function DashboardPage() {
           <CategoryGrid categories={categories} />
         </div>
       </section>
+
+      <Link
+        className="group mt-10 flex flex-wrap items-center justify-between gap-4 border border-line bg-panel p-5 transition-colors hover:border-accent"
+        href="/impact"
+      >
+        <span className="flex items-center gap-3">
+          <Sprout className="size-5 text-accent" />
+          <span>
+            <span className="block font-strong text-[13px] uppercase">Campus impact</span>
+            <span className="mt-0.5 block text-[12px] normal-case text-ink/65">See what sharing has saved campus, and your part in it.</span>
+          </span>
+        </span>
+        <ArrowRight className="size-4 text-accent transition-transform group-hover:translate-x-1" />
+      </Link>
 
       <section className="mt-10">
         <h2 className="font-secondary text-[12px] uppercase text-ink/75">Your movements</h2>

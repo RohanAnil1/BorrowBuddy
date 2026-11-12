@@ -15,6 +15,16 @@ values
 on conflict (slug) do update
 set name = excluded.name, icon = excluded.icon, sort_order = excluded.sort_order;
 
+-- Rough daily rental values for the Impact page's "estimated money saved".
+insert into public.impact_category_rates (category_id, daily_value)
+select c.id, r.daily_value
+from public.categories c
+join (values
+  ('electronics', 80), ('cameras-audio', 250), ('gaming', 150), ('sports-fitness', 40),
+  ('books-stationery', 20), ('tools-hardware', 60), ('appliances', 70), ('other', 30)
+) as r(slug, daily_value) on r.slug = c.slug
+on conflict (category_id) do nothing;
+
 insert into public.pickup_locations (name, description, lat, lng)
 values
   ('Library Entrance', 'Main library steps, ground floor', 28.4507, 77.5831),

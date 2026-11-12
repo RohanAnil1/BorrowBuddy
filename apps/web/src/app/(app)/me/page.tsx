@@ -1,4 +1,4 @@
-import { LogOut, Mail, Map, Receipt, ShieldCheck, ShieldX } from "lucide-react";
+import { LogOut, Mail, Map, Receipt, ShieldCheck, ShieldX, Sprout } from "lucide-react";
 import Link from "next/link";
 import { ProfileForm, StudentIdForm } from "@/components/app/account-forms";
 import { MemberIdCard } from "@/components/app/member-id-card";
@@ -90,6 +90,22 @@ export default async function MePage() {
           </div>
           <span className="font-secondary text-[9px] text-ink/40">OPEN →</span>
         </Link>
+
+        {profile.verification_status === "verified" && (
+          <Link
+            className="flex items-center justify-between gap-4 border border-line bg-panel p-5 transition-colors hover:border-accent sm:col-span-2"
+            href="/impact"
+          >
+            <div>
+              <p className="flex items-center gap-2 font-secondary text-[11px] uppercase text-ink">
+                <Sprout className="size-4 text-accent" />
+                [ CAMPUS IMPACT ]
+              </p>
+              <p className="font-secondary mt-1 text-[9px] text-ink/50">WHAT YOUR LENDING AND BORROWING SAVED</p>
+            </div>
+            <span className="font-secondary text-[9px] text-ink/40">OPEN →</span>
+          </Link>
+        )}
       </div>
 
       {profile.email_notifications !== undefined && (
