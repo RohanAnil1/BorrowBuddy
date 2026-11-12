@@ -3,7 +3,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge, loanTone, requestTone } from "@/components/app/status-badge";
 import { SubmitButton } from "@/components/app/submit-button";
-import { formatDateRange, loanStatusLabel, relativeTime } from "@/lib/format";
+import { formatDateRange, loanStatusLabel, relativeTime, requestStatusLabel, waitlistStatusLabel } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
 import { getLoansForUser, isOpenLoan } from "@/lib/data/loans";
 import { getOutgoingRequests } from "@/lib/data/requests";
@@ -86,7 +86,7 @@ export default async function MyBorrowsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <StatusBadge tone={requestTone(request.status)}>{request.status}</StatusBadge>
+                  <StatusBadge tone={requestTone(request.status)}>{requestStatusLabel(request.status)}</StatusBadge>
                   <form action={cancelRequest}>
                     <input name="request_id" type="hidden" value={request.id} />
                     <SubmitButton pendingLabel="…" variant="secondary">
@@ -154,7 +154,7 @@ export default async function MyBorrowsPage() {
                 <div className="flex items-center gap-3">
                   <StatusBadge tone={entry.status === "notified" ? "success" : "info"}>
                     <Hourglass className="size-3" />
-                    {entry.status}
+                    {waitlistStatusLabel(entry.status)}
                   </StatusBadge>
                   <form action={leaveWaitlist}>
                     <input name="entry_id" type="hidden" value={entry.id} />
@@ -180,7 +180,7 @@ export default async function MyBorrowsPage() {
                 <span className="type-body text-[13px] uppercase text-ink/70">
                   {request.item.title} · {formatDateRange(request.start_date, request.end_date)}
                 </span>
-                <StatusBadge tone={requestTone(request.status)}>{request.status}</StatusBadge>
+                <StatusBadge tone={requestTone(request.status)}>{requestStatusLabel(request.status)}</StatusBadge>
               </div>
             ))}
           </div>

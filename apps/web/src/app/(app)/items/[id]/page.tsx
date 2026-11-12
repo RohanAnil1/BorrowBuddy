@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ImageGallery } from "@/components/app/image-gallery";
 import { RequestForm } from "@/components/app/request-form";
 import { StatusBadge } from "@/components/app/status-badge";
-import { conditionLabel, formatMoney } from "@/lib/format";
+import { conditionLabel, formatDeposit, itemStatusLabel } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
 import { getItem, getItemAvailability } from "@/lib/data/items";
 
@@ -53,7 +53,7 @@ export default async function ItemPage({
             <StatusBadge tone="info">{conditionLabel(item.condition)}</StatusBadge>
             {item.category && <StatusBadge tone="muted">{item.category.name}</StatusBadge>}
             {item.status !== "available" && (
-              <StatusBadge tone="warning">{item.status}</StatusBadge>
+              <StatusBadge tone="warning">{itemStatusLabel(item.status)}</StatusBadge>
             )}
           </div>
 
@@ -65,7 +65,7 @@ export default async function ItemPage({
           </div>
 
           <dl className="grid gap-4 border border-line bg-panel p-6 sm:grid-cols-3">
-            <Spec label="DEPOSIT" value={formatMoney(item.deposit_amount)} />
+            <Spec label="DEPOSIT" value={formatDeposit(item.deposit_amount)} />
             <Spec label="MAX LOAN" value={`${item.max_loan_days} DAYS`} />
             <Spec
               label="PICKUP"

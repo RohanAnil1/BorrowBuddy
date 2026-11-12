@@ -132,7 +132,7 @@ private data class ItemDetails(val item: Item, val windows: List<AvailabilityWin
             CargoBody(item.description)
             CargoPanel {
                 CargoLabel("${Rules.conditions[item.condition] ?: item.condition} · ${item.category?.name.orEmpty()}", Cargo.Ink.copy(alpha = .6f))
-                CargoBody("DEPOSIT ₹${item.deposit_amount} · MAX LOAN ${item.max_loan_days} DAYS")
+                CargoBody("DEPOSIT ${depositLabel(item.deposit_amount)} · MAX LOAN ${item.max_loan_days} DAYS")
                 CargoBody("PICKUP: ${item.pickup_location?.name ?: "Coordinate in chat"}")
             }
             CargoPanel {
