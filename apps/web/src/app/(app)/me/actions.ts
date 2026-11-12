@@ -6,6 +6,7 @@ import type { ActionState } from "@/lib/action-state";
 import { requireProfile } from "@/lib/auth/guards";
 import { firstUploadPath } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
+import { flash } from "@/lib/flash";
 
 export async function updateProfile(
   _previous: ActionState,
@@ -72,7 +73,8 @@ export async function setEmailNotifications(formData: FormData): Promise<void> {
   const enabled = formData.get("enabled") === "1";
 
   const supabase = await createClient();
-  await supabase.from("profiles").update({ email_notifications: enabled }).eq("id", profile.id);
+  const { error } = await supabase.from("profiles").update({ email_notifications: enabled }).eq("id", profile.id);
+  await flash(error ? "Couldn't save that. Try again." : enabled ? "Email updates are on." : "Email updates are off.", error ? "error" : "success");
 
   revalidatePath("/me");
 }

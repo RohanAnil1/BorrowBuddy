@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { ItemCard } from "@/components/app/item-card";
+import { StaggerGrid } from "@/components/app/stagger-grid";
 import { requireVerified } from "@/lib/auth/guards";
 import { getSavedItems } from "@/lib/data/wishlist";
 
@@ -39,7 +40,7 @@ export default async function SavedItemsPage() {
             title="No saved items yet"
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StaggerGrid className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
               <div className="flex flex-col gap-2" key={item.id}>
                 <ItemCard item={item} saved />
@@ -48,7 +49,7 @@ export default async function SavedItemsPage() {
                 )}
               </div>
             ))}
-          </div>
+          </StaggerGrid>
         )}
       </div>
     </div>

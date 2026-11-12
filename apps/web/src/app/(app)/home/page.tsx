@@ -4,6 +4,7 @@ import type { ItemCondition } from "@borrowbuddy/shared";
 import { EmptyState } from "@/components/app/empty-state";
 import { FilterBar } from "@/components/app/filter-bar";
 import { ItemCard } from "@/components/app/item-card";
+import { StaggerGrid } from "@/components/app/stagger-grid";
 import { requireVerified } from "@/lib/auth/guards";
 import { getCategories, getPickupLocations, parseItemSort, searchItems } from "@/lib/data/items";
 import { getPendingRequestCount } from "@/lib/data/requests";
@@ -120,11 +121,11 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           />
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StaggerGrid className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((item) => (
                 <ItemCard item={item} key={item.id} saved={item.owner_id === profile.id ? undefined : savedState(savedIds, item.id)} />
               ))}
-            </div>
+            </StaggerGrid>
             <div className="mt-8 flex flex-col items-center gap-3">
               <p className="font-secondary text-[10px] text-ink/50" aria-live="polite">
                 SHOWING {items.length} {items.length === 1 ? "ITEM" : "ITEMS"}

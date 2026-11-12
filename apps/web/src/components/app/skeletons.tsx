@@ -1,14 +1,8 @@
 import { cn } from "@/lib/utils";
 
+/** A placeholder block: cargo-tape stripes with a light sweep (see .skeleton). */
 export function SkeletonBlock({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "animate-[pulse-soft_1.6s_ease-in-out_infinite] bg-ink/10",
-        className,
-      )}
-    />
-  );
+  return <div aria-hidden className={cn("skeleton rounded-sm", className)} />;
 }
 
 function SkeletonCard() {
@@ -26,7 +20,7 @@ function SkeletonCard() {
 
 export function FeedSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 dt:px-10">
+    <div aria-label="Loading" className="mx-auto w-full max-w-6xl px-4 py-8 dt:px-10" role="status">
       <SkeletonBlock className="h-3 w-32" />
       <SkeletonBlock className="mt-4 h-10 w-full max-w-80" />
       <SkeletonBlock className="mt-6 h-12 w-full" />
@@ -41,7 +35,7 @@ export function FeedSkeleton() {
 
 export function ListSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 dt:px-10">
+    <div aria-label="Loading" className="mx-auto w-full max-w-3xl px-4 py-8 dt:px-10" role="status">
       <SkeletonBlock className="h-3 w-28" />
       <SkeletonBlock className="mt-4 h-10 w-64" />
       <div className="mt-8 flex flex-col gap-4">
@@ -55,7 +49,7 @@ export function ListSkeleton() {
 
 export function DetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 dt:px-10">
+    <div aria-label="Loading" className="mx-auto w-full max-w-6xl px-4 py-8 dt:px-10" role="status">
       <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex flex-col gap-6">
           <SkeletonBlock className="aspect-[4/3] w-full" />
@@ -73,7 +67,7 @@ export function DetailSkeleton() {
 
 export function ThreadSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 dt:px-10">
+    <div aria-label="Loading" className="mx-auto w-full max-w-3xl px-4 py-6 dt:px-10" role="status">
       <SkeletonBlock className="h-12 w-64" />
       <div className="mt-6 flex flex-col gap-4">
         <SkeletonBlock className="h-14 w-2/3" />
