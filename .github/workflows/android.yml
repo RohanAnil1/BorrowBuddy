@@ -20,6 +20,10 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also installs the retired "tools" package, which
+          # cmdline-tools 16 no longer ships.
+          packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
       - name: Install Android SDK
         run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"

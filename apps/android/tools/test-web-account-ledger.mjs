@@ -86,7 +86,7 @@ export async function testWebAccountLedger({ baseUrl, email, emptyEmail, passwor
     await login(empty, emptyEmail); await empty.goto(`${baseUrl}/fines`); await empty.locator('main h1').waitFor(); await settle(empty);
     assert.equal(await empty.locator('main article').count(), 0);
     await empty.getByRole('heading', { name: /No fines on record/i }).waitFor();
-    await empty.getByText('No deposit', { exact: true }).waitFor();
+    await empty.getByText('₹0', { exact: true }).waitFor();
     await empty.screenshot({ path: fileURLToPath(new URL('../verification/web-account-ledger-empty-411.png', import.meta.url)) });
     await writeFile(new URL('../verification/web-account-ledger-measurements.json', import.meta.url), JSON.stringify(measurements, null, 2));
     return measurements;

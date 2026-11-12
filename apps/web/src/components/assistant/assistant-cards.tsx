@@ -3,6 +3,7 @@
 import { ArrowRight, ArrowUpRight, CalendarCheck, ImageOff, MapPin, Receipt } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { FINE_STATUS_LABELS } from "@borrowbuddy/shared";
 import type { AssistantCard } from "@/lib/assistant/types";
 import { buddy } from "./buddy-store";
 
@@ -123,7 +124,7 @@ export function AssistantCardView({ card, onNavigate }: { card: AssistantCard; o
                 <li key={fine.id}>
                   <span>
                     {fine.itemTitle ?? fine.reason}
-                    <small>{fine.status}</small>
+                    <small>{FINE_STATUS_LABELS[fine.status as keyof typeof FINE_STATUS_LABELS] ?? fine.status}</small>
                   </span>
                   <span>{fine.amount}</span>
                 </li>

@@ -17,7 +17,8 @@ import {
   conditionLabel,
   formatDate,
   formatDateRange,
-  formatMoney,
+  depositTag,
+  formatDeposit,
   loanStatusLabel,
   requestStatusLabel,
 } from "@/lib/format";
@@ -83,7 +84,7 @@ function toItemCard(item: Awaited<ReturnType<typeof searchItems>>[number]): Assi
     title: item.title,
     image: publicUrl(BUCKETS.itemImages, item.images[0]),
     condition: conditionLabel(item.condition),
-    deposit: item.deposit_amount > 0 ? `DEP ${formatMoney(item.deposit_amount)}` : "NO DEPOSIT",
+    deposit: depositTag(item.deposit_amount),
     spot: item.pickup_location?.name ?? null,
     trust: Math.round(item.owner?.trust_score ?? 0),
     owner: item.owner?.full_name ?? "Student",
@@ -508,7 +509,7 @@ const TOOLS: AssistantTool[] = [
           kind: "action",
           variant: "request",
           label: `Request ${clip(item.title, 28)}`,
-          description: `${formatDateRange(start, end)} · ${length} day${length === 1 ? "" : "s"} · deposit ${formatMoney(item.deposit_amount)}`,
+          description: `${formatDateRange(start, end)} · ${length} day${length === 1 ? "" : "s"} · ${item.deposit_amount > 0 ? `deposit ${formatDeposit(item.deposit_amount)}` : "no deposit"}`,
           href: `/items/${id}?start=${start}&end=${end}`,
         },
       };

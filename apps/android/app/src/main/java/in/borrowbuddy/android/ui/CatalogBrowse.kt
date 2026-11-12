@@ -42,12 +42,10 @@ import `in`.borrowbuddy.android.R
 import `in`.borrowbuddy.android.data.BorrowRepository
 import `in`.borrowbuddy.android.domain.*
 import kotlinx.coroutines.CancellationException
-import android.icu.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlin.math.roundToInt
 
 private val cssLineHeight = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
@@ -68,7 +66,7 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
     val scale by animateFloatAsState(if (hovered && !reduced) 1.03f else 1f, tween(if (reduced) 0 else 700), label = "source-cover-hover")
     var imageFailed by remember(item.images.firstOrNull()) { mutableStateOf(false) }
     var coverReady by remember(item.images.firstOrNull()) { mutableStateOf(false) }
-    val deposit = remember(item.deposit_amount) { if (item.deposit_amount == 0) "NO DEPOSIT" else NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-IN")).apply { maximumFractionDigits = 0 }.format(item.deposit_amount) }
+    val deposit = remember(item.deposit_amount) { if (item.deposit_amount > 0) "DEP ${ledgerMoney(item.deposit_amount)}" else "NO DEPOSIT" }
     Column(modifier.fillMaxWidth().testTag("catalog-item-${item.id}").semantics { this[CatalogCoverReady] = coverReady }.background(Cargo.Panel)
         .border(1.dp, if (hovered || focused) Cargo.Accent else Cargo.Line)
         .clickable(interactionSource = interaction, indication = null) { open(item.id) }.padding(1.dp)) {
@@ -97,7 +95,7 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
             HorizontalDivider(Modifier.padding(top = 12.dp), color = Cargo.Line)
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(item.owner?.full_name.orEmpty().uppercase(), Modifier.weight(1f), style = mono(9), color = Cargo.Ink.copy(alpha = .5f))
-                Text("DEP $deposit", style = mono(9), color = Cargo.Accent)
+                Text(deposit, style = mono(9), color = Cargo.Accent)
             }
         }
     }

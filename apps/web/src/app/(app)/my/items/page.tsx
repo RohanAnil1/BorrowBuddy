@@ -1,9 +1,10 @@
 import { Check, Inbox, Pause, Play, PlusCircle, Trash2 } from "lucide-react";
+import { ConfirmSubmit } from "@/components/app/confirm-submit";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge, requestTone } from "@/components/app/status-badge";
 import { SubmitButton } from "@/components/app/submit-button";
-import { formatDateRange, relativeTime } from "@/lib/format";
+import { formatDateRange, itemStatusLabel, relativeTime, requestStatusLabel } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
 import { getMyItems } from "@/lib/data/items";
 import { getIncomingRequests } from "@/lib/data/requests";
@@ -176,7 +177,7 @@ export default async function MyItemsPage({
                               : "muted"
                         }
                       >
-                        {item.status}
+                        {itemStatusLabel(item.status)}
                       </StatusBadge>
                       <span className="font-secondary text-[9px] text-ink/50">
                         {item.deposit_amount > 0
@@ -216,10 +217,15 @@ export default async function MyItemsPage({
                     </Link>
                     <form action={deleteItem}>
                       <input name="item_id" type="hidden" value={item.id} />
-                      <SubmitButton pendingLabel="…" variant="danger">
+                      <ConfirmSubmit
+                        confirmLabel="Delete listing"
+                        message={`"${item.title}" will be removed from the catalog. Past loans keep their history. This can't be undone.`}
+                        pendingLabel="…"
+                        title="Delete this listing?"
+                      >
                         <Trash2 className="size-3.5" />
                         Delete
-                      </SubmitButton>
+                      </ConfirmSubmit>
                     </form>
                   </div>
                 </article>
@@ -241,7 +247,7 @@ export default async function MyItemsPage({
                   {request.borrower.full_name} · {request.item.title} ·{" "}
                   {formatDateRange(request.start_date, request.end_date)}
                 </span>
-                <StatusBadge tone={requestTone(request.status)}>{request.status}</StatusBadge>
+                <StatusBadge tone={requestTone(request.status)}>{requestStatusLabel(request.status)}</StatusBadge>
               </div>
             ))}
           </div>

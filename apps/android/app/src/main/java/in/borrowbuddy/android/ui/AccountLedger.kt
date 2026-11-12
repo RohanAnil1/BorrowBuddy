@@ -47,8 +47,11 @@ val LedgerFineCount = SemanticsPropertyKey<Int>("LedgerFineCount")
 val LedgerOutstanding = SemanticsPropertyKey<Int>("LedgerOutstanding")
 val AccountViewportWidth = SemanticsPropertyKey<Int>("AccountViewportWidth")
 private fun accountWebText(value: String) = value.replace(Regex("[\\t\\n\\r\\u000C ]+"), " ").trim(' ').uppercase()
-internal fun ledgerMoney(amount: Int): String = if (amount == 0) "NO DEPOSIT" else
+/** Any rupee amount (fines, totals): ₹0 stays "₹0". Deposits use [depositLabel]. */
+internal fun ledgerMoney(amount: Int): String =
     NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-IN")).apply { maximumFractionDigits = 0 }.format(amount)
+/** A deposit value on its own: "NO DEPOSIT" when the owner asks for none. */
+internal fun depositLabel(amount: Int): String = if (amount > 0) ledgerMoney(amount) else "NO DEPOSIT"
 @Composable private fun accountViewport() = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
 @Composable internal fun sourceDisplayTitleStyle(viewport: Float = accountViewport()) = (viewport * .06f).coerceIn(40f, 64f).let { size ->
     loanBody(40).copy(fontFamily = Cargo.Title, fontSize = size.sp, lineHeight = (size * 1.05f).sp, letterSpacing = (size * .01f).sp,

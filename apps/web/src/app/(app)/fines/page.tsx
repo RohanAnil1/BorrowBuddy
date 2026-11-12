@@ -2,7 +2,7 @@ import { Receipt } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
-import { formatMoney, relativeTime } from "@/lib/format";
+import { fineStatusLabel, formatMoney, relativeTime } from "@/lib/format";
 import { requireProfile } from "@/lib/auth/guards";
 import { getFinesForUser, getOutstandingTotal } from "@/lib/data/fines";
 
@@ -71,7 +71,7 @@ export default async function FinesPage() {
                   fine.status === "pending" ? "danger" : fine.status === "waived" ? "muted" : "success"
                 }
               >
-                {fine.status}
+                {fineStatusLabel(fine.status)}
               </StatusBadge>
             </article>
           ))

@@ -237,7 +237,7 @@ private data class OwnerDeskData(val items: List<Item>, val requests: List<Borro
                 Text(item.status.uppercase(), Modifier.background(if (item.status == "available") color.copy(alpha = .15f) else if (item.status == "paused") color.copy(alpha = .1f) else Color.Transparent, CircleShape)
                     .border(1.dp, if (item.status in listOf("available", "paused")) color.copy(alpha = if (item.status == "available") .6f else .5f) else Cargo.Line, CircleShape)
                     .padding(horizontal = 10.dp, vertical = 4.dp), style = loanMono(9), color = color)
-                Text(if (item.deposit_amount > 0) "₹${item.deposit_amount} DEPOSIT" else "NO DEPOSIT", style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
+                Text(if (item.deposit_amount > 0) "${ledgerMoney(item.deposit_amount)} DEPOSIT" else "NO DEPOSIT", style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
             }
         }
         }

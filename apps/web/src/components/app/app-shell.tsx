@@ -4,6 +4,7 @@ import type { Profile } from "@borrowbuddy/shared";
 import { CargoMark } from "@/components/landing/hero";
 import { StatusTicker } from "@/components/landing/status-ticker";
 import { initials } from "@/lib/format";
+import { NavLink } from "./nav-link";
 
 const DESKTOP_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -38,15 +39,15 @@ export function AppShell({
 
           <nav className="order-last -mx-1 flex w-full flex-wrap items-center gap-1 pb-1.5 dt:order-none dt:mx-0 dt:w-auto dt:pb-0">
             {DESKTOP_LINKS.map((link) => (
-              <Link
+              <NavLink
                 className="type-body rounded-lg px-3 py-1.5 text-[13px] uppercase text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink dt:px-4 dt:py-2"
                 href={link.href}
                 key={link.href}
               >
                 {link.label}
-              </Link>
+              </NavLink>
             ))}
-            <Link
+            <NavLink
               className="type-body flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] uppercase text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink dt:px-4 dt:py-2"
               href="/my/items"
             >
@@ -56,7 +57,7 @@ export function AppShell({
                   {pendingCount}
                 </span>
               )}
-            </Link>
+            </NavLink>
           </nav>
 
           <div className="flex items-center gap-2">

@@ -1,4 +1,6 @@
 import type {
+  FineStatus,
+  ItemStatus,
   IncidentType,
   ItemCondition,
   LoanStatus,
@@ -149,6 +151,27 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   expired: "Expired",
   converted: "Approved",
 };
+
+export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
+  draft: "Draft",
+  available: "Available",
+  paused: "Paused",
+  retired: "Retired",
+};
+
+export const FINE_STATUS_LABELS: Record<FineStatus, string> = {
+  pending: "Unpaid",
+  settled: "Settled",
+  waived: "Waived",
+};
+
+export const WAITLIST_STATUS_LABELS = {
+  waiting: "Waiting",
+  notified: "Your turn",
+  converted: "Requested",
+  expired: "Expired",
+  cancelled: "Cancelled",
+} as const;
 
 export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   "campus_update",
