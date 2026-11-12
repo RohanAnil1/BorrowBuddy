@@ -5,8 +5,9 @@ import { hitAssistantLimit } from "@/lib/assistant/rate-limit";
 import { buildSystemPrompt } from "@/lib/assistant/system-prompt";
 import { ASSISTANT_TOOLS, runTool } from "@/lib/assistant/tools";
 import { ASSISTANT_LIMITS, type AssistantEvent } from "@/lib/assistant/types";
+import type { Profile } from "@borrowbuddy/shared";
 import { getCurrentProfile } from "@/lib/data/profiles";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, tokenClient, withBearerToken } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
@@ -27,8 +28,30 @@ function json(status: number, body: Record<string, unknown>, headers?: HeadersIn
   return Response.json(body, { status, headers });
 }
 
+/** The Android app authenticates with its Supabase access token. */
+function bearerToken(request: Request): string | null {
+  const header = request.headers.get("authorization") ?? "";
+  const match = header.match(/^Bearer\s+(\S{20,4096})$/i);
+  return match ? match[1] : null;
+}
+
+async function profileForToken(token: string): Promise<Profile | null> {
+  const supabase = tokenClient(token);
+  const { data: user } = await supabase.auth.getUser(token);
+  if (!user.user) return null;
+  const { data } = await supabase.from("profiles").select("*").eq("id", user.user.id).maybeSingle();
+  return (data as Profile | null) ?? null;
+}
+
 export async function POST(request: Request) {
-  const profile = await getCurrentProfile();
+  const token = bearerToken(request);
+  if (!token) return handle(request, await getCurrentProfile());
+  const profile = await profileForToken(token);
+  // Every createClient() inside this scope (tools, rate limit) acts as this user.
+  return withBearerToken(token, () => handle(request, profile));
+}
+
+async function handle(request: Request, profile: Profile | null) {
   if (!profile) return json(401, { error: "Sign in to talk to Buddy.", code: "unauthenticated" });
   if (profile.verification_status !== "verified") {
     return json(403, { error: "Buddy unlocks once your student ID is verified.", code: "unverified" });

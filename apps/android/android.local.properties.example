@@ -1,3 +1,7 @@
 # Public Supabase client configuration only. Never put service-role credentials here.
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your-public-anon-key
+
+# Web app serving /api/assistant (Buddy). Debug builds default to http://localhost:3000,
+# reached from a USB phone with: adb reverse tcp:3000 tcp:3000
+BORROWBUDDY_WEB_URL=

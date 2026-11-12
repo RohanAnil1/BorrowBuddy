@@ -24,6 +24,11 @@ export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
 
+  // Native apps send a Supabase access token; the route itself verifies it.
+  if (pathname.startsWith("/api/") && /^Bearer\s+\S+/i.test(request.headers.get("authorization") ?? "")) {
+    return NextResponse.next();
+  }
+
   if (!user && pathname.startsWith("/api/")) {
     // API callers (Buddy) need a status code, not a login page.
     return NextResponse.json({ error: "Sign in first.", code: "unauthenticated" }, { status: 401 });

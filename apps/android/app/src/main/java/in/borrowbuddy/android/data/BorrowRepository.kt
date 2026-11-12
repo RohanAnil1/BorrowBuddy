@@ -29,6 +29,7 @@ import kotlin.time.Duration.Companion.minutes
 
 class BorrowRepository(private val context: Context) {
     val campus by lazy { CampusRepository(context, this) }
+    val buddy by lazy { BuddyStore(context, this) }
     val configured = BuildConfig.SUPABASE_ANON_KEY.isNotBlank() && runCatching {
         val uri = java.net.URI(BuildConfig.SUPABASE_URL)
         uri.scheme == "https" || (BuildConfig.DEBUG && uri.scheme == "http" && uri.host in setOf("10.0.2.2", "127.0.0.1", "localhost"))
