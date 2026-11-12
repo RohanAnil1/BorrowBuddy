@@ -112,10 +112,11 @@ function routeIntent(message: string): ToolCall[] | string {
   if (/\b(fine|fines|owe|penalt|ledger|outstanding)\b/.test(t) && personal(t) && !hypothetical) {
     return [call("my_fines")];
   }
-  if (/\b(loan|loans|due|return|borrowed|borrowing|lending|lent)\b/.test(t) && personal(t) && !/\bhow\b/.test(t)) {
+  // "...if I return 2 days late?" is about the rules too, not this student's loans.
+  if (/\b(loan|loans|due|return|borrowed|borrowing|lending|lent)\b/.test(t) && personal(t) && !/\bhow\b/.test(t) && !hypothetical) {
     return [call("my_loans")];
   }
-  if (/\b(request|requests|approved|declined|pending)\b/.test(t) && personal(t) && !/\bhow\b/.test(t)) {
+  if (/\b(request|requests|approved|declined|pending)\b/.test(t) && personal(t) && !/\bhow\b/.test(t) && !hypothetical) {
     return [call("my_requests")];
   }
   if (/\b(notification|notifications|unread|inbox)\b/.test(t)) return [call("my_unread")];
