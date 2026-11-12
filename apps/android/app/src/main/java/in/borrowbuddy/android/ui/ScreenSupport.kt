@@ -70,8 +70,10 @@ fun friendlyError(failure: Throwable): String = when (failure) {
         verticalArrangement = Arrangement.spacedBy(20.dp), content = content)
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable fun <T> LoadScreen(key: Any?, load: suspend () -> T, refreshKey: Any? = null, inline: Boolean = false, content: @Composable (T) -> Unit) {
     var data by remember(key) { mutableStateOf<T?>(null) }
+    var pulling by remember(key) { mutableStateOf(false) }
     var error by remember(key) { mutableStateOf<String?>(null) }
     var offline by remember(key) { mutableStateOf(false) }
     var retry by remember(key) { mutableIntStateOf(0) }
@@ -81,6 +83,7 @@ fun friendlyError(failure: Throwable): String = when (failure) {
         try { data = load() }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { if (data == null) { error = friendlyError(failure); offline = connectionFailure(failure) } }
+        finally { pulling = false }
     }
     when {
         offline && !inline -> OfflineScreen(retry = { retry++ })
@@ -91,7 +94,16 @@ fun friendlyError(failure: Throwable): String = when (failure) {
         data == null -> Column(Modifier.fillMaxWidth().padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             CargoLabel("[ LOADING THE SHELF ]"); CircularProgressIndicator(color = Cargo.Accent)
         }
-        else -> content(data!!)
+        // Pull down to reload; Parcel thinks while the screen catches up.
+        inline -> content(data!!)
+        else -> {
+            val pull = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+            androidx.compose.material3.pulltorefresh.PullToRefreshBox(pulling, { pulling = true; retry++ }, Modifier.fillMaxSize().testTag("pull-refresh"), state = pull,
+                indicator = {
+                    androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(pull, pulling, Modifier.align(androidx.compose.ui.Alignment.TopCenter),
+                        containerColor = Cargo.Panel, color = Cargo.Accent)
+                }) { content(data!!) }
+        }
     }
 }
 

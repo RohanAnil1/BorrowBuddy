@@ -47,7 +47,7 @@ private fun ownerWebText(value: String) = value.replace(Regex("[\\t\\n\\r\\u000C
 private data class OwnerDeskData(val items: List<Item>, val requests: List<BorrowRequest>, val loans: List<Loan>)
 
 @Composable fun MyItemsScreen(repository: BorrowRepository, profile: Profile, openItem: (String) -> Unit,
-    openLoan: (String) -> Unit, edit: (String) -> Unit, create: () -> Unit) {
+    openLoan: (String) -> Unit, edit: (String) -> Unit, create: () -> Unit, openUser: (String) -> Unit = {}) {
     val actions = rememberActions()
     val listState = rememberLazyListState()
     var deleteId by rememberSaveable(profile.id) { mutableStateOf<String?>(null) }
@@ -71,6 +71,10 @@ private data class OwnerDeskData(val items: List<Item>, val requests: List<Borro
     } }, refreshKey = actions.revision) { (items, requests, loans) ->
         val pending = requests.filter { it.status == "pending" }
         val recent = requests.filter { it.status != "pending" }.take(8)
+        // One reputation lookup per distinct requester, after the desk renders.
+        val records by produceState<Map<String, ProfileStats?>>(emptyMap(), pending.map { it.borrower_id }) {
+            value = pending.map { it.borrower_id }.distinct().associateWith { repository.reputation(it) }
+        }
         val viewport = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
         val titleSize = (viewport * .06f).coerceIn(40f, 64f)
         val titleStyle = loanBody(40).copy(fontFamily = Cargo.Title, fontSize = titleSize.sp,
@@ -109,7 +113,7 @@ private data class OwnerDeskData(val items: List<Item>, val requests: List<Borro
                 }
                 itemsIndexed(pending, key = { _, request -> "request-${request.id}" }) { index, request ->
                     if (index > 0) Spacer(Modifier.height(12.dp))
-                    OwnerRequest(request, busy, activeAction,
+                    OwnerRequest(request, busy, activeAction, records[request.borrower_id], { openUser(request.borrower_id) },
                         approve = { submit("approve-${request.id}") { repository.rpc("approve_request", buildJsonObject { put("p_request_id", request.id) }) } },
                         decline = { reason -> submit("decline-${request.id}") { repository.rpc("decline_request", buildJsonObject {
                             put("p_request_id", request.id); put("p_reason", reason.trim().takeIf { it.isNotEmpty() }?.let(::JsonPrimitive) ?: JsonNull)
@@ -165,7 +169,8 @@ private data class OwnerDeskData(val items: List<Item>, val requests: List<Borro
     Text(text, Modifier.padding(top = 56.dp, bottom = 16.dp), style = loanMono(11), color = Cargo.Ink.copy(alpha = .6f))
 }
 
-@Composable private fun OwnerRequest(request: BorrowRequest, busy: Boolean, activeAction: String?, approve: () -> Unit, decline: (String) -> Unit) {
+@Composable private fun OwnerRequest(request: BorrowRequest, busy: Boolean, activeAction: String?, record: ProfileStats?, openProfile: () -> Unit,
+    approve: () -> Unit, decline: (String) -> Unit) {
     var reason by rememberSaveable(request.id) { mutableStateOf("") }
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -180,9 +185,12 @@ private data class OwnerDeskData(val items: List<Item>, val requests: List<Borro
         horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(Modifier.widthIn(max = 576.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                Text(ownerWebText(request.borrower?.full_name.orEmpty()), style = loanBody(15).copy(fontFamily = Cargo.Strong), color = Cargo.Ink)
+                Text(ownerWebText(request.borrower?.full_name.orEmpty()), Modifier.testTag("request-profile-${request.id}").clickable(onClick = openProfile)
+                    .semantics { contentDescription = "Open ${request.borrower?.full_name.orEmpty()}'s profile" },
+                    style = loanBody(15).copy(fontFamily = Cargo.Strong, textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline), color = Cargo.Ink)
                 Text("TRUST ${(request.borrower?.trust_score ?: 0.0).roundToInt()}", style = loanMono(9), color = Cargo.Accent)
             }
+            record?.let { Text(reputationLine(it, lender = false), Modifier.padding(top = 4.dp), style = loanBody(12), color = Cargo.Ink.copy(alpha = .6f)) }
             Text(ownerWebText("${request.item?.title.orEmpty()} · ${loanDateRange(request.start_date, request.end_date)}"),
                 Modifier.padding(top = 4.dp), style = loanMono(9).copy(lineBreak = LineBreak.Paragraph), color = Cargo.Ink.copy(alpha = .5f))
             request.message?.takeIf { it.isNotEmpty() }?.let { message ->

@@ -33,6 +33,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import androidx.compose.ui.platform.testTag
 
 @Composable fun ItemGallery(repository: BorrowRepository, images: List<String>, title: String) {
     val pager = rememberPagerState { images.size.coerceAtLeast(1) }
@@ -102,8 +105,10 @@ import kotlinx.coroutines.launch
 }
 
 private data class ItemDetails(val item: Item, val windows: List<AvailabilityWindow>)
+private data class ItemExtras(val reputation: ProfileStats?, val reviews: List<Review>, val savedIds: Set<String>?, val similar: List<Item>)
+
 @Composable fun ItemScreen(repository: BorrowRepository, profile: Profile, id: String, edit: () -> Unit, owner: (String) -> Unit, manage: () -> Unit,
-    initialStart: String? = null, initialEnd: String? = null) {
+    initialStart: String? = null, initialEnd: String? = null, openItem: (String) -> Unit = {}) {
     val actions = rememberActions()
     var start by rememberSaveable(id) { mutableStateOf(initialStart.orEmpty()) }
     var end by rememberSaveable(id) { mutableStateOf(initialEnd.orEmpty()) }
@@ -112,6 +117,24 @@ private data class ItemDetails(val item: Item, val windows: List<AvailabilityWin
     var dateState by remember(id) { mutableStateOf("idle") }
     LoadScreen(id to actions.revision, { ItemDetails(repository.item(id) ?: error("Item not found."), repository.availability(id)) }) { (item, windows) ->
         val isOwner = item.owner_id == profile.id
+        // Trust and discovery extras load after the item, so the page never waits on them.
+        val extras by produceState<ItemExtras?>(null, item.id) {
+            value = coroutineScope {
+                val reputation = async { repository.reputation(item.owner_id) }
+                val reviews = async { runCatching { repository.reviews(userId = item.owner_id).take(3) }.getOrDefault(emptyList()) }
+                val saved = async { repository.savedItemIds(profile.id) }
+                val similar = async { runCatching { repository.similarItems(item, profile.id) }.getOrDefault(emptyList()) }
+                ItemExtras(reputation.await(), reviews.await(), saved.await(), similar.await())
+            }
+        }
+        var savedIds by remember(extras) { mutableStateOf(extras?.savedIds) }
+        val scope = rememberCoroutineScope()
+        fun toggleSave(target: Item) {
+            val current = savedIds ?: return
+            val next = target.id !in current
+            savedIds = if (next) current + target.id else current - target.id
+            scope.launch { try { repository.setSaved(profile.id, target.id, next) } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { savedIds = current } }
+        }
         LaunchedEffect(start, end, windows) {
             dateState = "idle"
             if (start.isNotBlank() && end.isNotBlank()) {
@@ -128,7 +151,11 @@ private data class ItemDetails(val item: Item, val windows: List<AvailabilityWin
         Box(Modifier.weight(1f)) {
         ScreenColumn {
             ItemGallery(repository, item.images, item.title)
-            CargoTitle(item.title); StatusBadge(item.status)
+            CargoTitle(item.title)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatusBadge(item.status)
+                savedIds?.let { ids -> if (!isOwner) SaveHeart(item.id in ids, item.title, { toggleSave(item) }, inline = true) }
+            }
             CargoBody(item.description)
             CargoPanel {
                 CargoLabel("${Rules.conditions[item.condition] ?: item.condition} · ${item.category?.name.orEmpty()}", Cargo.Ink.copy(alpha = .6f))
@@ -138,10 +165,22 @@ private data class ItemDetails(val item: Item, val windows: List<AvailabilityWin
             CargoPanel {
                 CargoLabel("[ OWNER ]")
                 CargoButton(item.owner?.full_name ?: "Student profile", { owner(item.owner_id) }, secondary = true)
+                extras?.reputation?.let { CargoBody(reputationLine(it, lender = true)) }
                 CargoLabel("TRUST SCORE ${item.owner?.trust_score?.toInt() ?: 70}")
                 item.owner?.let { StatusBadge(it.verification_status) }
                 if (isOwner) { CargoButton("Edit listing", edit); CargoButton("Manage", manage, secondary = true) }
             }
+            if (!isOwner) extras?.let { loaded -> CargoPanel(Modifier.testTag("item-reviews")) {
+                CargoLabel("[ WHAT STUDENTS SAY ]")
+                if (loaded.reviews.isEmpty()) CargoBody("No reviews for ${item.owner?.full_name?.substringBefore(' ') ?: "this owner"} yet. Every student is ID-verified, and reviews appear after a completed loan.")
+                loaded.reviews.forEach { review ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        CargoLabel("${(review.reviewer?.full_name ?: "A student").uppercase()} · ${"★".repeat(review.rating)}${"☆".repeat(5 - review.rating)}", Cargo.Ink.copy(alpha = .8f))
+                        review.comment?.takeIf { it.isNotBlank() }?.let { CargoBody("“$it”") }
+                    }
+                }
+                CargoButton("Full profile", { owner(item.owner_id) }, secondary = true)
+            } }
             if (isOwner) CargoPanel { CargoLabel("[ YOUR LISTING ]"); CargoBody("Manage your listing from your items page.") }
             else if (sent) CargoPanel { CargoLabel("[ REQUEST DISPATCHED ]"); CargoBody("The owner has 48 hours to respond. You'll receive a notification either way.") }
             else {
@@ -158,6 +197,14 @@ private data class ItemDetails(val item: Item, val windows: List<AvailabilityWin
                 }
             }
             ActionFeedback(actions)
+            extras?.similar?.takeIf { it.isNotEmpty() }?.let { similar ->
+                CargoLabel("MORE IN ${(item.category?.name ?: "this category").uppercase()}", Cargo.Ink.copy(alpha = .75f))
+                LazyRow(Modifier.fillMaxWidth().testTag("item-similar"), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    itemsIndexed(similar, key = { _, other -> other.id }) { _, other ->
+                        ItemCard(other, repository, openItem, Modifier.width(240.dp), saved = savedIds?.contains(other.id), toggleSave = { toggleSave(other) })
+                    }
+                }
+            }
         }
         }
         AnimatedVisibility(!isOwner && !sent && dateState == "ok" && item.status == "available",
@@ -217,4 +264,12 @@ private data class ListingData(val item: Item?, val categories: List<Category>, 
             }
         }
     }
+}
+
+/** "3 completed loans · 4.8★ from 2 reviews", or a first-timer line. */
+internal fun reputationLine(stats: ProfileStats, lender: Boolean): String {
+    val loans = stats.completed_loans
+    val head = if (loans == 0L) (if (lender) "New to lending" else "First loan on BorrowBuddy") else "$loans completed ${if (loans == 1L) "loan" else "loans"}"
+    val rating = stats.rating_average?.let { " · ${"%.1f".format(it)}★ from ${stats.review_count} ${if (stats.review_count == 1L) "review" else "reviews"}" }.orEmpty()
+    return head + rating
 }

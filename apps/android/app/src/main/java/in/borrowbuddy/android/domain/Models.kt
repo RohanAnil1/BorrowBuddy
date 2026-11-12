@@ -16,6 +16,8 @@ data class Profile(
     val verification_note: String? = null,
     val trust_score: Double = 70.0,
     val is_admin: Boolean = false,
+    /** Null until the email migration is applied; the toggle hides then. */
+    val email_notifications: Boolean? = null,
     val created_at: String = "",
     val updated_at: String = "",
 )
@@ -125,4 +127,32 @@ data class Notification(
 data class CatalogFilters(
     val query: String = "", val categoryId: String? = null, val condition: String? = null,
     val locationId: String? = null, val from: String? = null, val to: String? = null,
+    val sort: ItemSort = ItemSort.Newest,
+)
+
+/** Catalog order, matching the web Browse page. */
+enum class ItemSort(val key: String, val label: String) {
+    Newest("newest", "Newest"), DepositLow("deposit_low", "Lowest deposit"), Trust("trust", "Most trusted owner")
+}
+
+@Serializable
+data class LoanExtension(
+    val id: String, val loan_id: String, val requested_by: String,
+    val previous_due_date: String, val new_due_date: String,
+    val status: String = "pending", val message: String? = null,
+    val created_at: String = "", val responded_at: String? = null,
+)
+
+@Serializable
+data class ImpactCategory(val slug: String, val name: String, val loans: Long = 0, val days: Long = 0, val saved: Long = 0)
+
+@Serializable
+data class ImpactStats(
+    val scope: String = "campus",
+    val completed_loans: Long = 0, val borrow_days: Long = 0, val money_saved: Long = 0,
+    val deposits_returned: Long = 0, val items_shared: Long = 0, val lenders: Long = 0, val borrowers: Long = 0,
+    val borrowed_loans: Long = 0, val borrowed_saved: Long = 0, val borrowed_days: Long = 0,
+    val lent_loans: Long = 0, val lent_saved: Long = 0, val students_helped: Long = 0,
+    val rehomed: Long = 0, val listed_items: Long = 0,
+    val categories: List<ImpactCategory> = emptyList(),
 )
