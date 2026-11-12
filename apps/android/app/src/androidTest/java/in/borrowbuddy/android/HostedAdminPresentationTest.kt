@@ -1,5 +1,6 @@
 package `in`.borrowbuddy.android
 
+import android.util.TypedValue
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -95,7 +96,10 @@ class HostedAdminPresentationTest {
             compose.waitUntil(30_000) { compose.onNodeWithTag("private-evidence-full").fetchSemanticsNode().config[PrivatePhotoLoaded] }
             compose.onNodeWithText("CLOSE").performClick()
             val note = hasTestTag("admin-resolution-$incidentId"); scroll(note)
-            assertEquals("Source single-line input, including a narrow placeholder", 37.5f, height("admin-resolution-$incidentId"), 1f)
+            val metrics = compose.activity.resources.displayMetrics
+            val scaledLine = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 19.5f, metrics) / metrics.density
+            assertEquals("Single-line input grows with system text scaling",
+                maxOf(37.5f, 18f + scaledLine), height("admin-resolution-$incidentId"), 1f)
             compose.onNode(note).performTextReplacement("Draft resolution retained across recreation.")
             androidx.test.espresso.Espresso.closeSoftKeyboard()
             restoration.emulateSavedInstanceStateRestore(); ready("admin-desk"); scroll(note)

@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -54,6 +55,7 @@ import `in`.borrowbuddy.android.domain.Profile
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route.orEmpty().substringBefore('?')
+    val chatKeyboardOpen = (route == "chat" || route == "chat/{id}") && WindowInsets.ime.getBottom(LocalDensity.current) > 0
     fun open(path: String) { nav.navigate(path) { launchSingleTop = true } }
     fun section(path: String) {
         nav.navigate(path) {
@@ -78,8 +80,11 @@ import `in`.borrowbuddy.android.domain.Profile
         this[PortalDestination] = route
         this[PortalPreviousDestination] = nav.previousBackStackEntry?.destination?.route.orEmpty()
     }) {
-        PortalTicker(ticker)
-        PortalHeader(profile, route, updates.notifications, updates.pendingRequests, ::section, ::open)
+        // Leave space for messages and the composer above the software keyboard.
+        if (!chatKeyboardOpen) {
+            PortalTicker(ticker)
+            PortalHeader(profile, route, updates.notifications, updates.pendingRequests, ::section, ::open)
+        }
         CompositionLocalProvider(LocalPortalRevision provides updates.revision) {
         NavHost(nav, startDestination = "home", modifier = Modifier.weight(1f)) {
             composable("home?spot={spot}&category={category}", arguments = listOf(navArgument("spot") { type = NavType.StringType; nullable = true; defaultValue = null }, navArgument("category") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStack ->

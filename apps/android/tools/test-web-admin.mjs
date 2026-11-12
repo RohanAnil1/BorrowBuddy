@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-export async function testWebAdmin({ baseUrl, email, password, state, pendingId, incidentId, fineId, pinId }) {
+export async function testWebAdmin({ baseUrl, email, password, state, pendingId, incidentId, fineId, pinId, phoneWidth = 411 }) {
   const require = createRequire(import.meta.url);
   let playwright;
   try { playwright = require('playwright'); } catch { playwright = require(join(process.env.NODE_MODULES_PATH, 'playwright')); }
@@ -15,7 +15,7 @@ export async function testWebAdmin({ baseUrl, email, password, state, pendingId,
     await page.bringToFront(); await page.goto(`${baseUrl}/login?next=%2Fhome`);
     await page.locator('input[name="email"]').fill(email); await page.locator('input[name="password"]').fill(password);
     await page.locator('form button[type="submit"]').click(); await page.waitForURL('**/home', { timeout: 60_000 });
-    for (const width of [411, 640, 1024]) {
+    for (const width of new Set([phoneWidth, 640, 1024])) {
       await page.setViewportSize({ width, height: 838 }); await page.goto(`${baseUrl}/admin`);
       await page.evaluate(() => document.fonts.ready);
       await page.waitForFunction(() => {

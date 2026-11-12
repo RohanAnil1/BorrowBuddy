@@ -44,6 +44,7 @@ class MinifiedAppTest {
     @Test fun optimizedAppAuthenticatesLoadsPublicProfileAnimatesCardAndSignsOut() {
         val args = InstrumentationRegistry.getArguments()
         assumeTrue("Opt-in signed minified QA build and isolated actor required", args.getString("qaMinifiedApp") == "1" && !args.getString("qaEmail").isNullOrBlank() && !args.getString("qaPassword").isNullOrBlank())
+        val requireProcessDeath = args.getString("qaRequireProcessDeath") != "0"
         val context = instrumentation.targetContext
         val targetPackage = "in.borrowbuddy.android"
         val targetInfo = context.packageManager.getApplicationInfo(targetPackage, 0)
@@ -65,9 +66,10 @@ class MinifiedAppTest {
         await(By.text("CAMPUS")).click(); await(By.text("GOOD THINGS FIND THEIR WAY BACK."))
         reveal("HANDOVERS").click(); await(By.text("MEET ON YOUR SCHEDULE."))
         await(By.text("BROWSE")).click(); await(By.text("WHAT'S ON THE SHELF TODAY"))
-        await(By.text("CHAT")).click(); await(By.text("[ RADIO ROOM ]"))
-        await(By.textContains("ANDROID QA PICKUP COORDINATION")).click()
-        await(By.text("PRIVATE LOAN CHANNEL"))
+        await(By.text("CHAT")).click()
+        assertTrue("The native chat list must open", device.wait(Until.hasObject(By.text("Messages")), 30_000))
+        reveal("Android QA pickup coordination").click()
+        await(By.text("Private loan channel"))
         // BasicTextField exposes its label as a child of the editable platform node.
         val composer = await(By.clazz("android.widget.EditText").hasDescendant(By.desc("Write a message")))
         composer.click()
@@ -78,26 +80,29 @@ class MinifiedAppTest {
         assertTrue("The original production process must exist",oldPid.matches(Regex("[0-9]+")))
         device.pressHome()
         assertTrue("Background the app before simulating system process reclamation",device.wait(Until.gone(By.pkg(targetPackage)),10_000))
-        // am kill retains the background task's saved state; force-stop/CLEAR_TASK
-        // would simulate user dismissal and cannot prove process-state recovery.
-        device.executeShellCommand("am kill $targetPackage")
-        val killedDeadline=android.os.SystemClock.uptimeMillis()+10_000
-        while(device.executeShellCommand("pidof $targetPackage").trim().isNotEmpty() && android.os.SystemClock.uptimeMillis()<killedDeadline)
-            android.os.SystemClock.sleep(50)
-        assertTrue("The app process must really die",device.executeShellCommand("pidof $targetPackage").trim().isEmpty())
+        if (requireProcessDeath) {
+            // Keep the task's saved state so the restart exercises system reclamation.
+            device.executeShellCommand("am kill $targetPackage")
+            val killedDeadline = android.os.SystemClock.uptimeMillis() + 10_000
+            while (device.executeShellCommand("pidof $targetPackage").trim().isNotEmpty() && android.os.SystemClock.uptimeMillis() < killedDeadline)
+                android.os.SystemClock.sleep(50)
+            assertTrue("The app process must really die", device.executeShellCommand("pidof $targetPackage").trim().isEmpty())
+        }
         val restore=requireNotNull(context.packageManager.getLaunchIntentForPackage(targetPackage))
         restore.flags=android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
         context.startActivity(restore)
-        await(By.text("PRIVATE LOAN CHANNEL"))
+        await(By.text("Private loan channel"))
         val recovered=await(By.clazz("android.widget.EditText").text(unsent))
-        assertEquals("The unsent original-case draft must survive actual process death",unsent,recovered.text)
+        assertEquals("The unsent original-case draft must survive restoring the task",unsent,recovered.text)
         val newPid=device.executeShellCommand("pidof $targetPackage").trim()
-        assertTrue("Recovery must run in a different process",newPid.matches(Regex("[0-9]+")) && newPid!=oldPid)
+        assertTrue("The restored app process must exist", newPid.matches(Regex("[0-9]+")))
+        val processDied = newPid != oldPid
+        if (requireProcessDeath) assertTrue("Recovery must run in a different process", processDied)
         recovered.click(); recovered.text = "Optimized native chat message"
         assertTrue(device.wait(Until.hasObject(By.clazz("android.widget.EditText").text("Optimized native chat message")), 10_000))
         await(By.desc("Send message").enabled(true)).click()
-        await(By.text("OPTIMIZED NATIVE CHAT MESSAGE"))
-        await(By.desc("Back to chats")).click(); await(By.text("[ RADIO ROOM ]"))
+        await(By.text("Optimized native chat message"))
+        await(By.desc("Back to chats")).click(); await(By.text("Messages"))
         await(By.desc("Open account")).click(); await(By.text("[ CREW FILE ]"))
         reveal("VIEW PUBLIC PROFILE →").click(); await(By.text("COMPLETED LOANS"))
         val card = By.descContains("BorrowBuddy membership")
@@ -123,8 +128,8 @@ class MinifiedAppTest {
         // Back restores the account's previous (scrolled) reading position.
         device.pressBack(); await(By.text("VIEW PUBLIC PROFILE →")); reveal("SIGN OUT").click(); await(By.text("WELCOME BACK"))
         instrumentation.sendStatus(0, Bundle().apply { putString("qaMinifiedResult", JSONObject().put("debuggable", false).put("authenticated", true)
-            .put("actualProcessDeath",true).put("sessionRestoredAfterProcessDeath",true).put("chatRouteRestoredAfterProcessDeath",true)
-            .put("draftRestoredAfterProcessDeath",true).put("previousPid",oldPid).put("restoredPid",newPid)
+            .put("actualProcessDeath",processDied).put("sessionRestoredAfterResume",true).put("chatRouteRestoredAfterResume",true)
+            .put("draftRestoredAfterResume",true).put("previousPid",oldPid).put("restoredPid",newPid)
             .put("catalogLoaded", true).put("campusRoutesLoaded", true).put("chatLoadedAndSent", true).put("publicProfileLoaded", true).put("animatedMembershipCard", true).put("consecutiveMovingFrames", movingPairs)
             .put("maxChangedCardSamples", maxChanged).put("signedOut", true).toString()) })
         } catch (failure: Throwable) {

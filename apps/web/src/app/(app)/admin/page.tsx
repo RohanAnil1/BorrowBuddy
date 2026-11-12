@@ -371,7 +371,7 @@ export default async function AdminPage({
                   <div className="flex items-center gap-4">
                     {mapped ? (
                       <span
-                        className="relative block aspect-[4/3] w-20 shrink-0 border border-line bg-[url(/campus-map.png)] bg-cover bg-center"
+                        className="relative block aspect-[4/3] w-20 shrink-0 border border-line bg-[url(/campus-map-thumb.webp)] bg-cover bg-center"
                         title={`${location.xp}% / ${location.yp}%`}
                       >
                         <span

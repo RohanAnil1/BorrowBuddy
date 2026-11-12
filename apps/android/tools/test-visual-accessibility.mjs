@@ -46,7 +46,7 @@ try {
     await shell('wm', 'size', item.size); await shell('wm', 'density', '160');
     await shell('settings', 'put', 'system', 'font_scale', item.font);
     assert((await shell('pm', 'clear', '--user', '0', 'in.borrowbuddy.android')).includes('Success'));
-    const report = await execute(['shell', 'am', 'instrument', '--user', '0', '-w', '-r', '-e', 'class', methods.map(name => `in.borrowbuddy.android.${testClass}#${name}`).join(','), 'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner'], 360000);
+    const report = await execute(['shell', 'am', 'instrument', '--user', '0', '-w', '-r', '-e', 'class', methods.map(name => `in.borrowbuddy.android.${testClass}#${name}`).join(','), 'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner'], 360000);
     const output = report.stdout + report.stderr;
     const stem = `${prefix}-${item.name}-${run}`;
     await writeFile(`${dir}/${stem}.txt`, output);

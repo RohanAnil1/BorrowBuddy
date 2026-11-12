@@ -138,10 +138,11 @@ export async function getThreadMessages(conversationId: string, limit = 100): Pr
     .from("messages")
     .select("*, sender:profiles!messages_sender_id_fkey(id, full_name, avatar_path)")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
 
-  return (data as ThreadMessage[] | null) ?? [];
+  return ((data as ThreadMessage[] | null) ?? []).reverse();
 }
 
 export async function getConversationCounterpart(
