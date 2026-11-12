@@ -5,6 +5,7 @@
       "name": "web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace", "@borrowbuddy/web"],
+      "env": { "NODE_USE_SYSTEM_CA": "1" },
       "port": 3000
     }
   ]

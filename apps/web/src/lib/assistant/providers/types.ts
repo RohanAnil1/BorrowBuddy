@@ -34,15 +34,25 @@ export class ProviderError extends Error {
     message: string,
     readonly status: number,
     readonly retryable: boolean,
+    /** Seconds the provider asked us to wait, when it said. */
+    readonly retryAfter?: number,
   ) {
     super(message);
     this.name = "ProviderError";
   }
 }
 
-export function providerErrorFrom(status: number, body: string, provider: string): ProviderError {
+export function providerErrorFrom(
+  status: number,
+  body: string,
+  provider: string,
+  headers?: Headers,
+): ProviderError {
   const retryable = status === 429 || status >= 500 || status === 408;
-  return new ProviderError(`${provider} ${status}: ${body.slice(0, 300)}`, status, retryable);
+  const header = Number(headers?.get("retry-after"));
+  const inBody = Number(body.match(/try again in ([\d.]+)s/i)?.[1]);
+  const retryAfter = Number.isFinite(header) && header > 0 ? header : Number.isFinite(inBody) ? inBody : undefined;
+  return new ProviderError(`${provider} ${status}: ${body.slice(0, 300)}`, status, retryable, retryAfter);
 }
 
 /** Parse a fetch body as server-sent events, yielding each `data:` payload. */

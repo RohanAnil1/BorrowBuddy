@@ -55,7 +55,7 @@ const assistantEnvSchema = z.object({
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).default("gemini-flash-latest"),
   GROQ_API_KEY: z.string().min(1).optional(),
-  GROQ_MODEL: z.string().min(1).default("llama-3.3-70b-versatile"),
+  GROQ_MODEL: z.string().min(1).default("openai/gpt-oss-120b"),
 });
 
 export type AssistantEnv = z.infer<typeof assistantEnvSchema>;
@@ -73,5 +73,5 @@ export function getAssistantEnv(): AssistantEnv {
   });
   return parsed.success
     ? parsed.data
-    : { GEMINI_MODEL: "gemini-flash-latest", GROQ_MODEL: "llama-3.3-70b-versatile" };
+    : { GEMINI_MODEL: "gemini-flash-latest", GROQ_MODEL: "openai/gpt-oss-120b" };
 }

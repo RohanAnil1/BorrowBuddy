@@ -23,7 +23,9 @@ export function suggestionsFor(path: string): string[] {
 
 /** Tiny, safe formatter: paragraphs, "- " lists and **bold**. No HTML. */
 function RichText({ text }: { text: string }) {
-  const blocks = text.trim().split(/\n{2,}/);
+  // Models sometimes write markdown links; real links only come from cards.
+  const plain = text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\*\*\[([^\]]+)\]\*\*/g, "**$1**");
+  const blocks = plain.trim().split(/\n{2,}/);
   const inline = (line: string, key: number) => (
     <Fragment key={key}>
       {line.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>

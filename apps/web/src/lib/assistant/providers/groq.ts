@@ -68,7 +68,7 @@ export function createGroqProvider(apiKey: string, model: string): LLMProvider {
         signal,
       });
       if (!response.ok || !response.body) {
-        throw providerErrorFrom(response.status, await response.text().catch(() => ""), "groq");
+        throw providerErrorFrom(response.status, await response.text().catch(() => ""), "groq", response.headers);
       }
 
       const pending = new Map<number, { id: string; name: string; args: string }>();
