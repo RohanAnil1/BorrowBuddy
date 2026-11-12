@@ -1,10 +1,10 @@
-import { Bell } from "lucide-react";
 import Link from "next/link";
 import type { Profile } from "@borrowbuddy/shared";
 import { CargoMark } from "@/components/landing/hero";
 import { StatusTicker } from "@/components/landing/status-ticker";
 import { initials } from "@/lib/format";
 import { NavLink } from "./nav-link";
+import { NotificationBell } from "./notification-bell";
 
 const DESKTOP_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -69,18 +69,7 @@ export function AppShell({
                 [ ADMIN ]
               </Link>
             )}
-            <Link
-              aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
-              className="relative flex size-9 items-center justify-center rounded-lg border border-line text-ink/60 transition-colors hover:border-accent hover:text-accent"
-              href="/notifications"
-            >
-              <Bell className="size-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center bg-accent font-secondary text-[8px] text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
+            <NotificationBell unreadCount={unreadCount} userId={profile.id} />
             <Link
               className="flex size-9 items-center justify-center bg-panel font-title text-sm text-ink"
               href="/me"

@@ -14,6 +14,6 @@ export async function markAllRead(): Promise<void> {
     .eq("user_id", profile.id)
     .is("read_at", null);
 
-  revalidatePath("/notifications");
-  revalidatePath("/home");
+  // The bell lives in the shared layout, so refresh every page's badge.
+  revalidatePath("/", "layout");
 }

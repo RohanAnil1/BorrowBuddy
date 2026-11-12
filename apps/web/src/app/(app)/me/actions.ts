@@ -65,3 +65,14 @@ export async function submitStudentId(
   revalidatePath("/pending");
   return { status: "success", message: "Submitted for review." };
 }
+
+/** Turn email updates on or off for the signed-in student. */
+export async function setEmailNotifications(formData: FormData): Promise<void> {
+  const profile = await requireProfile();
+  const enabled = formData.get("enabled") === "1";
+
+  const supabase = await createClient();
+  await supabase.from("profiles").update({ email_notifications: enabled }).eq("id", profile.id);
+
+  revalidatePath("/me");
+}

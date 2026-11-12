@@ -90,6 +90,8 @@ export interface Profile {
   verification_note: string | null;
   trust_score: number;
   is_admin: boolean;
+  /** Wants email for important updates (default true). */
+  email_notifications?: boolean;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
