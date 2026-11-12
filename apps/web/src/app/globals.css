@@ -305,6 +305,27 @@ body {
   }
 }
 
+/* Member card stamps: a single press, like a rubber stamp hitting paper.
+   Animates `scale` only so each stamp keeps its inline `rotate` tilt. */
+.stamp-press {
+  animation: stamp-press 0.42s var(--ease-cargo) both;
+}
+
+@keyframes stamp-press {
+  0% {
+    scale: 1.45;
+    opacity: 0;
+  }
+  60% {
+    scale: 0.94;
+    opacity: 1;
+  }
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
 
 /* Dot-matrix monogram tile on paper tags. */
 .monogram-tile {

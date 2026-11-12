@@ -24,6 +24,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import `in`.borrowbuddy.android.domain.Profile
+import `in`.borrowbuddy.android.domain.ProfileStamp
 import `in`.borrowbuddy.android.graphics.MemberCardArtwork
 import `in`.borrowbuddy.android.graphics.MemberLanyardView
 import `in`.borrowbuddy.android.graphics.memberCode
@@ -32,7 +33,8 @@ val MemberCardReady=SemanticsPropertyKey<Boolean>("MemberCardReady")
 val MemberCardBack=SemanticsPropertyKey<Boolean>("MemberCardBack")
 val MemberCardRole=SemanticsPropertyKey<String>("MemberCardRole")
 
-@Composable fun MemberIdCard(profile: Profile, modifier: Modifier=Modifier) {
+/** [stamps] is null when they could not be loaded or the viewer is unverified: the panel is left out. */
+@Composable fun MemberIdCard(profile: Profile, modifier: Modifier=Modifier, stamps: List<ProfileStamp>?=null, ownerStamps: Boolean=false) {
     val context=LocalContext.current
     val artwork=remember(profile) { MemberCardArtwork(context,profile) }
     var ready by remember(profile.id) { mutableStateOf(false) }
@@ -74,6 +76,7 @@ val MemberCardRole=SemanticsPropertyKey<String>("MemberCardRole")
                 },update={ it.reducedMotion=reduced; it.updateProfile(profile); it.setBack(back) },modifier=Modifier.fillMaxSize()) }
             }
         }
+        stamps?.let { MemberStamps(it, ownerStamps) }
         FlowRow(Modifier.fillMaxWidth().padding(horizontal=21.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween,
             verticalArrangement=Arrangement.spacedBy(8.dp),itemVerticalAlignment=Alignment.CenterVertically) {
             Text(if(ready) "DRAG TO SWING · TAP TO FLIP" else "YOUR BORROWBUDDY MEMBERSHIP",style=loanMono(9),color=Cargo.Ink.copy(alpha=.5f))

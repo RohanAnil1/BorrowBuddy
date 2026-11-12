@@ -8,13 +8,18 @@ import { SubmitButton } from "@/components/app/submit-button";
 import { VERIFICATION_STATUS_LABELS } from "@borrowbuddy/shared";
 import { requireProfile } from "@/lib/auth/guards";
 import { getOutstandingTotal } from "@/lib/data/fines";
+import { getProfileStamps } from "@/lib/data/stamps";
 import { signOut } from "../actions";
 
 export const metadata = { title: "You" };
 
 export default async function MePage() {
   const profile = await requireProfile();
-  const outstanding = await getOutstandingTotal(profile.id);
+  // Stamps need a verified viewer; pending students see the card without them.
+  const [outstanding, stamps] = await Promise.all([
+    getOutstandingTotal(profile.id),
+    profile.verification_status === "verified" ? getProfileStamps(profile.id) : null,
+  ]);
 
   const tone =
     profile.verification_status === "verified"
@@ -52,7 +57,7 @@ export default async function MePage() {
         </p>
       )}
 
-      <MemberIdCard profile={toMemberCardProfile(profile)} />
+      <MemberIdCard profile={toMemberCardProfile(profile)} stamps={stamps} stampView="owner" />
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
         <Link

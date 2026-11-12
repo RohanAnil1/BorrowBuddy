@@ -159,6 +159,10 @@ class BorrowRepository(private val context: Context) {
     }.decodeList()
     suspend fun publicProfile(id: String): Profile? = client.from("profiles").select(Columns.raw("id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,created_at")) { filter { eq("id", id) } }.decodeSingleOrNull()
     suspend fun profileStats(id: String): ProfileStats = rpc("get_public_profile_stats", buildJsonObject { put("p_profile_id", id) }).decodeSingle()
+    /** Member card stamps are decorative: any failure hides them instead of failing the screen. */
+    suspend fun profileStamps(id: String): List<ProfileStamp>? = try {
+        ProfileStamps.normalize(rpc("get_profile_stamps", buildJsonObject { put("p_profile_id", id) }).decodeList<ProfileStamp>())
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { null }
     suspend fun profileListings(id: String): List<Item> = client.from("items").select(itemColumns) {
         filter { eq("owner_id", id); eq("status", "available") }; order("created_at", Order.DESCENDING); limit(12)
     }.decodeList()

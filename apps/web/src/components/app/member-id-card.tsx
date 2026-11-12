@@ -5,10 +5,13 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createMemberCardArt } from "./member-card-art";
 import { memberCode, type MemberCardProfile } from "./member-card-profile";
+import { MemberStamps } from "./member-stamps";
+import type { ProfileStamp } from "@/lib/stamps";
 
 const Lanyard = dynamic(() => import("@/components/reactbits/lanyard/Lanyard"), { ssr: false });
 
-export function MemberIdCard({ profile }: { profile: MemberCardProfile }) {
+/** `stamps` is null when they could not be loaded (or the viewer is unverified): the panel is then left out. */
+export function MemberIdCard({ profile, stamps = null, stampView = "public" }: { profile: MemberCardProfile; stamps?: ProfileStamp[] | null; stampView?: "owner" | "public" }) {
   const root = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   const [art, setArt] = useState<Awaited<ReturnType<typeof createMemberCardArt>>>();
@@ -44,6 +47,7 @@ export function MemberIdCard({ profile }: { profile: MemberCardProfile }) {
         </div>}
         {art && !failed && <Lanyard frontImage={art.front} backImage={art.back} strapImage={art.strap} size={0.69} strapLength={0.16} strapWidth={0.65} cardColor="#080b10" finish="matte" metal="silver" damping={0.65} breeze={0.18} onReady={onReady} onError={onError} onFlip={setBack} flipSignal={flipSignal} />}
       </div>
+      {stamps && <MemberStamps stamps={stamps} view={stampView} />}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
         <p className="font-secondary text-[9px] text-ink/50">{ready ? "DRAG TO SWING · TAP TO FLIP" : "YOUR BORROWBUDDY MEMBERSHIP"}</p>
         <button type="button" onClick={flip} className="min-h-12 px-3 font-secondary text-[10px] text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" aria-label={back ? "Show front of ID card" : "Show back of ID card"}>FLIP CARD ↻</button>
