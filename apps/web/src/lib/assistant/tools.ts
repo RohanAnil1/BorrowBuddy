@@ -148,14 +148,14 @@ const TOOLS: AssistantTool[] = [
     name: "search_items",
     label: "Searching the catalog",
     description:
-      "Search items students are lending right now. Use for any 'find', 'need', 'borrow', 'is there a' question. Optional date range (YYYY-MM-DD, both or neither) hides items already booked for those dates.",
+      "Find items students lend. Optional dates hide items booked then.",
     parameters: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Short keywords, e.g. 'calculator' or 'drafter'." },
-        category: { type: "string", description: "Optional category name, e.g. 'Electronics'." },
-        start_date: { type: "string", description: "First day needed, YYYY-MM-DD." },
-        end_date: { type: "string", description: "Last day needed, YYYY-MM-DD." },
+        query: { type: "string", description: "1-2 keywords" },
+        category: { type: "string", description: "Category name" },
+        start_date: { type: "string", description: "YYYY-MM-DD" },
+        end_date: { type: "string", description: "YYYY-MM-DD" },
       },
     },
     async run(raw) {
@@ -236,10 +236,10 @@ const TOOLS: AssistantTool[] = [
   {
     name: "get_item",
     label: "Checking that item",
-    description: "Get one item's details and its booked date ranges. Needs the item id from search_items.",
+    description: "One item's details and booked dates.",
     parameters: {
       type: "object",
-      properties: { item_id: { type: "string", description: "The item's id." } },
+      properties: { item_id: { type: "string", description: "Item id" } },
       required: ["item_id"],
     },
     async run(raw) {
@@ -269,7 +269,7 @@ const TOOLS: AssistantTool[] = [
   {
     name: "list_categories",
     label: "Reading the categories",
-    description: "List the catalog categories.",
+    description: "Catalog categories.",
     parameters: { type: "object", properties: {} },
     async run() {
       const categories = await getCategories();
@@ -279,7 +279,7 @@ const TOOLS: AssistantTool[] = [
   {
     name: "list_pickup_spots",
     label: "Opening the campus map",
-    description: "List the campus pickup spots where handovers happen.",
+    description: "Campus pickup spots.",
     parameters: { type: "object", properties: {} },
     async run() {
       const live = await getPickupLocations().catch(() => []);
@@ -295,11 +295,11 @@ const TOOLS: AssistantTool[] = [
   {
     name: "my_loans",
     label: "Checking your loans",
-    description: "The signed-in student's current loans (borrowing and lending) with due dates.",
+    description: "Student's own loans and due dates.",
     parameters: {
       type: "object",
       properties: {
-        include_past: { type: "boolean", description: "Also include finished loans." },
+        include_past: { type: "boolean", description: "Include finished" },
       },
     },
     async run(raw, { profile }) {
@@ -353,7 +353,7 @@ const TOOLS: AssistantTool[] = [
     name: "my_requests",
     label: "Checking your requests",
     description:
-      "The signed-in student's borrow requests: ones they sent (outgoing) and ones waiting on their own items (incoming).",
+      "Student's own sent and incoming requests.",
     parameters: { type: "object", properties: {} },
     async run(_raw, { profile }) {
       const [incoming, outgoing] = await Promise.all([
@@ -390,7 +390,7 @@ const TOOLS: AssistantTool[] = [
   {
     name: "my_fines",
     label: "Opening your ledger",
-    description: "The signed-in student's fines and outstanding total.",
+    description: "Student's own fines and total owed.",
     parameters: { type: "object", properties: {} },
     async run(_raw, { profile }) {
       const [fines, total] = await Promise.all([getFinesForUser(profile.id), getOutstandingTotal(profile.id)]);
@@ -419,7 +419,7 @@ const TOOLS: AssistantTool[] = [
   {
     name: "my_unread",
     label: "Checking notifications",
-    description: "How many unread notifications the signed-in student has.",
+    description: "Student's unread notification count.",
     parameters: { type: "object", properties: {} },
     async run(_raw, { profile }) {
       const unread = await getUnreadCount(profile.id);
@@ -434,13 +434,13 @@ const TOOLS: AssistantTool[] = [
   {
     name: "explain_policy",
     label: "Reading the rulebook",
-    description: "Official BorrowBuddy rules for a topic. Always use this before answering policy questions.",
+    description: "Official rules for a topic.",
     parameters: {
       type: "object",
       properties: {
         topic: {
           type: "string",
-          description: "The topic.",
+          description: "Topic",
           enum: Object.keys(POLICY),
         },
       },
@@ -456,12 +456,12 @@ const TOOLS: AssistantTool[] = [
     name: "propose_navigation",
     label: "Finding the right page",
     description:
-      "Offer the student a button to open a BorrowBuddy page. Allowed: /home (optionally ?q=), /dashboard, /my/borrows, /my/items, /items/new, /fines, /map, /chat, /campus, /campus/lost-found, /campus/giveaways, /campus/activity, /campus/handovers, /notifications, /me, /items/{id}, /loans/{id}.",
+      "Show a button to a page: /home, /dashboard, /my/borrows, /my/items, /items/new, /fines, /map, /chat, /campus, /campus/lost-found, /campus/giveaways, /campus/handovers, /notifications, /me, /items/{id}, /loans/{id}.",
     parameters: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Internal path, e.g. /map." },
-        label: { type: "string", description: "Short button text, e.g. 'Open the map'." },
+        path: { type: "string", description: "Path" },
+        label: { type: "string", description: "Button text" },
       },
       required: ["path"],
     },
@@ -479,11 +479,11 @@ const TOOLS: AssistantTool[] = [
     name: "propose_request",
     label: "Preparing your request",
     description:
-      "Offer a button that opens an item's request form with dates prefilled. The student reviews and sends it themselves. Needs item_id from search_items and dates YYYY-MM-DD.",
+      "Show a button opening an item's request form with dates filled in.",
     parameters: {
       type: "object",
       properties: {
-        item_id: { type: "string", description: "The item's id." },
+        item_id: { type: "string", description: "Item id" },
         start_date: { type: "string", description: "YYYY-MM-DD" },
         end_date: { type: "string", description: "YYYY-MM-DD" },
       },

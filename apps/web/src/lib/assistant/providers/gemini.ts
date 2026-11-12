@@ -75,7 +75,7 @@ export function createGeminiProvider(apiKey: string, model: string): LLMProvider
         },
       );
       if (!response.ok || !response.body) {
-        throw providerErrorFrom(response.status, await response.text().catch(() => ""), "gemini");
+        throw providerErrorFrom(response.status, await response.text().catch(() => ""), "gemini", response.headers);
       }
 
       const calls: ToolCall[] = [];

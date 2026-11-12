@@ -84,6 +84,7 @@ export async function POST(request: Request) {
       const messages = [...history];
       const chain = providerChain();
       let providerIndex = 0;
+      let waitedMs = 0;
       let announced: string | null = null;
 
       const announce = (provider: LLMProvider) => {
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
           let calls: ToolCall[] = [];
 
           // Try providers in order until one answers this step.
+          let retried = false;
           for (;;) {
             const provider = chain[providerIndex];
             announce(provider);
@@ -121,15 +123,44 @@ export async function POST(request: Request) {
               break;
             } catch (error) {
               if (request.signal.aborted) throw error;
+              // A dropped connection (flaky Wi-Fi, TLS-inspecting antivirus) often
+              // succeeds on a second try; retry once before changing provider.
+              const network = !(error instanceof ProviderError);
+              if (network && !text && !retried) {
+                retried = true;
+                await new Promise((resolve) => setTimeout(resolve, 400));
+                continue;
+              }
+              // Free tiers cap tokens per minute and usually free up within seconds.
+              // A short wait keeps the real AI answering instead of quick mode.
+              if (
+                error instanceof ProviderError &&
+                error.status === 429 &&
+                !text &&
+                error.retryAfter !== undefined &&
+                error.retryAfter <= 6 &&
+                waitedMs < 9000
+              ) {
+                const wait = Math.ceil(error.retryAfter * 1000) + 250;
+                waitedMs += wait;
+                emit({ type: "tool", name: "wait", label: "Catching my breath" });
+                await new Promise((resolve) => setTimeout(resolve, wait));
+                continue;
+              }
               // Rate limits, outages, a retired model name or a bad key: hand the
               // same step to the next provider, as long as nothing was streamed.
               const canFallBack = !text && providerIndex < chain.length - 1;
               if (error instanceof ProviderError && error.status === 429) {
                 console.warn(`[assistant] ${provider.id} is rate-limited; falling back.`);
               }
-              console.error(`[assistant] ${provider.id} failed:`, error instanceof Error ? error.message : error);
+              const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
+              console.error(
+                `[assistant] ${provider.id} failed at step ${step}:`,
+                error instanceof Error ? `${error.message}${cause}` : error,
+              );
               if (!canFallBack) throw error;
               providerIndex++;
+              retried = false;
             }
           }
 
