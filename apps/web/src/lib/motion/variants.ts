@@ -3,9 +3,9 @@ import type { Variants } from "motion/react";
 /** Design-system easing — cubic-bezier(.4,0,.2,1). Never invent new curves. */
 export const EASE = [0.4, 0, 0.2, 1] as const;
 
-/** Route transition (template.tsx) — subtle rise + fade, 300ms. */
+/** Route transition (template.tsx) — subtle rise + fade, 300ms. A short rise reads as smooth, not jumpy. */
 export const pageIn: Variants = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,
     y: 0,

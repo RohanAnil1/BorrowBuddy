@@ -4,13 +4,14 @@ import type { ItemWithOwner } from "@borrowbuddy/shared";
 import { conditionLabel, depositTag } from "@/lib/format";
 import { BUCKETS, publicUrl } from "@/lib/storage";
 import { SaveButton } from "./save-button";
+import { TiltCard } from "./tilt-card";
 
 /** Pass `saved` to show the heart toggle (omit it where saving makes no sense). */
 export function ItemCard({ item, saved }: { item: ItemWithOwner; saved?: boolean }) {
   const cover = publicUrl(BUCKETS.itemImages, item.images[0]);
 
   return (
-    <div className="relative h-full">
+    <TiltCard className="relative h-full">
     <Link
       className="group flex h-full flex-col overflow-hidden border border-line bg-panel transition-colors hover:border-accent"
       href={`/items/${item.id}`}
@@ -68,6 +69,6 @@ export function ItemCard({ item, saved }: { item: ItemWithOwner; saved?: boolean
           <SaveButton itemId={item.id} saved={saved} title={item.title} />
         </div>
       )}
-    </div>
+    </TiltCard>
   );
 }

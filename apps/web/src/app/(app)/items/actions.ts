@@ -6,6 +6,7 @@ import { borrowRequestSchema, itemSchema, waitlistJoinSchema } from "@borrowbudd
 import type { ActionState } from "@/lib/action-state";
 import { requireVerified } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { flash } from "@/lib/flash";
 
 function parseItemForm(formData: FormData) {
   let imagePaths: unknown = [];
@@ -102,6 +103,9 @@ export async function setItemStatus(formData: FormData): Promise<void> {
     .eq("id", itemId)
     .eq("owner_id", profile.id);
 
+  await flash(
+    status === "paused" ? "Listing paused. It's hidden from Browse." : status === "retired" ? "Listing retired." : "Listing is live again.",
+  );
   revalidatePath("/my/items");
   revalidatePath(`/items/${itemId}`);
   revalidatePath("/home");
@@ -114,6 +118,7 @@ export async function deleteItem(formData: FormData): Promise<void> {
 
   const supabase = await createClient();
   await supabase.from("items").delete().eq("id", itemId).eq("owner_id", profile.id);
+  await flash("Listing deleted.");
 
   revalidatePath("/my/items");
   redirect("/my/items");

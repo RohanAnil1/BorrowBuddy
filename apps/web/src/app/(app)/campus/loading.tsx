@@ -1,17 +1,12 @@
+import { SkeletonBlock } from "@/components/app/skeletons";
+
 export default function LoadingCampus() {
   return (
-    <div
-      className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10"
-      role="status"
-      aria-label="Loading campus"
-    >
-      <div className="h-12 w-2/3 animate-pulse bg-black/50" />
+    <div aria-label="Loading campus" className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10" role="status">
+      <SkeletonBlock className="h-12 w-2/3" />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-80 animate-pulse border border-line bg-black/50"
-          />
+          <SkeletonBlock className="h-80 border border-line" key={i} />
         ))}
       </div>
     </div>
