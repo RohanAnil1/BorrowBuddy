@@ -19,6 +19,9 @@ begin
   raise notice 'PASS: %', msg;
 end;
 $$;
+-- New functions are not callable by PUBLIC by default (20261112130000), and
+-- later sections run this helper as the authenticated role.
+grant execute on function pg_temp.assert(boolean, text) to public;
 
 create temp table bb_test_kv (key text primary key, value text);
 grant all on bb_test_kv to public;
