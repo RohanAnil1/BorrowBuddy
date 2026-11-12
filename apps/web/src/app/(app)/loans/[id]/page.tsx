@@ -74,9 +74,10 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
         <div>
           <h1 className="type-title text-[1.75rem] dt:text-[2.25rem]">{loan.item.title}</h1>
           <p className="font-secondary mt-2 text-[10px] text-ink/50">
-            {isOwner
-              ? `ON LOAN TO ${counterparty.full_name.toUpperCase()}`
-              : `BORROWED FROM ${counterparty.full_name.toUpperCase()}`}
+            {isOwner ? "ON LOAN TO " : "BORROWED FROM "}
+            <Link className="text-ink/80 underline-offset-4 hover:text-accent hover:underline" href={`/users/${counterparty.id}`}>
+              {counterparty.full_name.toUpperCase()}
+            </Link>
           </p>
         </div>
         <StatusBadge tone={loanTone(loan.status)}>{loanStatusLabel(loan.status)}</StatusBadge>
