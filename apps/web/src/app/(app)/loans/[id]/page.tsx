@@ -1,7 +1,8 @@
-import { ArrowLeftRight, CalendarDays, MapPin, MessageSquare, Star, Wallet } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, CalendarPlus, MapPin, MessageSquare, Star, Wallet } from "lucide-react";
 import { ConfirmSubmit } from "@/components/app/confirm-submit";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ExtensionPanel } from "@/components/app/extension-panel";
 import { HandoverPanel } from "@/components/app/handover-panel";
 import { AppointmentPicker } from "@/components/campus/campus-scheduling";
 import { campusAppointments } from "@/lib/data/campus";
@@ -12,6 +13,7 @@ import { StatusBadge, loanTone } from "@/components/app/status-badge";
 import { formatDateRange, formatDeposit, loanStatusLabel, relativeTime } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
 import { getLoanConversationId } from "@/lib/data/chat";
+import { getExtensionsForLoan } from "@/lib/data/extensions";
 import { getIncidentsForLoan } from "@/lib/data/incidents";
 import { getLoan } from "@/lib/data/loans";
 import { getReviewsForLoan } from "@/lib/data/reviews";
@@ -31,11 +33,17 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
   if (!loan) notFound();
   const appointments = await campusAppointments({ loan: id });
 
-  const [conversationId, reviews, incidents] = await Promise.all([
+  const [conversationId, reviews, incidents, extensions] = await Promise.all([
     getLoanConversationId(loan.id),
     getReviewsForLoan(loan.id),
     getIncidentsForLoan(loan.id),
+    getExtensionsForLoan(loan.id),
   ]);
+  const pendingExtension = extensions.find((extension) => extension.status === "pending") ?? null;
+  const lastAnswered = extensions.find((extension) => extension.status !== "pending") ?? null;
+  const loanIsOpen = ["awaiting_pickup", "active", "return_pending", "overdue"].includes(loan.status);
+  // Admins can open any loan; extension and calendar tools are only for the two parties.
+  const isParty = loan.owner_id === profile.id || loan.borrower_id === profile.id;
 
   const myReview = reviews.find((review) => review.reviewer_id === profile.id);
   const canReview = loan.status === "returned" && !myReview;
@@ -94,7 +102,32 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
         <Fact icon={<MapPin className="size-3.5" />} label="HANDOVER" value="IN-APP 6-DIGIT CODE" />
       </div>
 
+      {loanIsOpen && isParty && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a
+            className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 font-strong text-[11px] uppercase transition-colors hover:border-accent hover:text-accent"
+            download
+            href={`/api/loans/${loan.id}/calendar`}
+          >
+            <CalendarPlus className="size-3.5" /> Add to calendar
+          </a>
+        </div>
+      )}
+
       <div className="mt-10 flex flex-col gap-6">
+        {isParty && (
+        <ExtensionPanel
+          canExtend={["awaiting_pickup", "active"].includes(loan.status)}
+          dueDate={loan.due_date}
+          lastAnswered={lastAnswered}
+          loanId={loan.id}
+          maxLoanDays={loan.item.max_loan_days}
+          otherName={counterparty.full_name}
+          pending={pendingExtension}
+          role={isOwner ? "owner" : "borrower"}
+          startDate={loan.start_date}
+        />
+        )}
         {showPickupCode && <HandoverPanel kind="pickup" loanId={loan.id} mode="show" />}
         {confirmPickup && <HandoverPanel kind="pickup" loanId={loan.id} mode="confirm" />}
         {showReturnCode && <HandoverPanel kind="return" loanId={loan.id} mode="show" />}

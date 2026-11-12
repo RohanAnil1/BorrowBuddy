@@ -66,7 +66,11 @@ export type NotificationType =
   | "fine_settled"
   | "new_message"
   | "new_review"
-  | "report_resolved";
+  | "report_resolved"
+  | "extension_requested"
+  | "extension_approved"
+  | "extension_declined"
+  | "handover_reminder";
 
 /** YYYY-MM-DD */
 export type DateString = string;

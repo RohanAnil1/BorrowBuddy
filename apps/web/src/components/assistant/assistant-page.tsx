@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 import { AssistantPanelHeader } from "./assistant-launcher";
 import { AssistantThread } from "./assistant-thread";
 import { buddy, useBuddy } from "./buddy-store";
+import { ExtensionPanel } from "@/components/app/extension-panel";
 import { LoanBoardingPass, type BoardingPassLoan } from "@/components/app/loan-boarding-pass";
+import type { LoanExtension } from "@/lib/data/extensions";
 import { Parcel, type ParcelMood } from "./mascot/parcel";
 
 const STARTERS = [
@@ -23,8 +25,21 @@ const SAMPLE_PASSES: BoardingPassLoan[] = [
   { id: "00000000-0000-4000-8000-00000000a001", title: "Scientific calculator", status: "active", statusLabel: "Borrowed", ownerName: "Ishita Rao", borrowerName: "You", role: "borrowing", pickupSpot: "Maggi Hotspot", startDate: new Date(Date.now() + -3 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10) },
   { id: "00000000-0000-4000-8000-00000000a002", title: "Cricket bat", status: "active", statusLabel: "Borrowed", ownerName: "Aryan Mehta", borrowerName: "You", role: "borrowing", pickupSpot: "Sports Complex", startDate: new Date(Date.now() + -1 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 0 * 86_400_000).toISOString().slice(0, 10) },
   { id: "00000000-0000-4000-8000-00000000a003", title: "Drafting kit", status: "overdue", statusLabel: "Overdue", ownerName: "You", borrowerName: "Kabir Shah", role: "lending", pickupSpot: "D5 Stage", startDate: new Date(Date.now() + -6 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + -2 * 86_400_000).toISOString().slice(0, 10) },
-  { id: "00000000-0000-4000-8000-00000000a004", title: "Phone tripod", status: "active", statusLabel: "Borrowed", ownerName: "Mira Iyer", borrowerName: "You", role: "borrowing", pickupSpot: null, startDate: new Date(Date.now() + 0 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10) },
+  { id: "00000000-0000-4000-8000-00000000a004", title: "Phone tripod", status: "active", statusLabel: "Borrowed", ownerName: "Mira Iyer", borrowerName: "You", role: "borrowing", pickupSpot: null, extensionPending: true, startDate: new Date(Date.now() + 0 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10) },
 ];
+
+const sampleDay = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+const SAMPLE_EXTENSION: LoanExtension = {
+  id: "00000000-0000-4000-8000-00000000e001",
+  loan_id: "00000000-0000-4000-8000-00000000a004",
+  requested_by: "00000000-0000-4000-8000-00000000b001",
+  previous_due_date: sampleDay(2),
+  new_due_date: sampleDay(4),
+  status: "pending",
+  message: "Need it for the fest shoot on Saturday, will return Sunday morning.",
+  created_at: new Date().toISOString(),
+  responded_at: null,
+};
 
 const MOODS: ParcelMood[] = ["idle", "wave", "thinking", "talking", "happy", "found", "confused", "sleepy", "offline"];
 
@@ -82,6 +97,23 @@ export function AssistantPage({ firstName, showSheet }: { firstName: string; sho
         <div className="rail-scroll mb-10 mt-4 flex gap-4 overflow-x-auto pb-4">
           {SAMPLE_PASSES.map((pass, index) => (
             <LoanBoardingPass key={pass.id} loan={pass} stamp={index === 3 ? "COLLECTED" : undefined} />
+          ))}
+        </div>
+        <p className="status-bracket text-[10px]">[ DESIGN SHEET · LOAN EXTENSIONS ]</p>
+        <div className="mb-10 mt-4 grid gap-4 lg:grid-cols-3">
+          {(["ask", "waiting", "owner"] as const).map((variant) => (
+            <ExtensionPanel
+              canExtend
+              dueDate={sampleDay(2)}
+              key={variant}
+              lastAnswered={null}
+              loanId={SAMPLE_EXTENSION.loan_id}
+              maxLoanDays={10}
+              otherName="Mira Iyer"
+              pending={variant === "ask" ? null : SAMPLE_EXTENSION}
+              role={variant === "owner" ? "owner" : "borrower"}
+              startDate={sampleDay(0)}
+            />
           ))}
         </div>
         <p className="status-bracket text-[10px]">[ PARCEL · MOOD SHEET ]</p>

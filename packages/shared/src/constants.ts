@@ -196,6 +196,10 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   "new_message",
   "new_review",
   "report_resolved",
+  "extension_requested",
+  "extension_approved",
+  "extension_declined",
+  "handover_reminder",
 ];
 
 /* ------------------------------ storage paths ------------------------------ */

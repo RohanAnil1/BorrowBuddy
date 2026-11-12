@@ -14,6 +14,7 @@ import { getCategories, getMyItems, searchItems } from "@/lib/data/items";
 import { getLoansForUser, type LoanSummary } from "@/lib/data/loans";
 import { getPendingRequestCount } from "@/lib/data/requests";
 import { getSavedItemIds, savedState } from "@/lib/data/wishlist";
+import { getPendingExtensionLoanIds } from "@/lib/data/extensions";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -73,10 +74,11 @@ export default async function DashboardPage() {
   const openLending = asOwner.filter((loan) => !CLOSED.includes(loan.status));
   const dueSoon = openBorrowing.filter((loan) => loan.status === "overdue" || loan.due_date <= soon).length;
 
-  const passes = [...openBorrowing, ...openLending]
+  const inMotion = [...openBorrowing, ...openLending]
     .sort((a, b) => a.due_date.localeCompare(b.due_date))
-    .slice(0, 8)
-    .map((loan) => toPass(loan, profile.id));
+    .slice(0, 8);
+  const pendingExtensions = await getPendingExtensionLoanIds(inMotion.map((loan) => loan.id));
+  const passes = inMotion.map((loan) => ({ ...toPass(loan, profile.id), extensionPending: pendingExtensions.has(loan.id) }));
 
   const justListed = fresh.filter((item) => item.owner_id !== profile.id).slice(0, 8);
 
