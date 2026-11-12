@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "./empty-state";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -74,9 +75,18 @@ export function DashboardTabs({
           transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
         >
           {rows.length === 0 ? (
-            <p className="border-x border-b border-line bg-panel px-4 py-8 text-center font-secondary text-[10px] text-ink/50">
-              [ NOTHING HERE YET ]
-            </p>
+            <EmptyState
+              body={
+                tab === "borrowing"
+                  ? "Things you borrow show up here until they're back with their owner."
+                  : "When someone borrows from you, you'll track it here."
+              }
+              className="border-t-0"
+              code={tab === "borrowing" ? "NOTHING BORROWED" : "NOTHING LENT"}
+              compact
+              mood="idle"
+              title={tab === "borrowing" ? "Your hands are free" : "Your shelf is all yours"}
+            />
           ) : (
             <ul className="border-x border-b border-line">
               {rows.map((row) => (
