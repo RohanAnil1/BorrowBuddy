@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { syntheticPng } from '../../android/tools/qa-image.mjs';
 
-export async function campusBrowser({ browser, web, recipient, host, admin, password, api, server, objects, giveaway, location, category, date, hiddenTransfer, pass }) {
+export async function campusBrowser({ browser, web, recipient, host, admin, password, api, server, objects, giveaway, location, category, date, hiddenTransfer, loanThread, pass }) {
   const errors = [], pages = [], contexts = [], realtimeTrace = [];
+  const requestedImages = new Map();
   async function login(user) {
     const context = await browser.newContext({ viewport: { width: 411, height: 1000 } }); contexts.push(context);
     const page = await context.newPage(); pages.push(page);
+    const paths = new Set();
+    requestedImages.set(page, paths);
+    page.on('request', request => {
+      if (request.resourceType() === 'image') paths.add(new URL(request.url()).pathname);
+    });
     page.on('pageerror', e => errors.push(e.message));
     page.on('websocket', socket => {
       if (!socket.url().includes('/realtime/')) return;
@@ -196,6 +202,70 @@ export async function campusBrowser({ browser, web, recipient, host, admin, pass
     assert.equal(await page.getByRole('button', { name: 'Show photo 1', exact: true }).getAttribute('aria-pressed'), 'true');
     await page.getByText('Your exact deadline is set when the reservation succeeds.', { exact: true }).waitFor();
     pass('browser giveaway publication with two photos/condition/72-hour hold, default 48 hours, URL-persisted search, keyboard gallery and pre-reservation deadline');
+    const thumbnail = reviewer.waitForResponse(response => new URL(response.url()).pathname === '/campus-map-thumb.webp' && response.ok());
+    await reviewer.goto(web + '/admin');
+    await reviewer.getByRole('heading', { name: /CAMPUS PINS/ }).scrollIntoViewIfNeeded();
+    await thumbnail;
+    const pinForm = reviewer.locator('form[data-pin-form="new"]');
+    const pinMap = pinForm.getByRole('application');
+    await pinMap.scrollIntoViewIfNeeded();
+    await reviewer.waitForFunction(() => {
+      const image = document.querySelector('form[data-pin-form="new"] img');
+      return image?.complete && image.naturalWidth > 0;
+    });
+    const pinWidth = await pinMap.locator('img').evaluate(image => Number(new URL(image.currentSrc).searchParams.get('w')));
+    assert(pinWidth > 0 && pinWidth <= 640, 'Mobile pin editor requested an oversized image');
+    const mapBounds = await pinMap.boundingBox();
+    await pinMap.click({ position: { x: mapBounds.width * 0.25, y: mapBounds.height * 0.75 } });
+    assert(Math.abs(Number(await pinForm.locator('input[name=xp]').inputValue()) - 25) <= 1);
+    assert(Math.abs(Number(await pinForm.locator('input[name=yp]').inputValue()) - 75) <= 1);
+    const imagePaths = requestedImages.get(reviewer);
+    assert(imagePaths.has('/bgpattern.webp'));
+    assert(!imagePaths.has('/campus-map.png') && !imagePaths.has('/bgpattern.png'));
+    pass('admin serves the small map thumbnail and WebP backdrop, mobile editor requests a responsive image, and pin coordinates stay aligned');
+
+    const loanUrl = web + '/chat/' + loanThread;
+    const messageReads = '**/rest/v1/messages?*';
+    const blockHistory = route => route.request().method() === 'GET' ? route.abort() : route.continue();
+    const waitForLoanListener = person => person
+      .waitForEvent('websocket', { predicate: socket => socket.url().includes('/realtime/'), timeout: 30000 })
+      .then(socket => socket.waitForEvent('framereceived', { timeout: 30000, predicate: frame => {
+        try {
+          const packet = JSON.parse(frame.payload);
+          const [topic, event, data] = Array.isArray(packet)
+            ? [packet[2], packet[3], packet[4]]
+            : [packet.topic, packet.event, packet.payload];
+          return topic?.includes(loanThread) && event === 'system'
+            && data?.extension === 'postgres_changes' && data?.status === 'ok';
+        } catch { return false; }
+      }}));
+    await Promise.all([page.route(messageReads, blockHistory), finder.route(messageReads, blockHistory)]);
+    await Promise.all([waitForLoanListener(page), waitForLoanListener(finder), page.goto(loanUrl), finder.goto(loanUrl)]);
+    await page.getByText('Long chat fixture 104', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Long chat fixture 0', { exact: true }).count(), 0);
+    const sendLoanMessage = async (person, body) => {
+      const composer = person.getByPlaceholder('Write a message…');
+      await composer.fill(body);
+      await composer.press('Enter');
+    };
+    const firstMessage = 'Private loan chat regression: browser message from the borrower.';
+    const replyMessage = 'Private loan chat regression: browser reply from the owner.';
+    await sendLoanMessage(page, firstMessage);
+    await finder.getByText(firstMessage, { exact: true }).waitFor();
+    await sendLoanMessage(finder, replyMessage);
+    await page.getByText(replyMessage, { exact: true }).waitFor();
+    pass('long loan chat opens at the latest messages and both browsers receive live messages with HTTP catch-up blocked');
+
+    await finder.unroute(messageReads, blockHistory);
+    await finder.routeWebSocket('**/realtime/v1/**', socket => socket.close());
+    await finder.reload();
+    await finder.getByPlaceholder('Write a message…').waitFor();
+    const missedMessage = 'Private loan chat regression: message sent while the receiving socket is unavailable.';
+    await sendLoanMessage(page, missedMessage);
+    await finder.getByText(missedMessage, { exact: true }).waitFor({ timeout: 20000 });
+    assert.equal(await finder.getByText(missedMessage, { exact: true }).count(), 1);
+    pass('foreground loan chat recovers a missed message once when WebSocket access is unavailable');
+
     for (const [person, actor] of [[page, recipient], [reviewer, admin]]) {
       await person.goto(web + '/me'); await person.getByTestId('member-id-card').waitFor();
       await person.goto(web + `/users/${actor.id}`); await person.getByTestId('member-id-card').waitFor();

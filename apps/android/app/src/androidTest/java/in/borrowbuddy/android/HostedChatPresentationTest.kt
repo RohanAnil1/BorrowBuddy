@@ -43,12 +43,11 @@ class HostedChatPresentationTest {
         compose.runOnUiThread { value = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0 }
         return value
     }
-    @Test fun originalChatLayoutTypographyComposerAndEmptyStates() {
+    @Test fun chatDesignFiltersSearchComposerAndEmptyStates() {
         val args = InstrumentationRegistry.getArguments()
         assumeTrue(listOf("qaEmail", "qaPassword", "qaPrivateId", "qaCommunityId", "qaEmptyRoomId", "qaOwnerId", "qaLoanId", "qaChatSize").all { !args.getString(it).isNullOrBlank() })
         val repository = (context.applicationContext as BorrowBuddyApplication).repository
         val suffix = args.getString("qaChatSize")!!
-        val source = args.getString("qaSourceLayout")?.let { JSONObject(String(android.util.Base64.decode(it, android.util.Base64.DEFAULT), Charsets.UTF_8)) }
         var room by mutableStateOf<String?>(null)
         var showEmptyList by mutableStateOf(false)
         var openedLoan: String? = null
@@ -68,55 +67,68 @@ class HostedChatPresentationTest {
             } } }
             ready("chat-list")
             val privateTag = "conversation-${args.getString("qaPrivateId")!!}"
-            compose.onNodeWithTag("chat-list").performScrollToNode(hasTestTag(privateTag))
+            val list = compose.onNodeWithTag("chat-list")
             val title = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             compose.onNodeWithTag("chat-list-title").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(title) }
-            assertEquals(Cargo.Title, title.single().layoutInput.style.fontFamily)
+            assertEquals(Cargo.Strong, title.single().layoutInput.style.fontFamily)
+            compose.onNodeWithText("Public").performClick()
+            compose.onNodeWithText("Public").assertIsSelected()
+            compose.onNodeWithTag(privateTag).assertDoesNotExist()
+            compose.onNodeWithText("Private").performClick()
+            compose.onNodeWithContentDescription("Search conversations").performTextReplacement("no conversation matches this")
+            compose.onNodeWithText("No matching conversations").assertIsDisplayed()
+            compose.onNodeWithContentDescription("Search conversations").performTextClearance()
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            list.performScrollToNode(hasTestTag(privateTag))
             result.put("listWidthDp", width("chat-list")).put("listTitleHeightDp", height("chat-list-title"))
-                .put("listIntroHeightDp", height("chat-list-intro")).put("conversationHeightDp", height(privateTag))
-            if (source != null) {
-                assertEquals("Source centered list width", source.getDouble("rootWidth"), width("chat-list").toDouble(), 1.2)
-                assertEquals("Source display title", source.getDouble("titleHeight"), height("chat-list-title").toDouble(), 1.2)
-                assertEquals("Source preview/label rows", source.getDouble("rowHeight"), height(privateTag).toDouble(), 2.5)
-                assertEquals("Source intro wrapping", source.getDouble("introHeight"), height("chat-list-intro").toDouble(), 2.5)
-            }
+                .put("conversationHeightDp", height(privateTag)).put("filtersAndSearch", true)
             capture("list-$suffix")
             compose.onNodeWithTag(privateTag).performClick(); ready("chat-thread-page"); connected()
             compose.onNodeWithTag("chat-send").assertIsNotEnabled()
             result.put("headerHeightDp", height("chat-thread-header")).put("composerHeightDp", height("chat-composer-panel"))
                 .put("inputHeightDp", height("chat-composer")).put("sendSizeDp", width("chat-send"))
-            assertEquals(36f, width("chat-back"), 1f)
-            if (source != null) {
-                assertEquals("Source private header line boxes", source.getDouble("headerHeight"), height("chat-thread-header").toDouble(), 2.0)
-                assertEquals("Source composer", source.getDouble("composerHeight"), height("chat-composer-panel").toDouble(), 1.5)
-                assertEquals("Source textarea", source.getDouble("inputHeight"), height("chat-composer").toDouble(), 1.5)
-                assertEquals("Source send button", source.getDouble("sendSize"), width("chat-send").toDouble(), 1.0)
-            }
+            assertEquals(44f, width("chat-back"), 1f)
             compose.onNodeWithTag("chat-loan-link").performClick(); assertEquals(args.getString("qaLoanId"), openedLoan)
             compose.onNodeWithContentDescription("Open counterparty profile").performClick(); assertEquals(args.getString("qaOwnerId"), openedProfile)
-            val image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
-            try {
-                for (mine in listOf(false, true)) {
-                    val nodes = compose.onAllNodes(SemanticsMatcher.expectValue(ChatBubbleMine, mine)).fetchSemanticsNodes()
-                    assertTrue("Both source bubble roles must be visible", nodes.isNotEmpty())
-                    val node = nodes.last()
-                    val tag = node.config[SemanticsProperties.TestTag]
+            val messages = runBlocking { repository.messages(args.getString("qaPrivateId")!!) }
+            for (mine in listOf(false, true)) {
+                val message = messages.last { (it.sender_id == profile.id) == mine }
+                compose.onNodeWithTag("chat-messages").performScrollToKey(message.id)
+                val tag = "chat-bubble-${message.id}"
+                val bubble = compose.onNodeWithTag(tag).assertIsDisplayed()
+                    .assert(SemanticsMatcher.expectValue(ChatBubbleMine, mine))
+                val image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                try {
                     val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-                    compose.onNodeWithTag(tag).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                    bubble.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
                     val input = layouts.single().layoutInput
-                    assertEquals("Source inherited uppercase and normal whitespace", chatText(input.text.text), input.text.text)
+                    assertEquals("Messages retain original case and whitespace", message.body, input.text.text)
                     val style = input.style
-                    assertEquals(Cargo.Body, style.fontFamily); assertEquals(14f, style.fontSize.value, .01f); assertEquals(24f, style.lineHeight.value, .01f)
-                    val bounds = node.boundsInWindow
-                    val offset = (4 * compose.activity.resources.displayMetrics.density).toInt()
+                    assertEquals(Cargo.Body, style.fontFamily); assertEquals(14f, style.fontSize.value, .01f); assertEquals(22f, style.lineHeight.value, .01f)
+                    val bounds = bubble.fetchSemanticsNode().boundsInWindow
+                    val offset = (7 * compose.activity.resources.displayMetrics.density).toInt()
                     val pixel = image.getPixel(bounds.left.toInt() + offset, bounds.top.toInt() + offset)
-                    val expected = (if (mine) Cargo.Accent else Color.Black).toArgb()
-                    for (shift in listOf(0, 8, 16)) assertTrue("Source bubble pixels", kotlin.math.abs(((expected shr shift) and 255) - ((pixel shr shift) and 255)) <= 3)
+                    val expected = (if (mine) Color(0xff333b48) else Color(0xff232832)).toArgb()
+                    for (shift in listOf(0, 8, 16)) assertTrue("Bubble background pixels", kotlin.math.abs(((expected shr shift) and 255) - ((pixel shr shift) and 255)) <= 3)
+                } finally { image.recycle() }
+                if (mine) {
+                    bubble.performClick()
+                    compose.onNodeWithText("Copy message").assertIsDisplayed().performClick()
+                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                    assertEquals(message.body, clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+                    clipboard.clearPrimaryClip()
                 }
-            } finally { image.recycle() }
+            }
             result.put("bothBubbleRolesAndOriginalFont", true).put("loanAndProfileCallbacks", true)
             capture("private-$suffix")
             val composer = compose.onNode(hasSetTextAction() and hasContentDescription("Write a message"))
+            compose.onNodeWithContentDescription("Find messages").performClick()
+            compose.onNodeWithContentDescription("Search loaded messages").performTextReplacement("Android QA pickup coordination")
+            compose.onNodeWithText("1 matching loaded messages").assertIsDisplayed()
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
+            compose.onNodeWithContentDescription("Close search").performClick()
+            compose.onNodeWithText("Plan pickup").performClick()
+            composer.assertTextContains("When and where works for pickup?")
             composer.performClick().performTextReplacement("Presentation draft")
             compose.waitUntil(15_000) { imeBottom() > 0 }
             val bottom = compose.onNodeWithTag("chat-composer-panel").fetchSemanticsNode().boundsInWindow.bottom
@@ -132,13 +144,13 @@ class HostedChatPresentationTest {
             compose.onNodeWithContentDescription("Back to chats").performClick(); ready("chat-list")
             compose.runOnIdle { room = args.getString("qaEmptyRoomId")!! }
             connected(); ready("chat-empty-thread")
-            compose.onNodeWithText("NOBODY HAS SAID ANYTHING YET. START THE CONVERSATION.").assertIsDisplayed()
+            compose.onNodeWithText("Start the conversation").assertIsDisplayed()
             assertTrue(compose.onAllNodesWithTag("chat-loan-link").fetchSemanticsNodes().isEmpty())
-            compose.onNodeWithText("OPEN TO ALL").assertIsDisplayed(); capture("empty-thread-$suffix")
+            compose.onNodeWithText("Community channel").assertIsDisplayed(); capture("empty-thread-$suffix")
             compose.runOnIdle { room = args.getString("qaCommunityId")!! }
-            connected(); compose.onNodeWithText("COMMUNITY CHANNEL").assertIsDisplayed(); capture("community-$suffix")
+            connected(); compose.onNodeWithText("Community channel").assertIsDisplayed(); capture("community-$suffix")
             compose.runOnIdle { room = null; showEmptyList = true }
-            ready("chat-empty-list"); compose.onNodeWithText("NO CONVERSATIONS YET").assertIsDisplayed(); capture("empty-list-$suffix")
+            ready("chat-empty-list"); compose.onNodeWithText("No conversations yet").assertIsDisplayed(); capture("empty-list-$suffix")
             result.put("emptyThread", true).put("emptyList", true).put("community", true)
             context.filesDir.resolve("native-chat-presentation-$suffix.json").writeText(result.toString(2))
         } catch (failure: Throwable) {

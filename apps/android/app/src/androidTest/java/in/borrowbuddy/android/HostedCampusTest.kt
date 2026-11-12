@@ -6,6 +6,10 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
 import `in`.borrowbuddy.android.data.BorrowRepository
 import `in`.borrowbuddy.android.domain.*
 import `in`.borrowbuddy.android.ui.*
@@ -95,6 +99,15 @@ class HostedCampusTest {
         val bitmap = (if (compose.onAllNodesWithTag("offline-screen").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("offline-screen") else compose.onRoot()).captureToImage().asAndroidBitmap(); assertPaintedSurface(bitmap)
         context.filesDir.resolve(name).outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
+    private fun assertCollectionQr(code: String) {
+        val qr = hasTestTag("handover-qr")
+        scroll(qr)
+        val bitmap = compose.onNode(qr).assertIsDisplayed().captureToImage().asAndroidBitmap()
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val image = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(bitmap.width, bitmap.height, pixels)))
+        assertTrue(MultiFormatReader().decode(image).text == "bb:collection:$code")
+    }
     @Test fun foundClaimAdminReviewAndTwoPartyCollection() {
         assumeTrue(args.getString("qaCampus") == "1")
         val found = required("qaFoundId")
@@ -119,6 +132,7 @@ class HostedCampusTest {
             await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
             val code = compose.onNodeWithTag("collection-code").fetchSemanticsNode().config[SemanticsProperties.Text].single().text
             assertTrue(code.matches(Regex("[0-9]{6}")))
+            assertCollectionQr(code)
             compose.activityRule.scenario.recreate()
             await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("collection-code").assertTextEquals(code)
@@ -138,6 +152,10 @@ class HostedCampusTest {
         val host = Actor(required("qaHostEmail"), required("qaPassword"))
         val oldWifi = device.executeShellCommand("settings get global wifi_on").trim()
         val oldData = device.executeShellCommand("settings get global mobile_data").trim()
+        fun restoreConnectivity() {
+            device.executeShellCommand("svc wifi ${if (oldWifi == "0") "disable" else "enable"}")
+            device.executeShellCommand("svc data ${if (oldData == "0") "disable" else "enable"}")
+        }
         var phase = "reserve"
         var workflowFailure: Throwable? = null
         try {
@@ -158,15 +176,16 @@ class HostedCampusTest {
             phase = "offline-modal"
             await { compose.onAllNodesWithTag("offline-screen").fetchSemanticsNodes().isNotEmpty() }
             capture("native-campus-offline.png")
-            device.executeShellCommand("svc wifi enable")
-            device.executeShellCommand("svc data enable")
+            restoreConnectivity()
             phase = "connection-restored"
             await { shown("[ CONNECTION RESTORED ]") }
             scroll(hasText("RESUME MY PAGE")); compose.onNodeWithText("RESUME MY PAGE").performClick()
             await { compose.onAllNodesWithTag("offline-screen").fetchSemanticsNodes().isEmpty() }
             scroll(composer); compose.onNode(composer).assertTextContains("Original Case campus draft\nSecond line")
             phase = "send-and-realtime"
-            compose.onNodeWithTag("chat-send").performClick()
+            val send = hasTestTag("chat-send")
+            scroll(send)
+            compose.onNode(send).assertIsDisplayed().assertIsEnabled().performClick()
             await { host.rows("campus_messages?transfer_id=eq.${transfer.id}").length() == 1 }
             assertEquals("Original Case campus draft\nSecond line", host.rows("campus_messages?transfer_id=eq.${transfer.id}").getJSONObject(0).getString("body"))
             await { compose.onAllNodes(SemanticsMatcher.expectValue(CampusCollectionConnected, true)).fetchSemanticsNodes().isNotEmpty() }
@@ -176,15 +195,26 @@ class HostedCampusTest {
             val slots = runBlocking { repository.campus.slots(required("qaHostId"), CampusRules.today().toString()) }
             phase = "booking"
             assertTrue(slots.size >= 2)
-            val label = "${CampusRules.date(slots[0].starts_at)} · ${required("qaLocationName")}".uppercase()
-            tap("AVAILABLE TIME: CHOOSE"); compose.onNodeWithText(label).performClick()
+            fun chooseSlot(slot: Int) {
+                val label = "${CampusRules.date(slots[slot].starts_at)} · ${required("qaLocationName")}".uppercase()
+                tap("AVAILABLE TIME: CHOOSE"); compose.onNodeWithText(label).performClick()
+            }
+            chooseSlot(0)
             tap("BOOK APPOINTMENT")
             await { runBlocking { repository.campus.appointments(transfer = transfer.id) }.any { it.status == "booked" } }
+            phase = "rescheduling"
+            chooseSlot(1)
+            tap("RESCHEDULE APPOINTMENT")
+            await {
+                val booked = runBlocking { repository.campus.appointments(transfer = transfer.id) }.filter { it.status == "booked" }
+                booked.size == 1 && java.time.Instant.parse(booked.single().starts_at) == java.time.Instant.parse(slots[1].starts_at)
+            }
             tap("CANCEL THIS APPOINTMENT"); confirm()
             await { runBlocking { repository.campus.appointments(transfer = transfer.id) }.none { it.status == "booked" } }
             tap("GENERATE / REPLACE MY CODE"); await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
             phase = "collection-receipt"
             val code = compose.onNodeWithTag("collection-code").fetchSemanticsNode().config[SemanticsProperties.Text].single().text
+            assertCollectionQr(code)
             host.rpc("confirm_code", JSONObject().put("id", transfer.id).put("code", code))
             await { compose.onAllNodesWithTag("collection-receipt").fetchSemanticsNodes().isNotEmpty() }
             scroll(hasTestTag("collection-receipt")); capture("native-campus-giveaway-receipt.png")
@@ -195,8 +225,7 @@ class HostedCampusTest {
             android.util.Log.i("BorrowBuddyQa", "Campus network failure phase=$phase; active=$network; capabilities=${network?.let { connectivity.getNetworkCapabilities(it) }}")
             throw AssertionError("Native giveaway workflow phase: $phase", failure)
         } finally {
-            device.executeShellCommand("svc wifi ${if (oldWifi == "0") "disable" else "enable"}")
-            device.executeShellCommand("svc data ${if (oldData == "0") "disable" else "enable"}")
+            restoreConnectivity()
             try { runBlocking { repository.signOut() } }
             catch (cleanup: Throwable) { if (workflowFailure != null) workflowFailure.addSuppressed(cleanup) else throw cleanup }
         }

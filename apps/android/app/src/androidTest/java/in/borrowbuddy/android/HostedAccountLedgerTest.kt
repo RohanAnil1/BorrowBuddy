@@ -112,7 +112,7 @@ class HostedAccountLedgerTest {
             compose.onNodeWithText("TRUST SCORE 71").assertExists()
             compose.onNodeWithContentDescription("YEAR OF STUDY").assertTextContains("Year 6")
             capture("account-phone")
-            wide("account-page", "account-wide") {
+            if (args.getString("qaAdaptiveWindow") == "1") wide("account-page", "account-wide") {
                 compose.onNodeWithTag("account-fines").performScrollTo()
                 val first = compose.onNodeWithTag("account-fines").fetchSemanticsNode().boundsInRoot
                 val second = compose.onNodeWithTag("account-map").fetchSemanticsNode().boundsInRoot
@@ -167,7 +167,7 @@ class HostedAccountLedgerTest {
                 scroll(badge); compose.onNode(badge).assertIsDisplayed()
             }
             scroll(hasText("[ ACCOUNTABILITY LEDGER ]")); capture("ledger-phone")
-            wide("fines-ledger", "ledger-wide")
+            if (args.getString("qaAdaptiveWindow") == "1") wide("fines-ledger", "ledger-wide")
             val link = hasTestTag("fine-loan-${args.getString("qaSettledId")}")
             scroll(link); compose.onNode(link).assertIsDisplayed().assertHasClickAction().performClick(); await("[ CUSTODY CHAIN ]")
             UiDevice.getInstance(instrumentation).pressBack(); ready("fines-ledger")

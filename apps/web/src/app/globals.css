@@ -149,7 +149,7 @@ body {
 }
 
 /* Photographic backdrop — NZDS gradient plate (bg.jpg) + batik corner print
-   (bgpattern.png, transparent navy strokes; screen blend lifts them to the
+   (lossless batik pattern, transparent navy strokes; screen blend lifts them to the
    grey etching on navy seen in the reference). */
 .backdrop-photo {
   background-image: url("/bg.jpg");
@@ -160,6 +160,7 @@ body {
 .batik-corner {
   pointer-events: none;
   background-image: url("/bgpattern.png");
+  background-image: image-set(url("/bgpattern.webp") type("image/webp"), url("/bgpattern.png") type("image/png"));
   background-repeat: no-repeat;
   background-position: right top;
   background-size: cover;

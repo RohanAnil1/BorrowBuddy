@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-export async function testWebPublicProfile({ baseUrl, email, adminEmail, password, studentId, emptyId, newestItemId, excludedItemId, studentEmail }) {
+export async function testWebPublicProfile({ baseUrl, email, adminEmail, password, studentId, emptyId, newestItemId, excludedItemId, studentEmail, phoneWidth = 411 }) {
   const require = createRequire(import.meta.url);
   let playwright;
   try { playwright = require('playwright'); } catch { playwright = require(join(process.env.NODE_MODULES_PATH, 'playwright')); }
@@ -25,7 +25,8 @@ export async function testWebPublicProfile({ baseUrl, email, adminEmail, passwor
     await page.goto(`${baseUrl}/users/${emptyId}`);
     // Next streams its not-found boundary with HTTP 200 after headers are sent.
     // Assert the rendered denial, rather than treating that status as disclosure.
-    await page.locator('meta[name="robots"][content="noindex"]').waitFor({ state: 'attached' });
+    await page.locator('meta[name="robots"][content="noindex"]').first().waitFor({ state: 'attached' });
+    await page.getByText('This page could not be found.', { exact: true }).waitFor();
     assert.equal(await page.locator('main [data-testid="member-id-card"]').count(), 0, 'Ordinary students cannot read unverified profiles');
     const adminPage = await browser.newPage({ viewport: { width: 411, height: 838 }, reducedMotion: 'reduce' });
     watch(adminPage, 'admin');
@@ -67,7 +68,7 @@ export async function testWebPublicProfile({ baseUrl, email, adminEmail, passwor
       await page.screenshot({ path: fileURLToPath(new URL(`../verification/web-profile-${name}-identity-${width}.png`, import.meta.url)) });
       return result;
     }
-    for (const width of [411, 640, 1024]) {
+    for (const width of new Set([phoneWidth, 640, 1024])) {
       page = studentPage;
       const measured = await visit(studentId, 'populated', width);
       assert.equal(measured.reviews.length, 20); assert.equal(measured.listings.length, 12);

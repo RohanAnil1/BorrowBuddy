@@ -63,6 +63,7 @@ export function PinForm({
             alt=""
             className="pointer-events-none h-auto w-full"
             height={750}
+            sizes="(max-width: 520px) calc(100vw - 4rem), 448px"
             src="/campus-map.png"
             width={1000}
           />

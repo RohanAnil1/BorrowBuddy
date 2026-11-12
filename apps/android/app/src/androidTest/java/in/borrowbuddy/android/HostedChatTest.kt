@@ -45,7 +45,7 @@ class HostedChatTest {
         }
     }
     private fun text(value: String) = compose.onAllNodesWithText(value).fetchSemanticsNodes().isNotEmpty()
-    private fun message(value: String) = compose.onAllNodes(hasText(chatText(value)) and hasSetTextAction().not()).fetchSemanticsNodes().isNotEmpty()
+    private fun message(value: String) = compose.onAllNodes(hasText(value) and hasSetTextAction().not()).fetchSemanticsNodes().isNotEmpty()
     private fun connected() = compose.onAllNodes(SemanticsMatcher.expectValue(ChatConnected, true)).fetchSemanticsNodes().isNotEmpty()
     private fun incoming(body: String, previous: Int) {
         val deadline = System.nanoTime() + 12_000_000_000L
@@ -86,8 +86,9 @@ class HostedChatTest {
             compose.onAllNodesWithText("SIGN IN").onLast().performClick()
             waitFor { compose.onAllNodesWithText("CHAT", substring = true).fetchSemanticsNodes().isNotEmpty() }
             compose.onNode(hasText("CHAT", substring = true) and hasClickAction()).performClick()
-            waitFor { compose.onAllNodesWithTag("conversation-$privateId").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("conversation-$privateId").assert(hasText("ANDROID QA PICKUP COORDINATION", substring = true))
+            waitFor { compose.onAllNodesWithTag("chat-list").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("chat-list").performScrollToNode(hasTestTag("conversation-$privateId"))
+            compose.onNodeWithTag("conversation-$privateId").assert(hasText("Android QA pickup coordination", substring = true))
             compose.onNodeWithTag("conversation-$privateId").performClick()
             waitFor { connected() }
             assertEquals(100, number(ChatMessageCount))
@@ -101,6 +102,7 @@ class HostedChatTest {
             compose.onNodeWithTag("message-$earliestId").assertIsDisplayed()
             val composer = hasSetTextAction() and hasContentDescription("Write a message")
             compose.onNode(composer).performTextInput("  Native chat IME message  ")
+            compose.onNodeWithTag("chat-messages").assertIsDisplayed()
             compose.onNode(composer).performImeAction()
             waitFor { message("Native chat IME message") }
             compose.onNode(composer).performTextInput("Native chat button\nsecond line")
@@ -143,7 +145,7 @@ class HostedChatTest {
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
             waitFor { connected() && number(ChatMessageCount) == 136 }
             compose.onNodeWithTag("chat-messages").performScrollToIndex(135)
-            compose.onNodeWithText("MESSAGE WHILE APP IS STOPPED").assertIsDisplayed()
+            compose.onNodeWithText("Message while app is stopped").assertIsDisplayed()
             compose.onNode(composer).assertTextContains("Unsent draft survives rotation")
             assertTrue(actor.cursor(privateId, borrowerId) != cursor)
 
@@ -159,7 +161,8 @@ class HostedChatTest {
             compose.mainClock.autoAdvance = true
 
             compose.onNodeWithContentDescription("Back to chats").performClick()
-            waitFor { compose.onAllNodesWithTag("conversation-$communityId").fetchSemanticsNodes().isNotEmpty() }
+            waitFor { compose.onAllNodesWithTag("chat-list").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("chat-list").performScrollToNode(hasTestTag("conversation-$communityId"))
             compose.onNodeWithTag("conversation-$communityId").performClick()
             waitFor { connected() }
             waitFor { repository.client.realtime.subscriptions.keys.count { it.contains("android-chat-") } == 1 }

@@ -197,10 +197,18 @@ end $$; rollback;`);
   assert.equal((await api(host.token, `/rest/v1/messages?conversation_id=eq.${legacyThread.id}`)).length, 1);
   pass('legacy loan approval/chat/codes, scheduled pickup completion, overdue return booking without fine changes, unscheduled return and older-client secret compatibility');
   if (process.env.BORROWBUDDY_QA_WEB_URL) {
+    const historyStart = Date.now() - 600000;
+    await api(recipient.token, '/rest/v1/messages', 'POST',
+      Array.from({ length: 105 }, (_, index) => ({
+        conversation_id: legacyThread.id,
+        sender_id: recipient.id,
+        body: `Long chat fixture ${index}`,
+        created_at: new Date(historyStart + index * 1000).toISOString(),
+      })));
     const require = createRequire(import.meta.url); const { chromium } = require(join(process.env.NODE_MODULES_PATH, 'playwright'));
     browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE });
     const { campusBrowser } = await import('./campus-browser.mjs');
-    await campusBrowser({ browser, web: process.env.BORROWBUDDY_QA_WEB_URL, recipient, host, admin, password, api, server, objects, giveaway: giveaways[1], location, category, date, hiddenTransfer: revokeTransfer.id, pass });
+    await campusBrowser({ browser, web: process.env.BORROWBUDDY_QA_WEB_URL, recipient, host, admin, password, api, server, objects, giveaway: giveaways[1], location, category, date, hiddenTransfer: revokeTransfer.id, loanThread: legacyThread.id, pass });
   }
 } catch (e) { failure = String(e.stack ?? e).replaceAll(password, '[REDACTED]').replaceAll(server, '[REDACTED]').replaceAll(anon, '[REDACTED]'); }
 finally {
