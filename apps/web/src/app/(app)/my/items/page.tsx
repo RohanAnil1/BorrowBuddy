@@ -8,6 +8,7 @@ import { formatDateRange, itemStatusLabel, relativeTime, requestStatusLabel } fr
 import { requireVerified } from "@/lib/auth/guards";
 import { getMyItems } from "@/lib/data/items";
 import { getIncomingRequests } from "@/lib/data/requests";
+import { getReputation, type Reputation } from "@/lib/data/reviews";
 import { BUCKETS, publicUrl } from "@/lib/storage";
 import { deleteItem, setItemStatus } from "../../items/actions";
 import { approveRequest, declineRequest } from "../actions";
@@ -28,6 +29,11 @@ export default async function MyItemsPage({
   ]);
 
   const pending = requests.filter((request) => request.status === "pending");
+  // One lookup per distinct requester (the stats call is cached per request).
+  const requesterIds = [...new Set(pending.map((request) => request.borrower.id))];
+  const reputations = new Map<string, Reputation | null>(
+    await Promise.all(requesterIds.map(async (id) => [id, await getReputation(id)] as const)),
+  );
   const decided = requests.filter((request) => request.status !== "pending").slice(0, 8);
 
   return (
@@ -73,11 +79,17 @@ export default async function MyItemsPage({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="type-body-alt text-[15px] uppercase">
-                      {request.borrower.full_name}
+                      <Link
+                        className="underline-offset-4 hover:text-accent hover:underline"
+                        href={`/users/${request.borrower.id}`}
+                      >
+                        {request.borrower.full_name}
+                      </Link>
                       <span className="ml-2 font-secondary text-[9px] text-accent">
                         TRUST {Math.round(request.borrower.trust_score)}
                       </span>
                     </p>
+                    <RequesterRecord reputation={reputations.get(request.borrower.id) ?? null} />
                     <p className="font-secondary mt-1 text-[9px] text-ink/50">
                       {request.item.title.toUpperCase()} ·{" "}
                       {formatDateRange(request.start_date, request.end_date).toUpperCase()}
@@ -254,5 +266,17 @@ export default async function MyItemsPage({
         </section>
       )}
     </div>
+  );
+}
+
+/** "3 completed loans · 4.8★ (2 reviews)" so owners can judge a request at a glance. */
+function RequesterRecord({ reputation }: { reputation: Reputation | null }) {
+  if (!reputation) return null;
+  const { completed, reviewCount, average } = reputation;
+  return (
+    <p className="mt-1 text-[12px] normal-case text-ink/60">
+      {completed === 0 ? "First loan on BorrowBuddy" : `${completed} completed ${completed === 1 ? "loan" : "loans"}`}
+      {average !== null && ` · ${average.toFixed(1)}★ from ${reviewCount} ${reviewCount === 1 ? "review" : "reviews"}`}
+    </p>
   );
 }

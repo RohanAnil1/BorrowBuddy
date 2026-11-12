@@ -43,3 +43,15 @@ export async function getRatingSummary(
 export async function getCompletedLoanCount(userId: string): Promise<number> {
   return (await getPublicProfileStats(userId)).completed_loans;
 }
+
+export type Reputation = { completed: number; reviewCount: number; average: number | null };
+
+/** Track record for trust hints; null when the student's stats are hidden or unavailable. */
+export async function getReputation(userId: string): Promise<Reputation | null> {
+  try {
+    const stats = await getPublicProfileStats(userId);
+    return { completed: stats.completed_loans, reviewCount: stats.review_count, average: stats.rating_average };
+  } catch {
+    return null;
+  }
+}

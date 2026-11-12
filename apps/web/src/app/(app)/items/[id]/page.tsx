@@ -1,12 +1,14 @@
-import { Pencil, Settings2, Star } from "lucide-react";
+import { ArrowRight, Pencil, Settings2, Star } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ImageGallery } from "@/components/app/image-gallery";
 import { RequestForm } from "@/components/app/request-form";
+import { StarRating } from "@/components/app/star-rating";
 import { StatusBadge } from "@/components/app/status-badge";
-import { conditionLabel, formatDeposit, itemStatusLabel } from "@/lib/format";
+import { conditionLabel, formatDeposit, itemStatusLabel, relativeTime } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
 import { getItem, getItemAvailability } from "@/lib/data/items";
+import { getReputation, getReviewsForUser } from "@/lib/data/reviews";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,7 +35,11 @@ export default async function ItemPage({
   const item = await getItem(id);
   if (!item) notFound();
 
-  const windows = await getItemAvailability(id);
+  const [windows, reputation, reviews] = await Promise.all([
+    getItemAvailability(id),
+    getReputation(item.owner_id),
+    getReviewsForUser(item.owner_id, 3).catch(() => []),
+  ]);
   const isOwner = item.owner_id === profile.id;
 
   return (
@@ -76,17 +82,26 @@ export default async function ItemPage({
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
           <div className="border border-line bg-panel p-6">
-            <div className="flex items-center justify-between">
+            <Link className="group flex items-center justify-between gap-3" href={`/users/${item.owner_id}`}>
               <div>
                 <p className="font-secondary text-[9px] text-ink/50">[ OWNER ]</p>
-                <p className="type-body-alt mt-1 text-[16px] uppercase">
+                <p className="type-body-alt mt-1 text-[16px] uppercase underline-offset-4 group-hover:text-accent group-hover:underline">
                   {item.owner.full_name}
                 </p>
+                {reputation && (
+                  <p className="mt-1 text-[12px] normal-case text-ink/60">
+                    {reputation.completed === 0
+                      ? "New to lending"
+                      : `${reputation.completed} completed ${reputation.completed === 1 ? "loan" : "loans"}`}
+                    {reputation.average !== null &&
+                      ` · ${reputation.average.toFixed(1)}★ from ${reputation.reviewCount} ${reputation.reviewCount === 1 ? "review" : "reviews"}`}
+                  </p>
+                )}
               </div>
-              <span className="flex size-11 items-center justify-center bg-black font-title text-sm text-ink">
+              <span className="flex size-11 shrink-0 items-center justify-center bg-black font-title text-sm text-ink transition-colors group-hover:text-accent">
                 {item.owner.full_name.slice(0, 1).toUpperCase()}
               </span>
-            </div>
+            </Link>
 
             {/* reputation badge */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -121,6 +136,8 @@ export default async function ItemPage({
             )}
           </div>
 
+          {!isOwner && <OwnerReviews ownerId={item.owner_id} ownerName={item.owner.full_name} reviews={reviews} />}
+
           <RequestForm
             canRequest={profile.verification_status === "verified"}
             initialRange={prefill}
@@ -141,5 +158,49 @@ function Spec({ label, value }: { label: string; value: string }) {
       <dt className="font-secondary text-[9px] text-ink/50">{label}</dt>
       <dd className="type-body-alt mt-1 text-[13px] uppercase">{value}</dd>
     </div>
+  );
+}
+
+type OwnerReview = Awaited<ReturnType<typeof getReviewsForUser>>[number];
+
+/** The owner's three latest reviews, so borrowers can judge before requesting. */
+function OwnerReviews({ ownerId, ownerName, reviews }: { ownerId: string; ownerName: string; reviews: OwnerReview[] }) {
+  const firstName = ownerName.split(" ")[0];
+  return (
+    <section aria-labelledby="owner-reviews" className="border border-line bg-panel p-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-secondary text-[9px] text-ink/50" id="owner-reviews">
+          [ WHAT STUDENTS SAY ]
+        </h2>
+        <Link
+          className="inline-flex items-center gap-1 font-secondary text-[9px] uppercase text-accent hover:underline"
+          href={`/users/${ownerId}`}
+        >
+          Full profile <ArrowRight className="size-3" />
+        </Link>
+      </div>
+      {reviews.length === 0 ? (
+        <p className="mt-3 text-[13px] normal-case leading-6 text-ink/60">
+          No reviews for {firstName} yet. Every student is ID-verified, and reviews appear after a completed loan.
+        </p>
+      ) : (
+        <ul className="mt-4 flex flex-col divide-y divide-line">
+          {reviews.map((review) => (
+            <li className="py-3 first:pt-0 last:pb-0" key={review.id}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="truncate font-secondary text-[10px] uppercase text-ink/80">
+                  {review.reviewer?.full_name ?? "A student"}
+                </span>
+                <StarRating value={review.rating} />
+              </div>
+              {review.comment && (
+                <p className="mt-1.5 line-clamp-3 text-[13px] normal-case leading-6 text-ink/70">“{review.comment}”</p>
+              )}
+              <p className="mt-1 font-secondary text-[9px] text-ink/40">{relativeTime(review.created_at).toUpperCase()}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
