@@ -174,7 +174,7 @@ class HostedAccountLedgerTest {
             compose.onNodeWithTag("fines-ledger").assert(SemanticsMatcher.expectValue(LedgerFineCount, 54))
             logout(); login(args.getString("qaEmptyEmail")!!, password); ledger()
             compose.onNodeWithTag("fines-ledger").assert(SemanticsMatcher.expectValue(LedgerFineCount, 0)).assert(SemanticsMatcher.expectValue(LedgerOutstanding, 0))
-            compose.onNodeWithTag("ledger-total").assertTextEquals("NO DEPOSIT")
+            compose.onNodeWithTag("ledger-total").assertTextEquals("₹0")
             scroll(hasTestTag("ledger-empty")); compose.onNodeWithText("NO FINES ON RECORD").assertIsDisplayed(); capture("empty-phone")
             assertTrue(runBlocking { repository.fines(studentId) }.isEmpty())
             logout(); login(args.getString("qaAdminEmail")!!, password)

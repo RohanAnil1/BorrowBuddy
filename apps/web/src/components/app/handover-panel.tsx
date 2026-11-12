@@ -110,7 +110,7 @@ export function HandoverPanel({
       )}
       {confirmState.status === "success" && (
         <div className="mt-4">
-          <HandoverSuccess message={confirmState.message ?? "HANDOVER CONFIRMED"} />
+          <HandoverSuccess kind={kind} message={confirmState.message ?? "HANDOVER CONFIRMED"} />
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { ArrowLeftRight, CalendarDays, MapPin, MessageSquare, Star, Wallet } from "lucide-react";
+import { ConfirmSubmit } from "@/components/app/confirm-submit";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HandoverPanel } from "@/components/app/handover-panel";
@@ -8,8 +9,7 @@ import { IncidentForm } from "@/components/app/incident-form";
 import { ReviewForm } from "@/components/app/review-form";
 import { StarRating } from "@/components/app/star-rating";
 import { StatusBadge, loanTone } from "@/components/app/status-badge";
-import { SubmitButton } from "@/components/app/submit-button";
-import { formatDateRange, formatMoney, loanStatusLabel, relativeTime } from "@/lib/format";
+import { formatDateRange, formatDeposit, loanStatusLabel, relativeTime } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
 import { getLoanConversationId } from "@/lib/data/chat";
 import { getIncidentsForLoan } from "@/lib/data/incidents";
@@ -84,7 +84,7 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Fact icon={<CalendarDays className="size-3.5" />} label="DATES" value={formatDateRange(loan.start_date, loan.due_date)} />
-        <Fact icon={<Wallet className="size-3.5" />} label="DEPOSIT" value={formatMoney(loan.item.deposit_amount)} />
+        <Fact icon={<Wallet className="size-3.5" />} label="DEPOSIT" value={formatDeposit(loan.item.deposit_amount)} />
         <Fact
           icon={<Star className="size-3.5" />}
           label="COUNTERPARTY TRUST"
@@ -208,10 +208,19 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
                   : "You can cancel any time before pickup."}
               </p>
             </div>
-            <SubmitButton pendingLabel="CANCELLING…" variant="danger">
+            <ConfirmSubmit
+              confirmLabel="Cancel loan"
+              message={
+                isOwner
+                  ? "The borrower will be notified and the dates open up for others."
+                  : "The owner will be notified and you'll need to request again if you change your mind."
+              }
+              pendingLabel="CANCELLING…"
+              title="Cancel this loan?"
+            >
               <ArrowLeftRight className="size-4" />
               Cancel loan
-            </SubmitButton>
+            </ConfirmSubmit>
           </form>
         )}
 

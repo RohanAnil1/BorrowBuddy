@@ -205,7 +205,7 @@ class HostedModerationTest {
                 tap(if (index == 0) "SETTLED" else "WAIVE", card)
                 compose.waitUntil(30_000) { compose.onAllNodes(card).fetchSemanticsNodes().isEmpty() }
             }
-            logout(); login(email, password); fineScreen(); await("NO DEPOSIT")
+            logout(); login(email, password); fineScreen(); await("₹0")
             for (fine in fines) {
                 val status = if (fine.amount == 750) "SETTLED" else "WAIVED"
                 val node = hasText(status) and hasAnyAncestor(hasTestTag("fine-${fine.id}"))

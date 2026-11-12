@@ -44,6 +44,7 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
     val actions = rememberActions()
     var confirmedHandover by rememberSaveable(id, profile.id) { mutableStateOf<String?>(null) }
     var incidentFiled by rememberSaveable(id, profile.id) { mutableStateOf(false) }
+    var confirmCancel by rememberSaveable(id) { mutableStateOf(false) }
     LoadScreen(id to actions.revision, { LoanData(repository.loan(id) ?: error("Loan not found."), repository.reviews(loanId = id), repository.incidents(id), repository.conversations().find { it.loan_id == id }) }) { (loan, reviews, incidents, conversation) ->
         val owner = loan.owner_id == profile.id
         val mine = reviews.find { it.reviewer_id == profile.id }
@@ -121,7 +122,12 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
             if (loan.status == "awaiting_pickup") CargoPanel(padding = 24.dp) {
                 CargoLabel("[ ABORT DISPATCH? ]", Cargo.Ink)
                 CargoBody(if (owner) "If the borrower doesn't show up, cancel the loan so others can book." else "You can cancel any time before pickup.")
-                CargoButton("Cancel loan", { actions.run { repository.rpc("cancel_loan", buildJsonObject { put("p_loan_id", id); put("p_reason", JsonNull) }) } }, enabled = !actions.busy, secondary = true)
+                CargoButton("Cancel loan", { confirmCancel = true }, enabled = !actions.busy, secondary = true, modifier = Modifier.testTag("loan-cancel"))
+                if (confirmCancel) AlertDialog(onDismissRequest = { confirmCancel = false }, title = { CargoTitle("Cancel this loan?") },
+                    text = { CargoBody(if (owner) "The borrower will be notified and the dates open up for others." else "The owner will be notified. You'll need to request again if you change your mind.") },
+                    confirmButton = { TextButton({ confirmCancel = false; actions.run { repository.rpc("cancel_loan", buildJsonObject { put("p_loan_id", id); put("p_reason", JsonNull) }) } },
+                        Modifier.testTag("loan-cancel-confirm")) { CargoLabel("Cancel loan", Cargo.Warn) } },
+                    dismissButton = { TextButton({ confirmCancel = false }) { CargoLabel("Keep it") } })
             }
             CustodyTimeline(loan)
             ActionFeedback(actions)

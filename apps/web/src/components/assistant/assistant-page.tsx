@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AssistantPanelHeader } from "./assistant-launcher";
 import { AssistantThread } from "./assistant-thread";
 import { buddy, useBuddy } from "./buddy-store";
+import { LoanBoardingPass, type BoardingPassLoan } from "@/components/app/loan-boarding-pass";
 import { Parcel, type ParcelMood } from "./mascot/parcel";
 
 const STARTERS = [
@@ -15,6 +16,14 @@ const STARTERS = [
   { icon: MessageSquareText, label: "My loans", prompt: "When are my loans due?" },
   { icon: Receipt, label: "My ledger", prompt: "Do I owe any fines?" },
   { icon: ScrollText, label: "The rules", prompt: "How does the trust score work?" },
+];
+
+/** Fake loans for the design sheet only (never real data). */
+const SAMPLE_PASSES: BoardingPassLoan[] = [
+  { id: "00000000-0000-4000-8000-00000000a001", title: "Scientific calculator", status: "active", statusLabel: "Borrowed", ownerName: "Ishita Rao", borrowerName: "You", role: "borrowing", pickupSpot: "Maggi Hotspot", startDate: new Date(Date.now() + -3 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10) },
+  { id: "00000000-0000-4000-8000-00000000a002", title: "Cricket bat", status: "active", statusLabel: "Borrowed", ownerName: "Aryan Mehta", borrowerName: "You", role: "borrowing", pickupSpot: "Sports Complex", startDate: new Date(Date.now() + -1 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 0 * 86_400_000).toISOString().slice(0, 10) },
+  { id: "00000000-0000-4000-8000-00000000a003", title: "Drafting kit", status: "overdue", statusLabel: "Overdue", ownerName: "You", borrowerName: "Kabir Shah", role: "lending", pickupSpot: "D5 Stage", startDate: new Date(Date.now() + -6 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + -2 * 86_400_000).toISOString().slice(0, 10) },
+  { id: "00000000-0000-4000-8000-00000000a004", title: "Phone tripod", status: "active", statusLabel: "Borrowed", ownerName: "Mira Iyer", borrowerName: "You", role: "borrowing", pickupSpot: null, startDate: new Date(Date.now() + 0 * 86_400_000).toISOString().slice(0, 10), dueDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10) },
 ];
 
 const MOODS: ParcelMood[] = ["idle", "wave", "thinking", "talking", "happy", "found", "confused", "sleepy", "offline"];
@@ -69,6 +78,12 @@ export function AssistantPage({ firstName, showSheet }: { firstName: string; sho
   if (showSheet) {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-8 dt:px-10">
+        <p className="status-bracket text-[10px]">[ DESIGN SHEET · BOARDING PASSES ]</p>
+        <div className="rail-scroll mb-10 mt-4 flex gap-4 overflow-x-auto pb-4">
+          {SAMPLE_PASSES.map((pass, index) => (
+            <LoanBoardingPass key={pass.id} loan={pass} stamp={index === 3 ? "COLLECTED" : undefined} />
+          ))}
+        </div>
         <p className="status-bracket text-[10px]">[ PARCEL · MOOD SHEET ]</p>
         <div className="buddy-sheet">
           {MOODS.map((mood) => (

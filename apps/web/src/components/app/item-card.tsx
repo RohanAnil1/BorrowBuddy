@@ -1,7 +1,7 @@
 import { ImageOff, MapPin } from "lucide-react";
 import Link from "next/link";
 import type { ItemWithOwner } from "@borrowbuddy/shared";
-import { conditionLabel, formatMoney } from "@/lib/format";
+import { conditionLabel, depositTag } from "@/lib/format";
 import { BUCKETS, publicUrl } from "@/lib/storage";
 
 export function ItemCard({ item }: { item: ItemWithOwner }) {
@@ -55,7 +55,7 @@ export function ItemCard({ item }: { item: ItemWithOwner }) {
             {item.owner.full_name}
           </span>
           <span className="font-secondary text-[9px] text-accent">
-            DEP {formatMoney(item.deposit_amount)}
+            {depositTag(item.deposit_amount)}
           </span>
         </div>
       </div>
