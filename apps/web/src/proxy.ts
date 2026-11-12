@@ -24,6 +24,11 @@ export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
 
+  if (!user && pathname.startsWith("/api/")) {
+    // API callers (Buddy) need a status code, not a login page.
+    return NextResponse.json({ error: "Sign in first.", code: "unauthenticated" }, { status: 401 });
+  }
+
   if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
