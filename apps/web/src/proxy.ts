@@ -18,7 +18,12 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname === "/offline.html" || request.nextUrl.pathname.startsWith("/offline-assets/")) {
+  // Connection probes must answer without a session refresh round-trip to Supabase.
+  if (
+    request.nextUrl.pathname === "/offline.html" ||
+    request.nextUrl.pathname.startsWith("/offline-assets/") ||
+    request.nextUrl.pathname === "/api/health"
+  ) {
     return NextResponse.next();
   }
   const { response, user } = await updateSession(request);

@@ -47,8 +47,10 @@ private object P {
  * Parcel — Buddy's mascot, drawn on a 120×120 grid so it stays crisp from a
  * 30dp reply avatar to a 210dp hero. Tap for a squash, drag to steer its eyes.
  */
-@Composable fun ParcelMascot(mood: BuddyMood, size: Dp, modifier: Modifier = Modifier, peek: Boolean = false, interactive: Boolean = true, description: String? = null) {
-    val reduced = rememberReducedMotion()
+@Composable fun ParcelMascot(mood: BuddyMood, size: Dp, modifier: Modifier = Modifier, peek: Boolean = false, interactive: Boolean = true, description: String? = null,
+    /** Hold a still pose (a user's "pause animation" choice), exactly like reduced motion. */
+    still: Boolean = false) {
+    val reduced = rememberReducedMotion() || still
     val scope = rememberCoroutineScope()
     val time = rememberInfiniteTransition(label = "parcel")
     // Cycles always run (stable composition); with reduced motion their values are ignored.

@@ -1,8 +1,8 @@
 /* BorrowBuddy service worker — offline shell + static asset cache.
    Supabase API and storage requests are never cached. */
 
-// Retire v1's cached authenticated HTML as part of this upgrade.
-const VERSION = "borrowbuddy-v3";
+// v4: "Parcel's Signal Hunt" offline page. Older borrowbuddy-* caches are retired on activate.
+const VERSION = "borrowbuddy-v4";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   OFFLINE_URL,
@@ -40,7 +40,8 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(VERSION)
-      .then((cache) => cache.addAll(PRECACHE))
+      // Bypass the HTTP cache so a new offline page is never precached stale.
+      .then((cache) => cache.addAll(PRECACHE.map((url) => new Request(url, { cache: "reload" }))))
       .then(() => self.skipWaiting()),
   );
 });

@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import `in`.borrowbuddy.android.data.BuddyClient
 import `in`.borrowbuddy.android.domain.Profile
 
 @Composable fun BorrowBuddyApp(model: SessionViewModel) {
@@ -30,7 +31,8 @@ import `in`.borrowbuddy.android.domain.Profile
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    OfflineGate(onResume = { model.refresh() }, onHome = model::openHome) {
+    val webBaseUrl = remember(model) { BuddyClient(model.repository).baseUrl }
+    OfflineGate(onResume = { model.refresh() }, onHome = model::openHome, webBaseUrl = webBaseUrl) {
     Surface(Modifier.fillMaxSize(), color = Cargo.Canvas) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             val profile = state.profile
