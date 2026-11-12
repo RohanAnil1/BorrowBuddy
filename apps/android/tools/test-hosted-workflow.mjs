@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { syntheticPng } from './qa-image.mjs';
+import { requireDisposableQaDevice, resetQaApplication } from './qa-device.mjs';
 
 const base = process.env.SUPABASE_URL;
 const anon = process.env.SUPABASE_ANON_KEY;
@@ -82,7 +83,7 @@ async function createActor(role, fullName = `Android QA ${role}`) {
 }
 async function requireBootedNativeDevice() {
   if (!process.env.BORROWBUDDY_QA_GRADLE) return;
-  assert(process.env.ANDROID_SERIAL, 'A dedicated native test serial is required');
+  requireDisposableQaDevice(process.env.ANDROID_SERIAL);
   const adb = process.env.BORROWBUDDY_QA_ADB ?? join(process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? '', 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb');
   const result = await new Promise((resolve, reject) => {
     const child = spawn(adb, ['-s', process.env.ANDROID_SERIAL, 'shell', 'getprop', 'sys.boot_completed'], { env: { ...process.env, SUPABASE_SERVICE_ROLE_KEY: '' } });
@@ -207,7 +208,7 @@ try {
     });
     assert.equal(result, 0, 'Native test APK build failed');
     const adb = process.env.BORROWBUDDY_QA_ADB ?? join(process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? '', 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb');
-    assert(process.env.ANDROID_SERIAL, 'A dedicated emulator serial is required');
+    assert(process.env.ANDROID_SERIAL, 'A dedicated Android QA device serial is required');
     const runAdb = args => new Promise((resolve, reject) => {
       const child = spawn(adb, ['-s', process.env.ANDROID_SERIAL, ...args], { cwd: new URL('..', import.meta.url), env: { ...process.env, SUPABASE_SERVICE_ROLE_KEY: '' } });
       let output = '';
@@ -231,11 +232,17 @@ try {
     });
     // These are disposable QA packages; clear previous captures/session files
     // before PackageManager allocates space for another APK installation.
-    await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+    if (process.env.ANDROID_SERIAL.startsWith('emulator-')) {
+      await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+    }
     const mainApk = process.env.BORROWBUDDY_QA_MAIN_APK ?? 'app/build/outputs/apk/debug/app-debug.apk';
+    const resetQaApp = () => resetQaApplication(runAdb, process.env.ANDROID_SERIAL, mainApk);
     assert(!process.env.BORROWBUDDY_QA_MAIN_APK || process.env.BORROWBUDDY_QA_FOCUS === 'release', 'APK overrides are restricted to the black-box release diagnostic');
-    const testApk = process.env.BORROWBUDDY_QA_FOCUS === 'release' ? 'smoke/build/outputs/apk/release/smoke-release.apk' : 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk';
-    for (const apk of [mainApk, testApk]) {
+    const releaseCheck = process.env.BORROWBUDDY_QA_FOCUS === 'release';
+    const testApk = releaseCheck ? 'smoke/build/outputs/apk/release/smoke-release.apk' : 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk';
+    // The physical release check installs the main APK cleanly in its own step.
+    const apks = releaseCheck && !process.env.ANDROID_SERIAL.startsWith('emulator-') ? [testApk] : [mainApk, testApk];
+    for (const apk of apks) {
       const installed = await runAdb(['install', '-r', apk]);
       assert.equal(installed.code, 0, `QA APK installation failed: ${installed.output}`); assert(installed.output.includes('Success'), 'QA APK installation not confirmed');
     }
@@ -246,16 +253,36 @@ try {
     // Each scenario owns a fresh process/app state. Memory stress remains a separate release gate.
     const focus = process.env.BORROWBUDDY_QA_FOCUS;
     assert(!focus || ['handover', 'verification', 'moderation', 'chat', 'pins', 'shell', 'catalog', 'logbook', 'owner', 'ledger', 'inbox', 'profile', 'release', 'admin', 'admin-source', 'admin-workflows'].includes(focus), 'Unknown native test focus');
+    const isolatedGallery = process.env.ANDROID_SERIAL.startsWith('emulator-');
+    let phoneWidth = 411;
+    let compareDefaultTextGeometry = true;
+    if (!isolatedGallery && (!focus || ['chat', 'profile', 'admin', 'admin-source'].includes(focus))) {
+      const size = (await runAdb(['shell', 'wm', 'size'])).output;
+      const density = (await runAdb(['shell', 'wm', 'density'])).output;
+      const pixels = Number((/Override size: (\d+)x/.exec(size) ?? /Physical size: (\d+)x/.exec(size))?.[1]);
+      const dpi = Number((/Override density: (\d+)/.exec(density) ?? /Physical density: (\d+)/.exec(density))?.[1]);
+      assert(pixels > 0 && dpi > 0, 'Could not read the connected phone viewport');
+      phoneWidth = Math.round(pixels * 160 / dpi);
+      const fontScale = (await runAdb(['shell', 'settings', 'get', 'system', 'font_scale'])).output.trim();
+      compareDefaultTextGeometry = fontScale === 'null' || Number(fontScale) === 1;
+      if (!compareDefaultTextGeometry) {
+        console.log('COVERAGE: preserving phone text scaling; default-text browser geometry checks run on the emulator');
+      }
+    }
+    assert(isolatedGallery || !['verification', 'moderation'].includes(focus), 'Photo-picker workflows require an isolated emulator gallery');
+    if (!isolatedGallery && (!focus || focus === 'admin-workflows')) {
+      console.log('COVERAGE: verification and moderation picker workflows require an isolated emulator gallery');
+    }
     if (focus) console.log(`FOCUSED RUN (${focus}): other native scenarios are not included in this result`);
     for (const testClass of focus === 'catalog' ? ['HostedItemFlowTest'] : focus ? [] : ['HostedSessionTest', 'HostedItemFlowTest']) {
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert(cleared.output.includes('Success'), 'Dedicated QA app reset failed');
       const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', `in.borrowbuddy.android.${testClass}`,
         '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
         '-e', 'qaItemId', itemId, '-e', 'qaItemTitle', item.title.replaceAll(' ', '_'),
         '-e', 'qaAdaptiveWindow', process.env.ANDROID_SERIAL?.startsWith('emulator-') ? '1' : '0',
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(native.output); baselineReport += `\n${testClass}\n${report}`;
       await writeFile(new URL('../verification/hosted-native-workflow.txt', import.meta.url), baselineReport);
       printSummary(report);
@@ -282,9 +309,10 @@ try {
     if (focus === 'catalog') pass('native catalog automatic filters, restored query/category, empty/clear states, gallery/calendar/request/cancellation');
     if (focus === 'release') {
       assert(process.env.BORROWBUDDY_QA_MAIN_APK, 'Signed optimized QA APK must be supplied explicitly');
-      const reset = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']); assert(reset.output.includes('Success'));
+      const reset = await resetQaApp(); assert(reset.output.includes('Success'));
       const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r', '-e', 'class', 'in.borrowbuddy.android.smoke.MinifiedAppTest',
         '-e', 'qaMinifiedApp', '1', '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
+        '-e', 'qaRequireProcessDeath', isolatedGallery ? '1' : '0',
         'in.borrowbuddy.android.smoke/androidx.test.runner.AndroidJUnitRunner']);
       const report = redact(native.output);
       await writeFile(new URL('../verification/hosted-native-minified-app.txt', import.meta.url), report); printSummary(report);
@@ -298,8 +326,8 @@ try {
       assert(summary, 'Release checks must export their actual completion evidence');
       const result = JSON.parse(summary[1]); assert(result.debuggable === false && result.authenticated && result.chatLoadedAndSent && result.animatedMembershipCard && result.signedOut);
       assert(result.campusRoutesLoaded, 'Optimized app must load the native Lost & Found, Giveaways and Handover routes');
-      assert(result.actualProcessDeath && result.sessionRestoredAfterProcessDeath && result.chatRouteRestoredAfterProcessDeath && result.draftRestoredAfterProcessDeath);
-      assert(result.previousPid !== result.restoredPid);
+      assert(result.sessionRestoredAfterResume && result.chatRouteRestoredAfterResume && result.draftRestoredAfterResume);
+      if (isolatedGallery) assert(result.actualProcessDeath && result.previousPid !== result.restoredPid);
       const unsent = await api(owner, `/rest/v1/messages?conversation_id=eq.${conversation}&body=eq.Unsent%20process%20recovery%20draft`);
       assert.equal(unsent.length, 0, 'Restoring a draft must never automatically send it');
       const sent = await api(owner, `/rest/v1/messages?conversation_id=eq.${conversation}&body=eq.Optimized%20native%20chat%20message`);
@@ -307,7 +335,8 @@ try {
       result.chatPersistedExactlyOnceWithOriginalCase = true;
       result.restoredDraftNeverAutoSent = true;
       await writeFile(new URL('../verification/native-minified-app-result.json', import.meta.url), JSON.stringify(result, null, 2));
-      pass('non-debuggable R8 app loads native campus routes, restores session/route/unsent draft after actual process death, persists original-case chat once, loads public profile, renders moving ID card and signs out');
+      const recovery = result.actualProcessDeath ? 'process death' : 'backgrounding';
+      pass(`non-debuggable R8 app loads native campus routes, restores session/route/unsent draft after ${recovery}, persists original-case chat once, loads public profile, renders moving ID card and signs out`);
     }
     if (!focus || focus === 'shell') {
       const shellCreatedAt = Date.now();
@@ -326,14 +355,14 @@ try {
           email: `android-qa-owner-${runId}@bennett.edu.in`, password });
         pass('source website header rendered and measured at phone and tablet widths');
       }
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert(cleared.output.includes('Success'), 'Dedicated shell app reset failed');
       const shell = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedShellTest',
         '-e', 'qaOwnerEmail', `android-qa-owner-${runId}@bennett.edu.in`,
         '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
         '-e', 'qaShellItemId', fixtures[61].id,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(shell.output);
       await writeFile(new URL('../verification/hosted-native-shell.txt', import.meta.url), report); printSummary(report);
       assert.equal(shell.code, 0, 'Native shell instrumentation failed');
@@ -355,11 +384,11 @@ try {
       nativeShellItems.length = 0;
     }
     if (!focus || focus === 'pins' || focus === 'admin-workflows') {
-      const localCleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const localCleared = await resetQaApp();
       assert(localCleared.output.includes('Success'), 'Local pin-dialog app reset failed');
       const localDialog = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.PinDialogTest', '-e', 'qaPinDialog', '1',
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const localReport = redact(localDialog.output);
       await writeFile(new URL('../verification/native-pin-dialog-local.txt', import.meta.url), localReport); printSummary(localReport);
       assert.equal(localDialog.code, 0, 'Local pin-dialog instrumentation failed');
@@ -379,14 +408,14 @@ try {
         await api(actor, '/rest/v1/rpc/admin_delete_pickup_location', 'POST', { p_id: randomUUID() }, false);
       }
       await api(borrower, '/rest/v1/pickup_locations', 'POST', { name: `Forbidden QA pin ${runId}` }, false);
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert(cleared.output.includes('Success'), 'Dedicated pin app reset failed');
       const pins = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedPinTest',
         '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`,
         '-e', 'qaAdminEmail', `android-qa-admin-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
         '-e', 'qaRunId', runId, '-e', 'qaPinItemId', nativePinItemId,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(pins.output);
       await writeFile(new URL('../verification/hosted-native-pins.txt', import.meta.url), report); printSummary(report);
       assert.equal(pins.code, 0, 'Native campus pin instrumentation failed');
@@ -465,7 +494,7 @@ try {
         await testWebLogbook({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, email: `android-qa-borrower-${runId}@bennett.edu.in`, password });
         pass('source populated logbook borrowing/lending, notified waitlist and policy captured at phone/tablet widths');
       }
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert.equal(cleared.code, 0, 'Cannot reset dedicated logbook QA app');
       const logbook = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedLogbookTest',
@@ -476,7 +505,7 @@ try {
         '-e', 'qaExcludedLoan', historyLoans[0].id,
         '-e', 'qaWaitItem', fixtures[2].id, '-e', 'qaWaitTitle', fixtures[2].title.replaceAll(' ', '_'),
         '-e', 'qaNotifiedEntry', notified.id, '-e', 'qaPendingRequest', pending.id,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(logbook.output);
       await writeFile(new URL('../verification/hosted-native-logbook.txt', import.meta.url), report); printSummary(report);
       if (!/OK \(1 test\)/.test(report) || /INSTRUMENTATION_STATUS_CODE: -[1234]/.test(report)) {
@@ -527,15 +556,14 @@ try {
       assert.equal((await api(borrower, `/rest/v1/conversation_members?conversation_id=eq.${room.id}`)).length, 0);
       const heads = await rpc(borrower, 'get_conversation_message_heads', {});
       assert.equal(heads.find(row => row.conversation_id === conversation).body, 'Android QA pickup coordination');
-      let chatSource;
       if (process.env.BORROWBUDDY_QA_WEB_URL) {
         const { testWebChat } = await import('./test-web-chat.mjs');
-        chatSource = await testWebChat({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL,
+        await testWebChat({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL,
           email: `android-qa-borrower-${runId}@bennett.edu.in`, outsiderEmail: `android-qa-outsider-${runId}@bennett.edu.in`,
-          password, privateId: conversation, communityId: room.id, emptyId: emptyRoom.id });
-        pass('source chat list/private/community/empty layouts, both bubble roles and composer measured at three widths');
+          password, phoneWidth, privateId: conversation, communityId: room.id, emptyId: emptyRoom.id });
+        pass('website chat filters, history search, older history, copy, draft restoration, private access and responsive layout');
       }
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert(cleared.output.includes('Success'), 'Dedicated chat app reset failed');
       const chat = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedChatTest',
@@ -543,7 +571,7 @@ try {
         '-e', 'qaOwnerEmail', `android-qa-owner-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
         '-e', 'qaBorrowerId', borrower.id, '-e', 'qaConversationId', conversation,
         '-e', 'qaCommunityId', room.id, '-e', 'qaEarliestId', earliest.id,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(chat.output);
       await writeFile(new URL('../verification/hosted-native-chat.txt', import.meta.url), report); printSummary(report);
       if (!/OK \(1 test\)/.test(report)) await captureNativeFile('native-chat-timeout.png', new URL('../verification/native-chat-timeout.png', import.meta.url)).catch(() => {});
@@ -567,25 +595,19 @@ try {
       const originalSize = /Override size: (\d+x\d+)/.exec((await runAdb(['shell', 'wm', 'size'])).output)?.[1];
       const originalDensity = /Override density: (\d+)/.exec((await runAdb(['shell', 'wm', 'density'])).output)?.[1];
       const results = [];
-      try { for (const { suffix, viewport } of [{ suffix: 'phone', viewport: 411 }, ...(process.env.ANDROID_SERIAL.startsWith('emulator-') ? [{ suffix: 'medium', viewport: 640 }, { suffix: 'wide', viewport: 1024 }] : [])]) {
+      try { for (const { suffix, viewport } of [{ suffix: 'phone', viewport: phoneWidth }, ...(isolatedGallery ? [{ suffix: 'medium', viewport: 640 }, { suffix: 'wide', viewport: 1024 }] : [])]) {
         await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
-        if (viewport >= 640) {
+        if (suffix !== 'phone') {
           assert.equal((await runAdb(['shell', 'wm', 'size', `${viewport}x838`])).code, 0);
           assert.equal((await runAdb(['shell', 'wm', 'density', '160'])).code, 0);
         }
-        const reset = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']); assert(reset.output.includes('Success'));
-        const list = chatSource?.find(row => row.kind === 'list' && row.width === viewport);
-        const thread = chatSource?.find(row => row.kind === 'private-thread' && row.width === viewport);
-        const metrics = list && thread ? { rootWidth: list.root.bounds.width, titleHeight: list.heading.bounds.height,
-          introHeight: list.intro.bounds.height, rowHeight: list.rows[0].panel.bounds.height, headerHeight: thread.header.bounds.height,
-          composerHeight: thread.composer.bounds.height, inputHeight: thread.textarea.bounds.height, sendSize: thread.send.bounds.width } : undefined;
+        const reset = await resetQaApp(); assert(reset.output.includes('Success'));
         const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
           '-e', 'class', 'in.borrowbuddy.android.HostedChatPresentationTest', '-e', 'qaChatSize', suffix,
           '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
           '-e', 'qaPrivateId', conversation, '-e', 'qaCommunityId', room.id, '-e', 'qaEmptyRoomId', emptyRoom.id,
           '-e', 'qaOwnerId', owner.id, '-e', 'qaLoanId', loanId,
-          ...(metrics ? ['-e', 'qaSourceLayout', Buffer.from(JSON.stringify(metrics)).toString('base64')] : []),
-          'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+          'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
         const report = redact(native.output);
         await writeFile(new URL(`../verification/hosted-native-chat-${suffix}.txt`, import.meta.url), report); printSummary(report);
         if (!/OK \(1 test\)/.test(report)) await captureNativeFile(`native-chat-presentation-failure-${suffix}.png`, new URL(`../verification/native-chat-presentation-failure-${suffix}.png`, import.meta.url)).catch(() => {});
@@ -595,10 +617,21 @@ try {
         results.push(JSON.parse(result.output));
       } } finally {
         await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
-        await runAdb(['shell', 'wm', 'size', originalSize || 'reset']); await runAdb(['shell', 'wm', 'density', originalDensity || 'reset']);
+        if (isolatedGallery) {
+          await runAdb(['shell', 'wm', 'size', originalSize || 'reset']); await runAdb(['shell', 'wm', 'density', originalDensity || 'reset']);
+        }
       }
       await writeFile(new URL('../verification/native-chat-presentation-result.json', import.meta.url), JSON.stringify(results, null, 2));
-      pass('native source chat dimensions, original fonts/bubble colors, loan/profile navigation, keyboard insets, 2000-character limit and empty/community states at three widths');
+      pass('native chat filters, search, suggestions, message formatting, loan/profile navigation, keyboard, input limits and empty states');
+      if (process.env.BORROWBUDDY_QA_WEB_URL) {
+        const { testWebChatSending } = await import('./test-web-chat.mjs');
+        await testWebChatSending({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL,
+          email: `android-qa-borrower-${runId}@bennett.edu.in`, outsiderEmail: `android-qa-outsider-${runId}@bennett.edu.in`,
+          password, privateId: conversation, communityId: room.id });
+        const sent = await api(owner, `/rest/v1/messages?conversation_id=eq.${conversation}&body=eq.${encodeURIComponent('Website QA private message\nSecond line')}`);
+        assert.equal(sent.length, 1);
+        pass('website private and public sends, private multiline persistence and public delivery to another session');
+      }
 
     }
     if (!focus || focus === 'handover') {
@@ -626,7 +659,7 @@ try {
       '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`,
       '-e', 'qaOwnerEmail', `android-qa-owner-${runId}@bennett.edu.in`,
       '-e', 'qaPassword', password, '-e', 'qaRequestId', nativeRequest.id,
-      'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+      'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
     const handoverReport = handover.output.replaceAll(password, '[QA PASSWORD REDACTED]').replaceAll(service, '[SERVER KEY REDACTED]').replaceAll(anon, '[PUBLIC KEY REDACTED]').replace(/android-qa-[a-z0-9-]+@bennett\.edu\.in/gi, '[QA EMAIL REDACTED]');
     await writeFile(new URL('../verification/hosted-native-handover.txt', import.meta.url), handoverReport);
     console.log(handoverReport.split('\n').filter(line => /INSTRUMENTATION_STATUS: (class|test|stack)=|INSTRUMENTATION_STATUS_CODE:|^OK \(|^Tests run:|^FAILURES/.test(line)).join('\n'));
@@ -657,7 +690,7 @@ try {
     }
     pass('native owner approval, decoded QR tickets, rotation, persistent lockout/regeneration, pickup/return and review');
     }
-    if (!focus || focus === 'verification' || focus === 'admin-workflows') {
+    if (isolatedGallery && (!focus || focus === 'verification' || focus === 'admin-workflows')) {
       const student = await createActor('student', '');
       nativeStudentId = student.id;
       nativeMediaCleanups.push(async () => {
@@ -666,14 +699,14 @@ try {
         assert.equal(removed.code, 0, 'Isolated native media cleanup failed');
         assert(!/Error|Exception/.test(removed.output), 'Isolated native media provider rejected cleanup');
       });
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert(cleared.output.includes('Success'), 'Dedicated verification app reset failed');
       const verification = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedVerificationTest',
         '-e', 'qaStudentEmail', `android-qa-student-${runId}@bennett.edu.in`,
         '-e', 'qaAdminEmail', `android-qa-admin-${runId}@bennett.edu.in`,
         '-e', 'qaPassword', password, '-e', 'qaStudentId', student.id,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(verification.output);
       await writeFile(new URL('../verification/hosted-native-verification.txt', import.meta.url), report);
       printSummary(report);
@@ -690,7 +723,7 @@ try {
       await writeFile(new URL('../verification/hosted-native-verification-state.json', import.meta.url), JSON.stringify({ ...verificationState, audit: audit.map(entry => entry.action) }, null, 2));
       pass('native real photo picker, ID onboarding/private viewer, rotation, admin rejection/resubmission/approval and audit');
     }
-    if (!focus || focus === 'moderation' || focus === 'admin-workflows') {
+    if (isolatedGallery && (!focus || focus === 'moderation' || focus === 'admin-workflows')) {
       const loanIds = [];
       nativeEvidenceUserId = borrower.id;
       for (const kind of ['damage', 'late', 'other']) {
@@ -714,14 +747,14 @@ try {
           assert.equal(removed.code, 0); assert(!/Error|Exception/.test(removed.output), 'Evidence media cleanup rejected');
         }
       });
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const cleared = await resetQaApp();
       assert(cleared.output.includes('Success'), 'Dedicated moderation app reset failed');
       const moderation = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedModerationTest',
         '-e', 'qaEmail', `android-qa-borrower-${runId}@bennett.edu.in`,
         '-e', 'qaAdminEmail', `android-qa-admin-${runId}@bennett.edu.in`,
         '-e', 'qaPassword', password, '-e', 'qaBorrowerId', borrower.id, '-e', 'qaLoanIds', loanIds.join(','),
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(moderation.output);
       await writeFile(new URL('../verification/hosted-native-moderation.txt', import.meta.url), report);
       printSummary(report);
@@ -805,18 +838,19 @@ try {
         await testWebInbox({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, email: `android-qa-inbox-${runId}@bennett.edu.in`, emptyEmail: `android-qa-inbox-empty-${runId}@bennett.edu.in`, password, phase: 'mixed', unread: 26 });
         pass('source mixed/empty inbox at phone/tablet widths with source link priority and 40-row window');
       }
-      const cleared = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']); assert.equal(cleared.code, 0);
+      const cleared = await resetQaApp(); assert.equal(cleared.code, 0);
       const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r', '-e', 'class', 'in.borrowbuddy.android.HostedInboxTest',
+        '-e', 'qaAdaptiveWindow', isolatedGallery ? '1' : '0',
         '-e', 'qaEmail', `android-qa-inbox-${runId}@bennett.edu.in`, '-e', 'qaEmptyEmail', `android-qa-inbox-empty-${runId}@bennett.edu.in`,
         '-e', 'qaPassword', password, '-e', 'qaStudentId', student.id, '-e', 'qaIds', rows.map(row => row.id).join(','),
         '-e', 'qaLoanId', inboxLoan.id, '-e', 'qaItemId', listings[1].id, '-e', 'qaConversationId', channel.id,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = native.output.replaceAll(password, '[QA PASSWORD REDACTED]').replaceAll(service, '[SERVER KEY REDACTED]').replaceAll(anon, '[PUBLIC KEY REDACTED]').replace(/android-qa-[a-z0-9-]+@bennett\.edu\.in/gi, '[QA EMAIL REDACTED]');
       await writeFile(new URL('../verification/hosted-native-inbox.txt', import.meta.url), report); printSummary(report);
       if (!/OK \(1 test\)/.test(report)) await captureNativeFile('inbox-failure.png', new URL('../verification/inbox-failure.png', import.meta.url)).catch(() => {});
       assert.equal(native.code, 0); assert(/OK \(1 test\)/.test(report) && !/INSTRUMENTATION_STATUS_CODE: -[1234]/.test(report), 'Native inbox scenario must complete one passing test');
-      for (const name of ['mixed', 'wide', 'read', 'empty']) await captureNativeFile(`native-inbox-${name}.png`, new URL(`../verification/native-inbox-${name}-api36.png`, import.meta.url));
-      for (const name of ['result', 'capture-checks']) {
+      for (const name of ['mixed', 'read', 'empty', ...(isolatedGallery ? ['wide'] : [])]) await captureNativeFile(`native-inbox-${name}.png`, new URL(`../verification/native-inbox-${name}-api36.png`, import.meta.url));
+      for (const name of ['result', ...(isolatedGallery ? ['capture-checks'] : [])]) {
         const file = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', `files/native-inbox-${name}.json`]); assert.equal(file.code, 0);
         await writeFile(new URL(`../verification/native-inbox-${name}.json`, import.meta.url), file.output);
       }
@@ -866,27 +900,30 @@ try {
         sourceAccountTitleHeight = measured.find(row => row.route === 'me' && row.viewport === 1024).heading.bounds.height;
         pass('source account and populated/empty ledger measured at phone/tablet widths');
       }
-      const reset = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']); assert.equal(reset.code, 0);
+      const reset = await resetQaApp(); assert.equal(reset.code, 0);
       const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedAccountLedgerTest',
+        '-e', 'qaAdaptiveWindow', isolatedGallery ? '1' : '0',
         '-e', 'qaEmail', `android-qa-ledger-${runId}@bennett.edu.in`,
         '-e', 'qaEmptyEmail', `android-qa-ledger-empty-${runId}@bennett.edu.in`,
         '-e', 'qaAdminEmail', `android-qa-admin-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
         '-e', 'qaStudentId', student.id, '-e', 'qaPendingIds', pending.map(row => row.id).join(','),
         ...(sourceAccountTitleHeight ? ['-e', 'qaSourceTitleHeight', String(sourceAccountTitleHeight)] : []),
         '-e', 'qaSettledId', settled.id, '-e', 'qaWaivedId', waived.id,
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = native.output.replaceAll(password, '[QA PASSWORD REDACTED]').replaceAll(service, '[SERVER KEY REDACTED]').replaceAll(anon, '[PUBLIC KEY REDACTED]').replace(/android-qa-[a-z0-9-]+@bennett\.edu\.in/gi, '[QA EMAIL REDACTED]');
       await writeFile(new URL('../verification/hosted-native-account-ledger.txt', import.meta.url), report); printSummary(report);
       if (!/OK \(1 test\)/.test(report)) await captureNativeFile('account-ledger-failure.png', new URL('../verification/account-ledger-failure.png', import.meta.url)).catch(() => {});
       assert.equal(native.code, 0); assert(/OK \(1 test\)/.test(report) && !/INSTRUMENTATION_STATUS_CODE: -[1234]/.test(report), 'Account/ledger scenario must complete one passing test');
-      for (const name of ['account-phone', 'account-wide', 'ledger-phone', 'ledger-wide', 'empty-phone']) await captureNativeFile(`native-account-ledger-${name}.png`, new URL(`../verification/native-account-ledger-${name}-api36.png`, import.meta.url));
+      for (const name of ['account-phone', 'ledger-phone', 'empty-phone', ...(isolatedGallery ? ['account-wide', 'ledger-wide'] : [])]) await captureNativeFile(`native-account-ledger-${name}.png`, new URL(`../verification/native-account-ledger-${name}-api36.png`, import.meta.url));
       const result = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-account-ledger-result.json']); assert.equal(result.code, 0);
       await writeFile(new URL('../verification/native-account-ledger-result.json', import.meta.url), result.output);
-      const titleMetrics = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-account-ledger-title-metrics.json']); assert.equal(titleMetrics.code, 0);
-      await writeFile(new URL('../verification/native-account-ledger-title-metrics.json', import.meta.url), titleMetrics.output);
-      const captureChecks = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-account-ledger-capture-checks.json']); assert.equal(captureChecks.code, 0);
-      await writeFile(new URL('../verification/native-account-ledger-capture-checks.json', import.meta.url), captureChecks.output);
+      if (isolatedGallery) {
+        const titleMetrics = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-account-ledger-title-metrics.json']); assert.equal(titleMetrics.code, 0);
+        await writeFile(new URL('../verification/native-account-ledger-title-metrics.json', import.meta.url), titleMetrics.output);
+        const captureChecks = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-account-ledger-capture-checks.json']); assert.equal(captureChecks.code, 0);
+        await writeFile(new URL('../verification/native-account-ledger-capture-checks.json', import.meta.url), captureChecks.output);
+      }
       const saved = (await api('service', `/rest/v1/profiles?id=eq.${student.id}&select=full_name,phone,department,year_of_study`))[0];
       assert.deepEqual(saved, { full_name: 'Android QA Ledger Updated', phone: '9876543210', department: 'Design', year_of_study: 6 });
       assert.equal((await api('service', `/rest/v1/fines?id=eq.${pending[0].id}&select=status`))[0].status, 'settled');
@@ -941,7 +978,7 @@ try {
       if (process.env.BORROWBUDDY_QA_WEB_URL) {
         try {
         const { testWebPublicProfile } = await import('./test-web-public-profile.mjs');
-        source = await testWebPublicProfile({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL,
+        source = await testWebPublicProfile({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, phoneWidth,
           email: `android-qa-profile-reviewer-${runId}@bennett.edu.in`, adminEmail: `android-qa-admin-${runId}@bennett.edu.in`, password, studentId: student.id, emptyId: empty.id,
           newestItemId: listings[13].id, excludedItemId: listings[1].id, studentEmail: `android-qa-profile-student-${runId}@bennett.edu.in` });
         pass('source public profiles measured at phone/tablet widths with twenty reviews, twelve listings, aggregate stars, empty/unverified state and membership cards');
@@ -950,14 +987,14 @@ try {
       const originalSize = /Override size: (\d+x\d+)/.exec((await runAdb(['shell', 'wm', 'size'])).output)?.[1];
       const originalDensity = /Override density: (\d+)/.exec((await runAdb(['shell', 'wm', 'density'])).output)?.[1];
       const results = [];
-      try { for (const { suffix, viewport } of [{ suffix: 'phone', viewport: 411 }, ...(process.env.ANDROID_SERIAL.startsWith('emulator-') ? [{ suffix: 'medium', viewport: 640 }, { suffix: 'wide', viewport: 1024 }] : [])]) {
-        const wide = viewport >= 640;
+      try { for (const { suffix, viewport } of [{ suffix: 'phone', viewport: phoneWidth }, ...(isolatedGallery ? [{ suffix: 'medium', viewport: 640 }, { suffix: 'wide', viewport: 1024 }] : [])]) {
+        const wide = suffix !== 'phone';
         if (wide) {
           await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
           assert.equal((await runAdb(['shell', 'wm', 'size', `${viewport}x838`])).code, 0);
           assert.equal((await runAdb(['shell', 'wm', 'density', '160'])).code, 0);
         }
-        const reset = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']); assert(reset.output.includes('Success'));
+        const reset = await resetQaApp(); assert(reset.output.includes('Success'));
         const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r', '-e', 'class', 'in.borrowbuddy.android.HostedPublicProfileTest',
         '-e', 'qaWide', wide ? '1' : '0',
         '-e', 'qaViewport', String(viewport), '-e', 'qaProfileSize', suffix,
@@ -966,11 +1003,13 @@ try {
         '-e', 'qaStudentId', student.id, '-e', 'qaEmptyId', empty.id, '-e', 'qaNewestItem', listings[13].id,
         '-e', 'qaNewestReview', reviews[20].id, '-e', 'qaNullReview', reviews[19].id, '-e', 'qaBlankReview', reviews[18].id,
         '-e', 'qaExcludedReview', reviews[0].id, '-e', 'qaExcludedItem', listings[1].id,
-        ...(source ? ['-e', 'qaPhoneTitleHeight', String(source.find(row => row.viewport === 411 && row.state === 'populated').heading.bounds.height)] : []),
-        ...(source ? ['-e', 'qaSourceStatsWidth', String(source.find(row => row.state === 'populated').stats.bounds.width)] : []),
-        ...(source ? ['-e', 'qaSourceAvatarWidth', String(source.find(row => row.state === 'populated' && row.viewport === viewport).initial.bounds.width)] : []),
-        ...(source ? ['-e', 'qaSourceIdentityHeight', String(source.find(row => row.state === 'populated' && row.viewport === viewport).identity.bounds.height)] : []),
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        ...(source && compareDefaultTextGeometry ? [
+          '-e', 'qaPhoneTitleHeight', String(source.find(row => row.viewport === phoneWidth && row.state === 'populated').heading.bounds.height),
+          '-e', 'qaSourceStatsWidth', String(source.find(row => row.viewport === phoneWidth && row.state === 'populated').stats.bounds.width),
+          '-e', 'qaSourceAvatarWidth', String(source.find(row => row.state === 'populated' && row.viewport === viewport).initial.bounds.width),
+          '-e', 'qaSourceIdentityHeight', String(source.find(row => row.state === 'populated' && row.viewport === viewport).identity.bounds.height),
+        ] : []),
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
         const report = redact(native.output);
         await writeFile(new URL(`../verification/hosted-native-public-profile-${suffix}.txt`, import.meta.url), report); printSummary(report);
         if (!/OK \(1 test\)/.test(report)) await captureNativeFile('native-profile-failure.png', new URL('../verification/native-profile-failure.png', import.meta.url)).catch(() => {});
@@ -982,10 +1021,12 @@ try {
         results.push(JSON.parse(result.output));
       } } finally {
         await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
-        await runAdb(['shell', 'wm', 'size', originalSize || 'reset']); await runAdb(['shell', 'wm', 'density', originalDensity || 'reset']);
+        if (isolatedGallery) {
+          await runAdb(['shell', 'wm', 'size', originalSize || 'reset']); await runAdb(['shell', 'wm', 'density', originalDensity || 'reset']);
+        }
       }
       await writeFile(new URL('../verification/native-profile-result.json', import.meta.url), JSON.stringify(results, null, 2));
-      pass('native source public identity, original fonts/stars, query windows, safe projection, both review roles, empty/unverified state, listing navigation, restoration and phone/tablet layouts');
+      pass('native source public identity, original fonts/stars, query windows, safe projection, both review roles, empty/unverified state, listing navigation and restoration');
       if (sourceFailure) throw sourceFailure;
     }
     if (!focus || focus === 'admin' || focus === 'admin-source') {
@@ -1017,7 +1058,7 @@ try {
       let source, nativeAdminResults;
       if (process.env.BORROWBUDDY_QA_WEB_URL) {
         const { testWebAdmin } = await import('./test-web-admin.mjs');
-        source = await testWebAdmin({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, email: `android-qa-admin-${runId}@bennett.edu.in`, password,
+        source = await testWebAdmin({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, email: `android-qa-admin-${runId}@bennett.edu.in`, password, phoneWidth,
           state: 'populated', pendingId: pendingStudent.id, incidentId: incident.id, fineId: fine.id, pinId: layoutPin.id });
         pass('source populated admin verification, private evidence, incident/fine controls, map summaries and pin editor measured at three widths');
       }
@@ -1025,18 +1066,18 @@ try {
         const originalSize = /Override size: (\d+x\d+)/.exec((await runAdb(['shell', 'wm', 'size'])).output)?.[1];
         const originalDensity = /Override density: (\d+)/.exec((await runAdb(['shell', 'wm', 'density'])).output)?.[1];
         const results = [];
-        try { for (const { suffix, viewport } of [{ suffix: 'phone', viewport: 411 }, ...(process.env.ANDROID_SERIAL.startsWith('emulator-') ? [{ suffix: 'medium', viewport: 640 }, { suffix: 'wide', viewport: 1024 }] : [])]) {
+        try { for (const { suffix, viewport } of [{ suffix: 'phone', viewport: phoneWidth }, ...(isolatedGallery ? [{ suffix: 'medium', viewport: 640 }, { suffix: 'wide', viewport: 1024 }] : [])]) {
           await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
-          if (viewport >= 640) { assert.equal((await runAdb(['shell', 'wm', 'size', `${viewport}x838`])).code, 0); assert.equal((await runAdb(['shell', 'wm', 'density', '160'])).code, 0); }
-          assert((await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android'])).output.includes('Success'));
+          if (suffix !== 'phone') { assert.equal((await runAdb(['shell', 'wm', 'size', `${viewport}x838`])).code, 0); assert.equal((await runAdb(['shell', 'wm', 'density', '160'])).code, 0); }
+          assert((await resetQaApp()).output.includes('Success'));
           const measured = source?.find(row => row.width === viewport);
           const layout = measured ? { ...Object.fromEntries(['root','heading','verification','incident','fine'].map(key => [key, { bounds: measured[key].bounds }])), pinMap: measured.pinForm.map } : undefined;
           const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r', '-e', 'class', 'in.borrowbuddy.android.HostedAdminPresentationTest',
             '-e', 'qaEmail', `android-qa-admin-${runId}@bennett.edu.in`, '-e', 'qaPassword', password,
             '-e', 'qaPendingId', pendingStudent.id, '-e', 'qaMissingId', missingStudent.id, '-e', 'qaIncidentId', incident.id,
             '-e', 'qaFineId', fine.id, '-e', 'qaPinId', layoutPin.id, '-e', 'qaSize', suffix,
-            ...(layout ? ['-e', 'qaSourceLayout', Buffer.from(JSON.stringify(layout)).toString('base64')] : []),
-            'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+            ...(layout && compareDefaultTextGeometry ? ['-e', 'qaSourceLayout', Buffer.from(JSON.stringify(layout)).toString('base64')] : []),
+            'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
           const report = redact(native.output); await writeFile(new URL(`../verification/hosted-native-admin-${suffix}.txt`, import.meta.url), report); printSummary(report);
           if (!/OK \(1 test\)/.test(report)) {
             await captureNativeFile(`native-admin-failure-${suffix}.png`, new URL(`../verification/native-admin-failure-${suffix}.png`, import.meta.url)).catch(() => {});
@@ -1046,10 +1087,15 @@ try {
           assert.equal(native.code, 0); assert(/OK \(1 test\)/.test(report) && !/INSTRUMENTATION_STATUS_CODE: -[1234]/.test(report), 'Native admin layout must finish one passing test');
           for (const name of ['verification','incident','fine','pins','pin-editor','empty']) await captureNativeFile(`native-admin-${name}-${suffix}.png`, new URL(`../verification/native-admin-${name}-${suffix}-api36.png`, import.meta.url));
           const result = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', `files/native-admin-result-${suffix}.json`]); assert.equal(result.code, 0); results.push(JSON.parse(result.output));
-        } } finally { await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']); await runAdb(['shell','wm','size',originalSize || 'reset']); await runAdb(['shell','wm','density',originalDensity || 'reset']); }
+        } } finally {
+          await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
+          if (isolatedGallery) {
+            await runAdb(['shell', 'wm', 'size', originalSize || 'reset']); await runAdb(['shell', 'wm', 'density', originalDensity || 'reset']);
+          }
+        }
         nativeAdminResults = results;
         await writeFile(new URL('../verification/native-admin-result.json', import.meta.url), JSON.stringify(results, null, 2));
-        pass('native source admin layouts, private evidence, saved drafts, input limits, invalid resolution, source thirty-row window with retained older access and empty states at three widths');
+        pass('native source admin layouts, private evidence, saved drafts, input limits, invalid resolution, source thirty-row window with retained older access and empty states');
       }
       await rpc(admin, 'admin_set_verification', { p_profile_id: pendingStudent.id, p_status: 'verified' });
       await rpc(admin, 'admin_set_verification', { p_profile_id: missingStudent.id, p_status: 'verified' });
@@ -1057,7 +1103,7 @@ try {
       await rpc(admin, 'settle_fine', { p_fine_id: fine.id, p_action: 'waive' });
       if (process.env.BORROWBUDDY_QA_WEB_URL) {
         const { testWebAdmin } = await import('./test-web-admin.mjs');
-        const emptySource = await testWebAdmin({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, email: `android-qa-admin-${runId}@bennett.edu.in`, password, state: 'empty', pinId: layoutPin.id });
+        const emptySource = await testWebAdmin({ baseUrl: process.env.BORROWBUDDY_QA_WEB_URL, email: `android-qa-admin-${runId}@bennett.edu.in`, password, phoneWidth, state: 'empty', pinId: layoutPin.id });
         for (const native of nativeAdminResults || []) {
           const width = { phone: 411, medium: 640, wide: 1024 }[native.size];
           const measured = emptySource.find(row => row.width === width);
@@ -1113,7 +1159,7 @@ try {
           password, pendingCount: 2, itemCount: 3 });
         pass('source owner request/listing/recent-decision layouts measured at phone/tablet widths and empty first-listing navigation');
       }
-      const reset = await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android']);
+      const reset = await resetQaApp();
       assert(reset.output.includes('Success'), 'Dedicated owner app reset failed');
       const native = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
         '-e', 'class', 'in.borrowbuddy.android.HostedOwnerDeskTest#ownerRequestsListingsDraftsControlsHistoryAndEmptyState',
@@ -1122,7 +1168,7 @@ try {
         '-e', 'qaDeclineRequest', pending[0].id, '-e', 'qaApproveRequest', pending[1].id,
         '-e', 'qaCoverItem', listings[0].id, '-e', 'qaDeleteItem', listings[2].id, '-e', 'qaApproveItem', listings[1].id,
         '-e', 'qaItemCount', '3',
-        'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+        'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
       const report = redact(native.output);
       await writeFile(new URL('../verification/hosted-native-owner.txt', import.meta.url), report); printSummary(report);
       const stage = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-owner-stage.txt']);
@@ -1143,12 +1189,12 @@ try {
           await runAdb(['shell', 'am', 'force-stop', 'in.borrowbuddy.android']);
           assert.equal((await runAdb(['shell', 'wm', 'size', '1024x838'])).code, 0);
           assert.equal((await runAdb(['shell', 'wm', 'density', '160'])).code, 0);
-          assert((await runAdb(['shell', 'pm', 'clear', '--user', '0', 'in.borrowbuddy.android'])).output.includes('Success'));
+          assert((await resetQaApp()).output.includes('Success'));
           const wide = await runAdb(['shell', 'am', 'instrument', '--user', '0', '-w', '-r',
             '-e', 'class', 'in.borrowbuddy.android.HostedOwnerDeskTest#sourceOwnerWideLayoutInFreshProcess',
             '-e', 'qaOwnerWide', '1', '-e', 'qaOwnerEmail', `android-qa-desk-owner-${runId}@bennett.edu.in`,
             '-e', 'qaPassword', password, '-e', 'qaCoverItem', listings[0].id,
-            'in.borrowbuddy.android.test/androidx.test.runner.AndroidJUnitRunner']);
+            'in.borrowbuddy.android.test/in.borrowbuddy.android.BorrowBuddyQaRunner']);
           const wideReport = redact(wide.output);
           await writeFile(new URL('../verification/hosted-native-owner-wide.txt', import.meta.url), wideReport); printSummary(wideReport);
           assert.equal(wide.code, 0); assert(/OK \(1 test\)/.test(wideReport) && !/INSTRUMENTATION_STATUS_CODE: -[1234]/.test(wideReport), 'Fresh-process owner tablet layout must pass');

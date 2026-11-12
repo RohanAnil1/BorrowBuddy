@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
+import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
+import "@/components/assistant/assistant.css";
 import { requireProfile } from "@/lib/auth/guards";
 import { getUnreadCount } from "@/lib/data/notifications";
 import { getPendingRequestCount } from "@/lib/data/requests";
@@ -26,8 +28,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   ]);
 
   return (
-    <AppShell pendingCount={pendingCount} profile={profile} unreadCount={unreadCount}>
-      {children}
-    </AppShell>
+    <>
+      <AppShell pendingCount={pendingCount} profile={profile} unreadCount={unreadCount}>
+        {children}
+      </AppShell>
+      <AssistantLauncher firstName={profile.full_name?.split(/\s+/)[0] ?? ""} userId={profile.id} />
+    </>
   );
 }

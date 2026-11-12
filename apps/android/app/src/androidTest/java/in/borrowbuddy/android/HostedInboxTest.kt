@@ -98,7 +98,7 @@ class HostedInboxTest {
             assertNull(notificationDestination(rows[3])); assertNull(notificationDestination(rows[4]))
             compose.onNodeWithTag("notification-${ids[0]}").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Read"))
             capture("mixed")
-            wide(ids[0])
+            if (args.getString("qaAdaptiveWindow") == "1") wide(ids[0])
             for ((index, heading) in listOf(0 to "[ CUSTODY CHAIN ]", 1 to "PICKUP SPOT", 2 to "MESSAGE")) {
                 val row = hasTestTag("notification-${ids[index]}"); scroll(row); compose.onNode(row).assertIsDisplayed().assertHasClickAction().performClick()
                 if (index == 1) {

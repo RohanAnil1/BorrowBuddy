@@ -51,10 +51,9 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
     private suspend fun refreshTail() = mutation.withLock {
         val rows = repository.messages(id)
         val initial = !ui.initialized
-        val added = rows.any { row -> ui.messages.none { it.id == row.id } }
         ui = ui.copy(messages = mergeThreadMessages(ui.messages, rows), initialized = true,
             hasOlder = if (initial) rows.size == 100 else ui.hasOlder,
-            scrollRequest = ui.scrollRequest + if (initial || added) 1 else 0)
+            scrollRequest = ui.scrollRequest + if (initial) 1 else 0)
         markRead()
     }
     private suspend fun refreshMetadata(): Boolean {
@@ -115,9 +114,8 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                                 catch (_: Exception) { null }
                                 sender?.let { senderCache[row.sender_id] = it; if (senderCache.size > 64) senderCache.remove(senderCache.keys.first()) }
                                 mutation.withLock {
-                                    val added = ui.messages.none { it.id == row.id }
                                     ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row.copy(sender = sender))),
-                                        events = ui.events + 1, scrollRequest = ui.scrollRequest + if (added) 1 else 0)
+                                        events = ui.events + 1)
                                     markRead()
                                 }
                             }
@@ -165,8 +163,7 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                 repository.initialize()
                 val row = repository.sendMessage(id, userId, text)
                 mutation.withLock {
-                    val added = ui.messages.none { it.id == row.id }
-                    ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), scrollRequest = ui.scrollRequest + if (added) 1 else 0)
+                    ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), scrollRequest = ui.scrollRequest + 1)
                     if (ui.draft == originalDraft) updateDraft("")
                     if (session?.isActive == true) markRead()
                 }

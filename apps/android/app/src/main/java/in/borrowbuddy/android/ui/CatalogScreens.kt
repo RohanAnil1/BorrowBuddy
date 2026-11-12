@@ -102,10 +102,11 @@ import kotlinx.coroutines.launch
 }
 
 private data class ItemDetails(val item: Item, val windows: List<AvailabilityWindow>)
-@Composable fun ItemScreen(repository: BorrowRepository, profile: Profile, id: String, edit: () -> Unit, owner: (String) -> Unit, manage: () -> Unit) {
+@Composable fun ItemScreen(repository: BorrowRepository, profile: Profile, id: String, edit: () -> Unit, owner: (String) -> Unit, manage: () -> Unit,
+    initialStart: String? = null, initialEnd: String? = null) {
     val actions = rememberActions()
-    var start by rememberSaveable(id) { mutableStateOf("") }
-    var end by rememberSaveable(id) { mutableStateOf("") }
+    var start by rememberSaveable(id) { mutableStateOf(initialStart.orEmpty()) }
+    var end by rememberSaveable(id) { mutableStateOf(initialEnd.orEmpty()) }
     var message by rememberSaveable(id) { mutableStateOf("") }
     var sent by rememberSaveable(id) { mutableStateOf(false) }
     var dateState by remember(id) { mutableStateOf("idle") }

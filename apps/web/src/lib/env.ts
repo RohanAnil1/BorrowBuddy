@@ -46,3 +46,32 @@ export function getServerEnv(): ServerEnv {
     ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   });
 }
+
+/* ------------------------------ Buddy assistant ----------------------------- */
+
+const assistantEnvSchema = z.object({
+  /** "gemini" | "groq" | "local". Defaults to whichever key is present. */
+  ASSISTANT_PROVIDER: z.enum(["gemini", "groq", "local"]).optional(),
+  GEMINI_API_KEY: z.string().min(1).optional(),
+  GEMINI_MODEL: z.string().min(1).default("gemini-flash-latest"),
+  GROQ_API_KEY: z.string().min(1).optional(),
+  GROQ_MODEL: z.string().min(1).default("openai/gpt-oss-120b"),
+});
+
+export type AssistantEnv = z.infer<typeof assistantEnvSchema>;
+
+/** Server-only. Every field is optional, so a missing key never breaks the app:
+ *  Buddy falls back to its local (rules-based) brain instead. */
+export function getAssistantEnv(): AssistantEnv {
+  const blank = (value: string | undefined) => (value && value.trim() ? value.trim() : undefined);
+  const parsed = assistantEnvSchema.safeParse({
+    ASSISTANT_PROVIDER: blank(process.env.ASSISTANT_PROVIDER),
+    GEMINI_API_KEY: blank(process.env.GEMINI_API_KEY),
+    GEMINI_MODEL: blank(process.env.GEMINI_MODEL),
+    GROQ_API_KEY: blank(process.env.GROQ_API_KEY),
+    GROQ_MODEL: blank(process.env.GROQ_MODEL),
+  });
+  return parsed.success
+    ? parsed.data
+    : { GEMINI_MODEL: "gemini-flash-latest", GROQ_MODEL: "openai/gpt-oss-120b" };
+}

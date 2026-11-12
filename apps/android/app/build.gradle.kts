@@ -24,7 +24,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "in.borrowbuddy.android.BorrowBuddyQaRunner"
         // Ephemeral QA credentials are runner arguments only, never BuildConfig or APK assets.
         System.getenv("BORROWBUDDY_QA_EMAIL")?.let { testInstrumentationRunnerArguments["qaEmail"] = it }
         System.getenv("BORROWBUDDY_QA_PASSWORD")?.let { testInstrumentationRunnerArguments["qaPassword"] = it }
@@ -32,6 +32,8 @@ android {
         System.getenv("BORROWBUDDY_QA_ITEM_TITLE")?.let { testInstrumentationRunnerArguments["qaItemTitle"] = it }
         buildConfigField("String", "SUPABASE_URL", quoted(setting("SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_ANON_KEY", quoted(setting("SUPABASE_ANON_KEY")))
+        // The web app that serves /api/assistant (Buddy). Release builds must set it.
+        buildConfigField("String", "BORROWBUDDY_WEB_URL", quoted(setting("BORROWBUDDY_WEB_URL")))
     }
     signingConfigs {
         if (signing.isNotEmpty()) create("production") {

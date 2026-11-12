@@ -67,7 +67,7 @@ import `in`.borrowbuddy.android.domain.Profile
 
 @Composable private fun PortalNavigation(route: String, pending: Int, modifier: Modifier, wide: Boolean, section: (String) -> Unit) {
     FlowRow(modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        listOf("dashboard" to "Dashboard", "home" to "Browse", "chat" to "Chat", "map" to "Map", "campus" to "Campus", "my/items" to "My items").forEach { (path, label) ->
+        listOf("dashboard" to "Dashboard", "home" to "Browse", "chat" to "Chat", "map" to "Map", "campus" to "Campus", "buddy" to "Buddy", "my/items" to "My items").forEach { (path, label) ->
             val interaction = remember { MutableInteractionSource() }
             val hovered by interaction.collectIsHoveredAsState()
             val focused by interaction.collectIsFocusedAsState()

@@ -14,9 +14,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: item?.title ?? "Item" };
 }
 
-export default async function ItemPage({ params }: { params: Promise<{ id: string }> }) {
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function ItemPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ start?: string; end?: string }>;
+}) {
   const profile = await requireVerified();
   const { id } = await params;
+  // Buddy's "Request" action links here with dates prefilled; the form still validates.
+  const { start, end } = await searchParams;
+  const prefill =
+    start && end && ISO_DATE.test(start) && ISO_DATE.test(end) && start <= end ? { start, end } : null;
 
   const item = await getItem(id);
   if (!item) notFound();
@@ -111,6 +123,7 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
 
           <RequestForm
             canRequest={profile.verification_status === "verified"}
+            initialRange={prefill}
             isOwner={isOwner}
             itemId={item.id}
             maxLoanDays={item.max_loan_days}
