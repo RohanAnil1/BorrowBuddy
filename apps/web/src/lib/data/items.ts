@@ -8,7 +8,7 @@ import type {
 } from "@borrowbuddy/shared";
 import { createClient } from "@/lib/supabase/server";
 
-const ITEM_SELECT = `
+export const ITEM_SELECT = `
   *,
   owner:profiles!items_owner_id_fkey (id, full_name, avatar_path, trust_score, verification_status),
   category:categories (*),
@@ -24,7 +24,16 @@ export type ItemSearchFilters = {
   endDate?: string;
   ownerId?: string;
   limit?: number;
+  offset?: number;
+  sort?: ItemSort;
 };
+
+export const ITEM_SORTS = ["newest", "deposit_low", "trust"] as const;
+export type ItemSort = (typeof ITEM_SORTS)[number];
+
+export function parseItemSort(value: string | undefined): ItemSort {
+  return ITEM_SORTS.includes(value as ItemSort) ? (value as ItemSort) : "newest";
+}
 
 export async function searchItems(filters: ItemSearchFilters): Promise<ItemWithOwner[]> {
   const supabase = await createClient();
@@ -41,12 +50,18 @@ export async function searchItems(filters: ItemSearchFilters): Promise<ItemWithO
     excludedIds = ((data as { item_id: string }[] | null) ?? []).map((row) => row.item_id);
   }
 
+  const offset = filters.offset ?? 0;
   let query = supabase
     .from("items")
     .select(ITEM_SELECT)
     .eq("status", "available")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
+
+  // Tie-break on newest, then id, so pages never shuffle between requests.
+  if (filters.sort === "deposit_low") query = query.order("deposit_amount", { ascending: true });
+  // Orders parent rows by the embedded (many-to-one) owner's trust score.
+  if (filters.sort === "trust") query = query.order("owner(trust_score)", { ascending: false });
+  query = query.order("created_at", { ascending: false }).order("id", { ascending: true });
 
   if (filters.ownerId) query = query.eq("owner_id", filters.ownerId);
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
@@ -60,7 +75,8 @@ export async function searchItems(filters: ItemSearchFilters): Promise<ItemWithO
     query = query.not("id", "in", `(${excludedIds.join(",")})`);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) throw new Error(`Catalog search failed: ${error.message}`);
   return (data as ItemWithOwner[] | null) ?? [];
 }
 

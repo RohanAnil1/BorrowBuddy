@@ -13,6 +13,7 @@ import { getOutstandingTotal } from "@/lib/data/fines";
 import { getCategories, getMyItems, searchItems } from "@/lib/data/items";
 import { getLoansForUser, type LoanSummary } from "@/lib/data/loans";
 import { getPendingRequestCount } from "@/lib/data/requests";
+import { getSavedItemIds, savedState } from "@/lib/data/wishlist";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -55,7 +56,7 @@ function toPass(loan: LoanSummary, viewerId: string): BoardingPassLoan {
 
 export default async function DashboardPage() {
   const profile = await requireVerified();
-  const [{ asBorrower, asOwner }, categories, pendingRequests, unread, owed, myItems, fresh] = await Promise.all([
+  const [{ asBorrower, asOwner }, categories, pendingRequests, unread, owed, myItems, fresh, savedIds] = await Promise.all([
     getLoansForUser(profile.id),
     getCategories(),
     getPendingRequestCount(profile.id),
@@ -63,6 +64,7 @@ export default async function DashboardPage() {
     getOutstandingTotal(profile.id),
     getMyItems(profile.id),
     searchItems({ limit: 12 }),
+    getSavedItemIds(profile.id),
   ]);
 
   const today = campusToday();
@@ -187,7 +189,7 @@ export default async function DashboardPage() {
           <div className="-mx-4 mt-4 flex rail-scroll snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2">
             {justListed.map((item) => (
               <div className="w-60 shrink-0 snap-start" key={item.id}>
-                <ItemCard item={item} />
+                <ItemCard item={item} saved={savedState(savedIds, item.id)} />
               </div>
             ))}
           </div>

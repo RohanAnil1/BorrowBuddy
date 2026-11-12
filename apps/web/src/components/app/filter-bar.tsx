@@ -6,8 +6,12 @@ import { useState, useTransition } from "react";
 import type { Category, ItemCondition, PickupLocation } from "@borrowbuddy/shared";
 import { ITEM_CONDITION_LABELS } from "@borrowbuddy/shared";
 
-const inputClass =
-  "rounded-lg border border-line bg-black px-3 py-2 text-[13px] text-ink outline-none transition-colors focus:border-accent";
+const fieldClass =
+  "flex items-center gap-2 rounded-lg border border-line bg-black px-3 py-1.5 transition-colors focus-within:border-accent";
+const selectClass = "bg-transparent py-0.5 text-[13px] text-ink outline-none [&>option]:bg-black";
+const captionClass = "font-secondary text-[9px] text-ink/40";
+
+const SORT_LABELS = { newest: "Newest", deposit_low: "Lowest deposit", trust: "Most trusted owner" } as const;
 
 export function FilterBar({
   categories,
@@ -23,12 +27,13 @@ export function FilterBar({
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
-  const hasFilters = ["q", "category", "condition", "spot", "from", "to"].some((key) =>
+  const hasFilters = ["q", "category", "condition", "spot", "from", "to", "sort"].some((key) =>
     searchParams.get(key),
   );
 
   function apply(next: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("page"); // any change starts the list from the top
     for (const [key, value] of Object.entries(next)) {
       if (value) params.set(key, value);
       else params.delete(key);
@@ -66,47 +71,71 @@ export function FilterBar({
       </form>
 
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          className={inputClass}
-          onChange={(event) => apply({ category: event.target.value || null })}
-          value={searchParams.get("category") ?? ""}
-        >
-          <option value="">All categories</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
+        <label className={fieldClass}>
+          <span className={captionClass}>CATEGORY</span>
+          <select
+            className={selectClass}
+            onChange={(event) => apply({ category: event.target.value || null })}
+            value={searchParams.get("category") ?? ""}
+          >
+            <option value="">All</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        <select
-          className={inputClass}
-          onChange={(event) => apply({ condition: event.target.value || null })}
-          value={searchParams.get("condition") ?? ""}
-        >
-          <option value="">Any condition</option>
-          {(Object.keys(ITEM_CONDITION_LABELS) as ItemCondition[]).map((condition) => (
-            <option key={condition} value={condition}>
-              {ITEM_CONDITION_LABELS[condition]}
-            </option>
-          ))}
-        </select>
+        <label className={fieldClass}>
+          <span className={captionClass}>CONDITION</span>
+          <select
+            className={selectClass}
+            onChange={(event) => apply({ condition: event.target.value || null })}
+            value={searchParams.get("condition") ?? ""}
+          >
+            <option value="">Any</option>
+            {(Object.keys(ITEM_CONDITION_LABELS) as ItemCondition[]).map((condition) => (
+              <option key={condition} value={condition}>
+                {ITEM_CONDITION_LABELS[condition]}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        <select
-          className={inputClass}
-          onChange={(event) => apply({ spot: event.target.value || null })}
-          value={searchParams.get("spot") ?? ""}
-        >
-          <option value="">Any pickup spot</option>
-          {locations.map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.name}
-            </option>
-          ))}
-        </select>
+        <label className={fieldClass}>
+          <span className={captionClass}>PICKUP</span>
+          <select
+            className={selectClass}
+            onChange={(event) => apply({ spot: event.target.value || null })}
+            value={searchParams.get("spot") ?? ""}
+          >
+            <option value="">Any spot</option>
+            {locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        <label className="flex items-center gap-2 rounded-lg border border-line bg-black px-3 py-1.5">
-          <span className="font-secondary text-[9px] text-ink/40">FROM</span>
+        <label className={fieldClass}>
+          <span className={captionClass}>SORT</span>
+          <select
+            className={selectClass}
+            onChange={(event) => apply({ sort: event.target.value === "newest" ? null : event.target.value })}
+            value={searchParams.get("sort") ?? "newest"}
+          >
+            {(Object.keys(SORT_LABELS) as (keyof typeof SORT_LABELS)[]).map((key) => (
+              <option key={key} value={key}>
+                {SORT_LABELS[key]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={fieldClass}>
+          <span className={captionClass}>FROM</span>
           <input
             className="bg-transparent text-[13px] text-ink outline-none"
             onChange={(event) => apply({ from: event.target.value || null })}
@@ -115,8 +144,8 @@ export function FilterBar({
           />
         </label>
 
-        <label className="flex items-center gap-2 rounded-lg border border-line bg-black px-3 py-1.5">
-          <span className="font-secondary text-[9px] text-ink/40">TO</span>
+        <label className={fieldClass}>
+          <span className={captionClass}>TO</span>
           <input
             className="bg-transparent text-[13px] text-ink outline-none"
             onChange={(event) => apply({ to: event.target.value || null })}

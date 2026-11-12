@@ -2,12 +2,15 @@ import { ArrowRight, Pencil, Settings2, Star } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ImageGallery } from "@/components/app/image-gallery";
+import { ItemCard } from "@/components/app/item-card";
+import { SaveButton } from "@/components/app/save-button";
 import { RequestForm } from "@/components/app/request-form";
 import { StarRating } from "@/components/app/star-rating";
 import { StatusBadge } from "@/components/app/status-badge";
 import { conditionLabel, formatDeposit, itemStatusLabel, relativeTime } from "@/lib/format";
 import { requireVerified } from "@/lib/auth/guards";
-import { getItem, getItemAvailability } from "@/lib/data/items";
+import { getItem, getItemAvailability, searchItems } from "@/lib/data/items";
+import { getSavedItemIds, savedState } from "@/lib/data/wishlist";
 import { getReputation, getReviewsForUser } from "@/lib/data/reviews";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -35,11 +38,16 @@ export default async function ItemPage({
   const item = await getItem(id);
   if (!item) notFound();
 
-  const [windows, reputation, reviews] = await Promise.all([
+  const [windows, reputation, reviews, savedIds, sameCategory] = await Promise.all([
     getItemAvailability(id),
     getReputation(item.owner_id),
     getReviewsForUser(item.owner_id, 3).catch(() => []),
+    getSavedItemIds(profile.id),
+    item.category_id ? searchItems({ categoryId: item.category_id, limit: 12 }).catch(() => []) : Promise.resolve([]),
   ]);
+  const similar = sameCategory
+    .filter((other) => other.id !== item.id && other.owner_id !== profile.id)
+    .slice(0, 6);
   const isOwner = item.owner_id === profile.id;
 
   return (
@@ -64,7 +72,14 @@ export default async function ItemPage({
           </div>
 
           <div>
-            <h1 className="type-title text-[2rem] dt:text-[2.5rem]">{item.title}</h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="type-title text-[2rem] dt:text-[2.5rem]">{item.title}</h1>
+              {item.owner_id !== profile.id && savedIds && (
+                <div className="shrink-0 pt-1">
+                  <SaveButton itemId={item.id} saved={savedIds.has(item.id)} title={item.title} variant="inline" />
+                </div>
+              )}
+            </div>
             <p className="type-body mt-4 whitespace-pre-line text-[14px] leading-7 text-ink/60 uppercase">
               {item.description}
             </p>
@@ -148,6 +163,29 @@ export default async function ItemPage({
           />
         </div>
       </div>
+
+      {similar.length > 0 && (
+        <section aria-labelledby="similar-items" className="mt-14">
+          <div className="flex items-center justify-between">
+            <h2 className="font-secondary text-[12px] uppercase text-ink/75" id="similar-items">
+              More in {item.category?.name ?? "this category"}
+            </h2>
+            <Link
+              className="font-secondary text-[11px] uppercase text-accent hover:underline"
+              href={`/home?category=${item.category_id}`}
+            >
+              See all →
+            </Link>
+          </div>
+          <div className="-mx-4 mt-4 flex rail-scroll snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2">
+            {similar.map((other) => (
+              <div className="w-60 shrink-0 snap-start" key={other.id}>
+                <ItemCard item={other} saved={savedState(savedIds, other.id)} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
