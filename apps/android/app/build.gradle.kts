@@ -22,8 +22,8 @@ android {
         applicationId = "in.borrowbuddy.android"
         minSdk = 31
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.3.1"
         testInstrumentationRunner = "in.borrowbuddy.android.BorrowBuddyQaRunner"
         // Ephemeral QA credentials are runner arguments only, never BuildConfig or APK assets.
         System.getenv("BORROWBUDDY_QA_EMAIL")?.let { testInstrumentationRunnerArguments["qaEmail"] = it }
@@ -79,6 +79,8 @@ dependencies {
     implementation(libs.filament)
     implementation(libs.filament.utils)
     implementation(libs.zxing)
+    implementation(libs.code.scanner)
+    implementation(libs.play.services.base)
     testImplementation(libs.junit)
     testImplementation(libs.ktor.mock)
     androidTestImplementation(platform(libs.compose.bom))
