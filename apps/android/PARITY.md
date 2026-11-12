@@ -1197,3 +1197,15 @@ remain intact. No APK or signing claim is changed by this website delivery.
 See [CAMPUS.md](../../CAMPUS.md) for the acceptance evidence and native follow-up
 scope. Borrow Circles, Authorized Buddy Pickup and Campus Impact Dashboard remain
 deferred. The endgame is still open.
+
+## Member card stamps — 12 November 2026
+
+Website and native ID cards now show achievement stamps from the aggregate-only
+`get_profile_stamps` RPC (verified viewers only, same visibility as
+`get_public_profile_stats`). The account screen shows every stamp, with locked
+stamps greyed and a short hint; public profiles show earned stamps only. Earned
+stamps press in once when scrolled into view and stay still under reduced motion.
+`ProfileStamps` mirrors the web catalog in `apps/web/src/lib/stamps.ts`. Covered by
+`supabase/tests/profile_stamps.sql`, `ProfileStampsTest`, `assembleDebug` and a
+browser check of the web card at desktop and 375 px. The native card has not yet
+been compared on a device or emulator.

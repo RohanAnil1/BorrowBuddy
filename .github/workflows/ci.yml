@@ -80,5 +80,8 @@ jobs:
       - name: Validate public reputation aggregates and privacy
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/public_profile_stats.sql
 
+      - name: Validate member card stamps and privacy
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/profile_stamps.sql
+
       - name: Validate campus exchange security and scheduling contract
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/campus_contract.sql

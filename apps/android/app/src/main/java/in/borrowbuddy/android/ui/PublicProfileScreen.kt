@@ -36,7 +36,7 @@ val PublicProfileReviewCount = SemanticsPropertyKey<Int>("PublicProfileReviewCou
 val PublicProfileListingCount = SemanticsPropertyKey<Int>("PublicProfileListingCount")
 val PublicProfileColumns = SemanticsPropertyKey<Int>("PublicProfileColumns")
 val PublicProfileViewport = SemanticsPropertyKey<Int>("PublicProfileViewport")
-private data class StudentData(val profile: Profile, val reviews: List<Review>, val items: List<Item>, val stats: ProfileStats)
+private data class StudentData(val profile: Profile, val reviews: List<Review>, val items: List<Item>, val stats: ProfileStats, val stamps: List<ProfileStamp>?)
 private fun profileText(value: String) = value.replace(Regex("[\\t\\n\\r\\u000C ]+"), " ").trim(' ').uppercase()
 // FlowRow uses spacing to choose its wrap point and arrange to distribute each
 // completed line. Keep both CSS gap and justify-between, including at 640dp.
@@ -56,9 +56,10 @@ private val reviewArrangement = profileSpacedBetween(12.dp)
             val reviews = async { repository.reviews(userId = id) }
             val listings = async { repository.profileListings(id) }
             val stats = async { repository.profileStats(id) }
-            StudentData(student, reviews.await(), listings.await(), stats.await())
+            val stamps = async { repository.profileStamps(id) }
+            StudentData(student, reviews.await(), listings.await(), stats.await(), stamps.await())
         }
-    }) { (student, reviews, listings, stats) ->
+    }) { (student, reviews, listings, stats, stamps) ->
         val viewport = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
         val columns = if (viewport >= 1024) 3 else if (viewport >= 640) 2 else 1
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -67,7 +68,7 @@ private val reviewArrangement = profileSpacedBetween(12.dp)
                 this[PublicProfileColumns] = columns; this[PublicProfileViewport] = viewport.roundToInt()
             }, contentPadding = PaddingValues(horizontal = if (viewport >= 800) 40.dp else 16.dp, vertical = 32.dp)) {
                 item("identity") { ProfileIdentity(student, stats, viewport >= 640) }
-                item("member-card") { MemberIdCard(student, Modifier.padding(top = 32.dp)) }
+                item("member-card") { MemberIdCard(student, Modifier.padding(top = 32.dp), stamps) }
                 item("reputation") {
                     FlowRow(Modifier.padding(top = 40.dp).fillMaxWidth().testTag("profile-reputation"), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {

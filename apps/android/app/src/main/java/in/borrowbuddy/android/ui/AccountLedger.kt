@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import `in`.borrowbuddy.android.R
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import `in`.borrowbuddy.android.data.BorrowRepository
 import `in`.borrowbuddy.android.domain.*
 import java.util.Locale
@@ -159,7 +161,11 @@ internal fun ledgerMoney(amount: Int): String = if (amount == 0) "NO DEPOSIT" el
             finally { submitting = false }
         }
     }
-    LoadScreen(profile.id, { model.repository.fines(profile.id).filter { it.status == "pending" }.sumOf { it.amount } }) { outstanding ->
+    // Stamps need a verified viewer; pending students see the card without them.
+    LoadScreen(profile.id, { coroutineScope {
+        val stamps = async { if (profile.verification_status == "verified") model.repository.profileStamps(profile.id) else null }
+        model.repository.fines(profile.id).filter { it.status == "pending" }.sumOf { it.amount } to stamps.await()
+    } }) { (outstanding, stamps) ->
         val viewport = accountViewport()
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 768.dp).fillMaxSize().imePadding().verticalScroll(rememberScrollState())
@@ -173,7 +179,7 @@ internal fun ledgerMoney(amount: Int): String = if (amount == 0) "NO DEPOSIT" el
                     SourceBadge("Trust score ${profile.trust_score.roundToInt()}", "muted")
                     if (profile.is_admin) SourceBadge("Admin", "info")
                 }
-                MemberIdCard(profile, Modifier.padding(top = 32.dp))
+                MemberIdCard(profile, Modifier.padding(top = 32.dp), stamps, ownerStamps = true)
                 val cards: @Composable RowScope.() -> Unit = {
                     AccountLink("[ FINES ]", if (outstanding > 0) "₹$outstanding OUTSTANDING" else "NOTHING OUTSTANDING", R.drawable.ic_receipt, fines, Modifier.weight(1f).testTag("account-fines"))
                     AccountLink("[ PICKUP MAP ]", "CAMPUS HANDOVER SPOTS", R.drawable.ic_map, map, Modifier.weight(1f).testTag("account-map"))

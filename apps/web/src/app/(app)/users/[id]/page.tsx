@@ -11,6 +11,7 @@ import { requireVerified } from "@/lib/auth/guards";
 import { getProfile } from "@/lib/data/profiles";
 import { searchItems } from "@/lib/data/items";
 import { getCompletedLoanCount, getRatingSummary, getReviewsForUser } from "@/lib/data/reviews";
+import { getProfileStamps } from "@/lib/data/stamps";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,11 +26,12 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   const profile = await getProfile(id);
   if (!profile) notFound();
 
-  const [reviews, rating, completed, listings] = await Promise.all([
+  const [reviews, rating, completed, listings, stamps] = await Promise.all([
     getReviewsForUser(id),
     getRatingSummary(id),
     getCompletedLoanCount(id),
     searchItems({ ownerId: id, limit: 12 }),
+    getProfileStamps(id),
   ]);
 
   return (
@@ -77,7 +79,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      <MemberIdCard profile={toMemberCardProfile(profile)} />
+      <MemberIdCard profile={toMemberCardProfile(profile)} stamps={stamps} />
 
       <section className="mt-10">
         <div className="flex items-center justify-between">
