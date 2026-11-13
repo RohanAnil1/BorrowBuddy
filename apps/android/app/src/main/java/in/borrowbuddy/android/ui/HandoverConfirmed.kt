@@ -13,7 +13,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +35,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -98,7 +102,7 @@ private val LedHot = Color(0xffffd38a)
 /** Full-screen moment after a handover is confirmed, on whichever phone sees it first. */
 @Composable fun HandoverConfirmedOverlay(kind: String, loan: Loan, viewerId: String, dismiss: () -> Unit) {
     Dialog(dismiss, DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
             HandoverConfirmedCard(kind, loan, viewerId, dismiss)
         }
     }
@@ -124,18 +128,20 @@ private val LedHot = Color(0xffffd38a)
             alpha = enter; scaleX = .94f + .06f * enter; scaleY = scaleX
         }
         .semantics { liveRegion = LiveRegionMode.Polite; paneTitle = copy.headline }
-        .clip(shape).background(Cargo.Panel).border(1.dp, Cargo.Line, shape).padding(16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        .clip(shape).background(Cargo.Panel).border(1.dp, Cargo.Line, shape)
+        // Sized to fit a 360×800 dp phone; anything shorter scrolls rather than squeezing out DONE.
+        .verticalScroll(rememberScrollState()).padding(14.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("CUSTODY TRANSFER", style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
             Text("LOGGED ${logged.format(DateTimeFormatter.ofPattern("HH:mm"))}", style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
         }
         LedBoard(copy.board, time, Modifier.clearAndSetSemantics { contentDescription = copy.board.lowercase() })
-        Text(copy.headline, Modifier.reveal(time, 1300f).padding(top = 20.dp).fillMaxWidth(), textAlign = TextAlign.Center,
+        Text(copy.headline, Modifier.reveal(time, 1300f).padding(top = 14.dp).fillMaxWidth(), textAlign = TextAlign.Center,
             style = loanBody(30).copy(fontFamily = Cargo.Ticket, letterSpacing = 1.5.sp, lineHeight = 34.sp), color = Cargo.Ink)
-        Text(copy.body, Modifier.reveal(time, 1400f).padding(top = 8.dp, start = 8.dp, end = 8.dp).fillMaxWidth(), textAlign = TextAlign.Center,
-            style = loanBody(14).copy(lineHeight = 21.sp), color = Cargo.Ink.copy(alpha = .7f))
-        Receipt(copy, loan, logged, time, Modifier.padding(top = 20.dp))
-        DottedButton("DONE", dismiss, Modifier.reveal(time, 2450f).padding(top = 18.dp).testTag("handover-confirmed-done"))
+        Text(copy.body, Modifier.reveal(time, 1400f).padding(top = 6.dp, start = 8.dp, end = 8.dp).fillMaxWidth(), textAlign = TextAlign.Center,
+            style = loanBody(14).copy(lineHeight = 19.sp), color = Cargo.Ink.copy(alpha = .7f))
+        Receipt(copy, loan, logged, time, Modifier.padding(top = 12.dp))
+        DottedButton("DONE", dismiss, Modifier.reveal(time, 2450f).padding(top = 12.dp).testTag("handover-confirmed-done"))
     }
 }
 
@@ -158,16 +164,16 @@ private fun Modifier.reveal(time: () -> Float, start: Float) = graphicsLayer {
     val breathe = if (rememberReducedMotion()) remember { mutableFloatStateOf(1f) }
         else rememberInfiniteTransition(label = "led").animateFloat(.8f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "breathe")
     val cols = max(textCols + 6, 30)
-    val rows = if (word.isBlank()) 12 else 22
+    val rows = if (word.isBlank()) 12 else 20
     BoxWithConstraints(modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xff050505))
-        .border(1.dp, Color(0xff1c1c1c), RoundedCornerShape(10.dp)).padding(10.dp)) {
+        .border(1.dp, Color(0xff1c1c1c), RoundedCornerShape(10.dp)).padding(8.dp)) {
         val cell = maxWidth / cols
         Canvas(Modifier.fillMaxWidth().height(cell * rows)) {
             val now = time()
             val step = size.width / cols
             val checkLeft = (cols - 11) / 2
             val textLeft = (cols - textCols) / 2
-            val textTop = 2 + 8 + 3
+            val textTop = 2 + 8 + 2
             val sweep = now / 650f * (cols + 8) - 4
             for (r in 0 until rows) for (c in 0 until cols) {
                 val center = Offset((c + .5f) * step, (r + .5f) * step)
@@ -219,24 +225,24 @@ private fun Modifier.reveal(time: () -> Float, start: Float) = graphicsLayer {
                 }
                 drawPath(path, Cargo.Paper)
             }
-            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 22.dp)) {
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)) {
             Text("BORROWBUDDY", Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
                 style = loanBody(20).copy(fontFamily = Cargo.Ticket, letterSpacing = 2.sp), color = Color.Black)
             Text("CUSTODY RECEIPT · #${loan.id.take(4).uppercase()}", Modifier.fillMaxWidth().padding(top = 2.dp), textAlign = TextAlign.Center,
                 style = loanMono(9), color = Color.Black.copy(alpha = .55f))
-            DottedRule(Modifier.padding(vertical = 10.dp))
+            DottedRule(Modifier.padding(vertical = 7.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ReceiptName("FROM", copy.from, Modifier.weight(1f))
                 Text("›››", Modifier.padding(horizontal = 8.dp), style = loanBody(16).copy(fontFamily = Cargo.Ticket), color = Cargo.Accent)
                 ReceiptName("TO", copy.to, Modifier.weight(1f), end = true)
             }
-            DottedRule(Modifier.padding(vertical = 10.dp))
+            DottedRule(Modifier.padding(vertical = 7.dp))
             ReceiptLine("ITEM", loan.item?.title.orEmpty().uppercase().ifBlank { "ITEM" })
             ReceiptLine(copy.factLabel, copy.factValue)
             ReceiptLine("LOGGED", logged.format(DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.ENGLISH)).uppercase())
-            DottedRule(Modifier.padding(vertical = 10.dp))
-            DotCode(loan.id, Modifier.fillMaxWidth().height(20.dp))
-            Text("SCAN LOGGED · CUSTODY CHAIN UPDATED", Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center,
+            DottedRule(Modifier.padding(vertical = 7.dp))
+            DotCode(loan.id, Modifier.fillMaxWidth().height(16.dp))
+            Text("SCAN LOGGED · CUSTODY CHAIN UPDATED", Modifier.fillMaxWidth().padding(top = 6.dp), textAlign = TextAlign.Center,
                 style = loanMono(8), color = Color.Black.copy(alpha = .5f))
         }
     }
@@ -250,16 +256,32 @@ private fun Modifier.reveal(time: () -> Float, start: Float) = graphicsLayer {
     }
 }
 
-/** "ITEM ........ QA TEST ITEM" with a dot leader between label and value. */
+/**
+ * "ITEM ........ QA TEST ITEM" with a dot leader between label and value. The
+ * label and a short leader always keep their room; only a long value gives way
+ * (truncated with an ellipsis), so they never run together.
+ */
 @Composable private fun ReceiptLine(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Bottom) {
-        Text(label, style = loanBody(14).copy(fontFamily = Cargo.Ticket, letterSpacing = 1.sp), color = Color.Black.copy(alpha = .6f))
-        Canvas(Modifier.weight(1f).height(10.dp).padding(horizontal = 6.dp)) {
+    val style = loanBody(14).copy(fontFamily = Cargo.Ticket, letterSpacing = 1.sp)
+    Layout(content = {
+        Text(label, style = style, color = Color.Black.copy(alpha = .6f), maxLines = 1)
+        Canvas(Modifier) {
             var x = 0f
             while (x < size.width) { drawCircle(Color.Black.copy(alpha = .3f), 1.1.dp.toPx(), Offset(x, size.height * .8f)); x += 5.dp.toPx() }
         }
-        Text(value, style = loanBody(14).copy(fontFamily = Cargo.Ticket, letterSpacing = 1.sp), color = Color.Black,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(value, style = style, color = Color.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }, modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) { (labelPart, leaderPart, valuePart), constraints ->
+        val gap = 6.dp.roundToPx(); val shortestLeader = 18.dp.roundToPx(); val width = constraints.maxWidth
+        val labelText = labelPart.measure(Constraints(maxWidth = width))
+        val valueText = valuePart.measure(Constraints(maxWidth = (width - labelText.width - shortestLeader - gap * 2).coerceAtLeast(0)))
+        val height = maxOf(labelText.height, valueText.height)
+        val leaderHeight = 10.dp.roundToPx()
+        val leader = leaderPart.measure(Constraints.fixed((width - labelText.width - valueText.width - gap * 2).coerceAtLeast(0), leaderHeight))
+        layout(width, height) {
+            labelText.place(0, height - labelText.height)
+            leader.place(labelText.width + gap, height - leaderHeight - 2.dp.roundToPx())
+            valueText.place(width - valueText.width, height - valueText.height)
+        }
     }
 }
 
