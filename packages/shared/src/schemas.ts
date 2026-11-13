@@ -54,6 +54,17 @@ export const signUpSchema = z
     path: ["confirm_password"],
   });
 
+/** Choosing a new password after a reset link: same rules as sign-up. */
+export const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirm_password: z.string(),
+  })
+  .refine((value) => value.password === value.confirm_password, {
+    message: "Passwords don't match",
+    path: ["confirm_password"],
+  });
+
 export const profileSetupSchema = z.object({
   full_name: z.string().trim().min(2, "Enter your full name").max(80),
   phone: z
