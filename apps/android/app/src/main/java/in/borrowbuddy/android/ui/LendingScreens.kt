@@ -152,32 +152,32 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
             do { now = Instant.now(); if (now < expires) kotlinx.coroutines.delay(1000) } while (now < expires)
         }
     }
+    var scanError by remember(loan.id, kind) { mutableStateOf<String?>(null) }
+    fun confirm(entered: String) = actions.run("${kind.replaceFirstChar(Char::uppercase)} confirmed.") {
+        repository.confirmHandover(loan.id, entered, kind)
+        token = ""
+        confirmed(kind)
+    }
+    // A good scan fills the code and confirms at once; a wrong QR explains itself.
+    val scan = rememberQrScanner({ raw ->
+        val result = parseHandoverQr(raw, kind)
+        scanError = scanProblem(result, kind)
+        if (result is HandoverScan.Code) { token = result.code; focus.clearFocus(); keyboardController?.hide(); confirm(result.code) }
+    }, { scanError = it })
     CargoPanel {
         CargoLabel("[ ${kind.uppercase()} HANDOVER ]")
         if (show) {
-            CargoBody("Show this boarding pass to the other student. The code works once and expires in 15 minutes.")
-            if (code != null && expires != null && now < expires) {
-                QrTile("bb:$kind:$code")
-                Text(code!!, Modifier.testTag("handover-code"), style = androidx.compose.ui.text.TextStyle(fontFamily = Cargo.Ticket, fontSize = 28.sp, letterSpacing = 5.sp))
-                CargoLabel("[ SINGLE USE · ${(java.time.Duration.between(now, expires).seconds + 59) / 60} MIN REMAINING ]")
-            } else CargoBody(if (code == null) "No active code. Generate one." else "Code expired. Generate a fresh code.")
-            CargoButton(if (code == null) "Generate code" else "New code", { actions.run(refresh = false) {
+            CargoBody("Show this pass to the other student. They scan the QR or type the code. It works once, for 15 minutes.")
+            HandoverPassCard(kind, code, expires, now, actions.busy) { actions.run(refresh = false) {
                 code = repository.rpc("generate_handover_token", buildJsonObject { put("p_loan_id", loan.id); put("p_kind", kind) }).decodeAs<String>()
                 val refreshed = repository.loan(loan.id) ?: error("Loan is no longer available.")
                 val serverExpiry = if (kind == "pickup") refreshed.handover_token_expires_at else refreshed.return_token_expires_at
                 expiresAt = Instant.parse(serverExpiry ?: error("The code expiry could not be loaded. Generate a fresh code.")).toEpochMilli()
                 now = Instant.now()
-            } }, enabled = !actions.busy)
+            } }
         } else {
-            CargoBody("Ask the other student for their boarding pass, then enter the six digits to confirm.")
-            CargoField("6-digit code", token, { if (it.length <= 6 && it.all(Char::isDigit)) token = it },
-                keyboard = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { focus.clearFocus(); keyboardController?.hide() }))
-            CargoButton("Confirm $kind", { actions.run("${kind.replaceFirstChar(Char::uppercase)} confirmed.") {
-                repository.confirmHandover(loan.id, token, kind)
-                token = ""
-                confirmed(kind)
-            } }, enabled = !actions.busy && token.length == 6)
+            CargoBody("Ask for their $kind pass, then scan the QR on their phone.")
+            HandoverConfirmCard(kind, token, { token = it; scanError = null }, actions.busy, scanError, scan, { confirm(token) })
         }
     }
 }
@@ -214,12 +214,16 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
     }
     bitmap?.let { Image(it.asImageBitmap(), "Single-use handover QR", Modifier.testTag("handover-qr").size(232.dp)
         .drawBehind {
-            val inset = 6.dp.toPx()
-            drawRect(Cargo.Accent.copy(alpha = ring.floatValue),
-                topLeft = androidx.compose.ui.geometry.Offset(-inset, -inset),
-                size = androidx.compose.ui.geometry.Size(size.width + inset * 2, size.height + inset * 2),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-        }.background(androidx.compose.ui.graphics.Color.White).padding(12.dp)) }
+            // Scanner-style corner brackets that breathe with the pulse.
+            val inset = 8.dp.toPx(); val arm = 28.dp.toPx(); val stroke = 4.dp.toPx()
+            val color = Cargo.Accent.copy(alpha = ring.floatValue)
+            val l = -inset; val t = -inset; val r = size.width + inset; val b = size.height + inset
+            fun corner(x: Float, y: Float, dx: Float, dy: Float) {
+                drawLine(color, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Offset(x + dx * arm, y), stroke, androidx.compose.ui.graphics.StrokeCap.Round)
+                drawLine(color, androidx.compose.ui.geometry.Offset(x, y), androidx.compose.ui.geometry.Offset(x, y + dy * arm), stroke, androidx.compose.ui.graphics.StrokeCap.Round)
+            }
+            corner(l, t, 1f, 1f); corner(r, t, -1f, 1f); corner(l, b, 1f, -1f); corner(r, b, -1f, -1f)
+        }.background(androidx.compose.ui.graphics.Color.White, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(12.dp)) }
 }
 @Composable private fun ReviewPanel(repository: BorrowRepository, profile: Profile, loan: Loan, actions: ScreenActions) {
     var rating by rememberSaveable { mutableIntStateOf(0) }

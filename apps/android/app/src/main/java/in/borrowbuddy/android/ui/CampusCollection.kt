@@ -243,18 +243,24 @@ val CampusCollectionEvents = SemanticsPropertyKey<Int>("CampusCollectionEvents")
 @Composable private fun CampusCollectionCode(repository: BorrowRepository, transfer: CampusTransfer, user: String, now: Instant, actions: ScreenActions,
     code: CampusCode?, generated: (CampusCode) -> Unit) {
     var entered by rememberSaveable(transfer.id, user) { mutableStateOf("") }
+    var scanError by remember(transfer.id) { mutableStateOf<String?>(null) }
+    // Scanning fills the code; the host still confirms, because that step checks the item changed hands.
+    val scan = rememberQrScanner({ raw ->
+        val result = parseHandoverQr(raw, "collection")
+        scanError = scanProblem(result, "collection")
+        if (result is HandoverScan.Code) entered = result.code
+    }, { scanError = it })
     CargoPanel {
         CargoTitle("Confirm at collection")
         if (user == transfer.recipient_id) {
-            code?.takeIf { now < Instant.parse(it.expires_at) }?.let {
-                QrTile("bb:collection:${it.code}")
-                Text(it.code, Modifier.testTag("collection-code"), style = androidx.compose.ui.text.TextStyle(fontFamily = Cargo.Ticket, fontSize = 30.sp, letterSpacing = 5.sp))
-                CargoLabel("Expires ${CampusRules.date(it.expires_at)}")
+            HandoverPassCard("collection", code?.code, code?.let { Instant.parse(it.expires_at) }, now, actions.busy, codeTag = "collection-code") {
+                actions.run(refresh = false) {
+                    generated(campusCodeJson.decodeFromJsonElement<CampusCode>(repository.campus.action("generate_code", campusData(transfer.id))))
+                }
             }
-            CampusButton("Generate / replace my code", { actions.run(refresh = false) {
-                generated(campusCodeJson.decodeFromJsonElement<CampusCode>(repository.campus.action("generate_code", campusData(transfer.id))))
-            } }, enabled = !actions.busy)
         } else if (user == transfer.host_id) {
+            ScanQrButton(actions.busy, scan)
+            scanError?.let { CargoLabel("[ $it ]", Cargo.Warn) }
             CargoField("Recipient’s six-digit code", entered, { if (it.length <= 6 && it.all(Char::isDigit)) entered = it },
                 keyboard = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword))
             CampusConfirm("Confirm collection", "Confirm only when the item changes hands.", actions, primary = true) {

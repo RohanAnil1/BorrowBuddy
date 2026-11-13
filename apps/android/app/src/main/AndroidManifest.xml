@@ -13,6 +13,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BorrowBuddy"
         android:usesCleartextTraffic="false">
+        <!-- Ask Play services to fetch Google's QR scanner UI ahead of the first scan. -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
         <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

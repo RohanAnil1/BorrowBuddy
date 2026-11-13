@@ -10,6 +10,8 @@ ktor = "3.6.0"
 coil = "3.6.3"
 filament = "1.77.3"
 zxing = "3.5.4"
+codeScanner = "16.1.0"
+playServicesBase = "18.5.0"
 junit = "4.13.2"
 
 [libraries]
@@ -37,6 +39,8 @@ coil-network = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = 
 filament = { module = "com.google.android.filament:filament-android", version.ref = "filament" }
 filament-utils = { module = "com.google.android.filament:filament-utils-android", version.ref = "filament" }
 zxing = { module = "com.google.zxing:core", version.ref = "zxing" }
+play-services-base = { module = "com.google.android.gms:play-services-base", version.ref = "playServicesBase" }
+code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "codeScanner" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
