@@ -43,11 +43,20 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
 @Composable fun LoanScreen(repository: BorrowRepository, profile: Profile, id: String, logbook: (Boolean) -> Unit, chat: (String) -> Unit) {
     val actions = rememberActions()
     var confirmedHandover by rememberSaveable(id, profile.id) { mutableStateOf<String?>(null) }
+    var celebrating by rememberSaveable(id, profile.id) { mutableStateOf(false) }
+    var lastStatus by rememberSaveable(id, profile.id) { mutableStateOf<String?>(null) }
     var incidentFiled by rememberSaveable(id, profile.id) { mutableStateOf(false) }
     var confirmCancel by rememberSaveable(id) { mutableStateOf(false) }
     LoadScreen(id to actions.revision, { LoanData(repository.loan(id) ?: error("Loan not found."), repository.reviews(loanId = id), repository.incidents(id), repository.conversations().find { it.loan_id == id }) }) { (loan, reviews, incidents, conversation) ->
         val owner = loan.owner_id == profile.id
         val mine = reviews.find { it.reviewer_id == profile.id }
+        // Celebrate a handover seen on this screen, however the new status arrived.
+        LaunchedEffect(loan.status) {
+            handoverJustHappened(lastStatus, loan.status)?.let { kind ->
+                if (confirmedHandover != kind) { confirmedHandover = kind; celebrating = true }
+            }
+            lastStatus = loan.status
+        }
         LoanPage {
             Text("← BACK TO THE LOGBOOK", Modifier.clickable { logbook(owner) }, style = loanMono(10), color = Cargo.Ink.copy(alpha = .5f))
             FlowRow(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.SpaceBetween,
@@ -75,8 +84,12 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
                 HandoverSuccess("Pickup confirmed. The item is now on loan.")
             if (confirmedHandover == "return" && loan.status == "returned" && mine == null)
                 HandoverSuccess("Return confirmed. Leave a rating for the other student.")
-            if (loan.status == "awaiting_pickup") HandoverPanel(repository, loan, "pickup", show = !owner, actions) { confirmedHandover = it }
-            if (loan.status in listOf("active", "return_pending", "overdue")) HandoverPanel(repository, loan, "return", show = owner, actions) { confirmedHandover = it }
+            if (loan.status == "awaiting_pickup") HandoverPanel(repository, loan, "pickup", show = !owner, actions) { confirmedHandover = it; celebrating = true }
+            if (loan.status in listOf("active", "return_pending", "overdue")) HandoverPanel(repository, loan, "return", show = owner, actions) { confirmedHandover = it; celebrating = true }
+            // Shown once, over everything, after the reload has the new status.
+            confirmedHandover?.takeIf { celebrating && handoverDone(it, loan.status) }?.let { kind ->
+                HandoverConfirmedOverlay(kind, loan, profile.id) { celebrating = false }
+            }
             if (loan.status in listOf("awaiting_pickup", "active", "return_pending", "overdue"))
                 CampusAppointmentPicker(repository, loan.owner_id, if (loan.status == "awaiting_pickup") "pickup" else "return", loan = loan.id)
             if (loan.status == "returned") Column(Modifier.fillMaxWidth().testTag("loan-returned-banner").background(Cargo.Accent.copy(alpha = .05f))
@@ -153,10 +166,26 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
         }
     }
     var scanError by remember(loan.id, kind) { mutableStateOf<String?>(null) }
+    var confirming by remember(loan.id, kind) { mutableStateOf(false) }
     fun confirm(entered: String) = actions.run("${kind.replaceFirstChar(Char::uppercase)} confirmed.") {
-        repository.confirmHandover(loan.id, entered, kind)
-        token = ""
-        confirmed(kind)
+        confirming = true
+        try {
+            repository.confirmHandover(loan.id, entered, kind)
+            token = ""
+            confirmed(kind)
+        } finally { confirming = false }
+    }
+    // The phone showing the pass learns about the scan too: while the code is live,
+    // check the loan every few seconds and celebrate as soon as it moves on.
+    if (show && expiresAt != null) LaunchedEffect(expiresAt, lifecycle) {
+        val until = Instant.ofEpochMilli(expiresAt!!)
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (Instant.now() < until) {
+                kotlinx.coroutines.delay(3_000)
+                val fresh = try { repository.loan(loan.id) } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { null }
+                if (fresh != null && handoverDone(kind, fresh.status)) { confirmed(kind); actions.run(refresh = true) { }; break }
+            }
+        }
     }
     // A good scan fills the code and confirms at once; a wrong QR explains itself.
     val scan = rememberQrScanner({ raw ->
@@ -177,7 +206,7 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
             } }
         } else {
             CargoBody("Ask for their $kind pass, then scan the QR on their phone.")
-            HandoverConfirmCard(kind, token, { token = it; scanError = null }, actions.busy, scanError, scan, { confirm(token) })
+            HandoverConfirmCard(kind, token, { token = it; scanError = null }, actions.busy, scanError, scan, { confirm(token) }, confirming = confirming)
         }
     }
 }

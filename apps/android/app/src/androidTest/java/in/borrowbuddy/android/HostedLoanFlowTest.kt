@@ -96,6 +96,11 @@ class HostedLoanFlowTest {
         awaitText("[ CUSTODY CHAIN ]")
     }
     private fun code(): String {
+        // The pass hides its digits until asked.
+        compose.waitUntil(20_000) { compose.onAllNodesWithTag("handover-reveal").fetchSemanticsNodes().isNotEmpty() }
+        if (compose.onAllNodesWithTag("handover-code").fetchSemanticsNodes().isEmpty()) {
+            scrollTo(hasTestTag("handover-reveal")); compose.onNodeWithTag("handover-reveal").performClick()
+        }
         compose.waitUntil(20_000) { compose.onAllNodesWithTag("handover-code").fetchSemanticsNodes().isNotEmpty() }
         scrollTo(hasTestTag("handover-code"))
         return compose.onNodeWithTag("handover-code").fetchSemanticsNode().config[SemanticsProperties.Text].single().text

@@ -97,7 +97,7 @@ private fun countdown(loan: Loan, now: ZonedDateTime): Pair<String, PassTone> {
     return text to (if (hours < 24) PassTone.Soon else PassTone.Calm)
 }
 
-private fun shortName(name: String?): String {
+internal fun shortName(name: String?): String {
     val parts = name.orEmpty().trim().split(Regex("\\s+")).filter { it.isNotBlank() }
     return when { parts.isEmpty() -> "STUDENT"; parts.size == 1 -> parts[0]; else -> "${parts[0]} ${parts[1].first()}." }.uppercase()
 }
