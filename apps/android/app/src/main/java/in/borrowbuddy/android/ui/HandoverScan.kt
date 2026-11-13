@@ -4,13 +4,29 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -90,14 +106,38 @@ private fun Context.activity(): Activity? = when (this) {
     }
 }
 
+/** Shown when the scanner closes without reading anything (backed out, or it never locked on). */
+internal const val NoCodeRead = "No code read. Tap Scan to try again, or type the six digits."
+
+/** True once the loan has moved past this handover, i.e. the other phone confirmed it. */
+internal fun handoverDone(kind: String, status: String) = when (kind) {
+    "pickup" -> status in setOf("active", "return_pending", "overdue")
+    "return" -> status == "returned"
+    else -> false
+}
+
+/**
+ * Which handover a status change means, if any: pickup when a loan leaves
+ * awaiting_pickup for an on-loan state, return when an on-loan loan becomes
+ * returned. Lets the phone that showed the pass celebrate whichever refresh
+ * (realtime notification, polling, pull-down) brings the news.
+ */
+internal fun handoverJustHappened(before: String?, after: String): String? = when {
+    before == null || before == after -> null
+    before == "awaiting_pickup" && handoverDone("pickup", after) -> "pickup"
+    before in setOf("active", "return_pending", "overdue") && handoverDone("return", after) -> "return"
+    else -> null
+}
+
 /**
  * Opens Google's code scanner (camera UI from Play services, no camera
- * permission needed) and hands back the raw QR text.
+ * permission needed) and hands back the raw QR text. Every way the scanner can
+ * end without a code reports a plain message, so a tap never ends in silence.
  */
-@Composable fun rememberQrScanner(onScanned: (String?) -> Unit, onUnavailable: (String) -> Unit): () -> Unit {
+@Composable fun rememberQrScanner(onScanned: (String?) -> Unit, onProblem: (String) -> Unit): () -> Unit {
     val context = LocalContext.current
     val latest by rememberUpdatedState(onScanned)
-    val failed by rememberUpdatedState(onUnavailable)
+    val failed by rememberUpdatedState(onProblem)
     val scanner = remember(context) {
         GmsBarcodeScanning.getClient(context, GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).enableAutoZoom().build())
     }
@@ -109,6 +149,7 @@ private fun Context.activity(): Activity? = when (this) {
         {
             scanner.startScan()
                 .addOnSuccessListener { barcode -> latest(barcode.rawValue) }
+                .addOnCanceledListener { failed(NoCodeRead) }
                 .addOnFailureListener { error ->
                     val downloading = (error as? MlKitException)?.errorCode == MlKitException.UNAVAILABLE
                     failed(if (downloading) "Getting the scanner ready. Try again in a few seconds, or type the six digits."
@@ -141,8 +182,10 @@ private fun Context.activity(): Activity? = when (this) {
             if (live) {
                 KeepScreenBright()
                 Box(Modifier.padding(top = 20.dp)) { QrTile("$payloadPrefix$code") }
-                Text(groupedCode(code!!), Modifier.padding(top = 18.dp).testTag(codeTag).semantics { contentDescription = "Code ${code.toList().joinToString(" ")}" },
-                    style = loanBody(40).copy(fontFamily = Cargo.Ticket, letterSpacing = 6.sp, lineHeight = 40.sp), color = Color.Black)
+                // The digits stay masked until asked for, so people nearby can't read them; the QR still scans.
+                var revealed by rememberSaveable(code) { mutableStateOf(false) }
+                HiddenCode(code!!, revealed, codeTag)
+                RevealCodeButton(revealed) { revealed = !revealed }
                 // Time left drains left to right; amber, then red in the last two minutes.
                 Box(Modifier.padding(top = 14.dp).fillMaxWidth(.8f).height(6.dp).background(Color.Black.copy(alpha = .1f), RoundedCornerShape(3.dp))) {
                     Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(if (urgent) Color(0xffc0261a) else Cargo.Accent, RoundedCornerShape(3.dp)))
@@ -172,15 +215,59 @@ private fun Context.activity(): Activity? = when (this) {
 }
 
 /**
+ * Six digit slots that flip over one after another when revealed, like a
+ * split-flap board, and fold back to dots when hidden. Only the revealed state
+ * exposes the code to accessibility services and tests.
+ */
+@Composable private fun HiddenCode(code: String, revealed: Boolean, codeTag: String) {
+    val reduced = rememberReducedMotion()
+    val semantics = if (revealed) Modifier.testTag(codeTag).clearAndSetSemantics {
+        text = AnnotatedString(code); contentDescription = "Code ${code.toList().joinToString(" ")}"
+    } else Modifier.testTag("$codeTag-hidden").clearAndSetSemantics { contentDescription = "Code hidden" }
+    Row(Modifier.padding(top = 18.dp).then(semantics), verticalAlignment = Alignment.CenterVertically) {
+        code.forEachIndexed { index, digit ->
+            val flip by animateFloatAsState(if (revealed) 1f else 0f,
+                if (reduced) snap() else tween(340, delayMillis = if (revealed) index * 55 else (code.length - 1 - index) * 25, easing = FastOutSlowInEasing),
+                label = "digit-$index")
+            Box(Modifier.width(34.dp).height(54.dp).graphicsLayer {
+                // First half turns the dot away, second half brings the digit in.
+                rotationX = if (flip < .5f) flip * 180f else (flip - 1f) * 180f
+                cameraDistance = 14f * density
+            }, contentAlignment = Alignment.Center) {
+                if (flip >= .5f) Text(digit.toString(), style = loanBody(40).copy(fontFamily = Cargo.Ticket, lineHeight = 40.sp), color = Color.Black)
+                else Box(Modifier.size(12.dp).background(Color.Black.copy(alpha = .78f), CircleShape))
+            }
+            if (index == 2) Spacer(Modifier.width(18.dp))
+        }
+    }
+}
+
+@Composable private fun RevealCodeButton(revealed: Boolean, toggle: () -> Unit) {
+    val shape = RoundedCornerShape(22.dp)
+    Row(Modifier.padding(top = 12.dp).heightIn(min = 44.dp).testTag("handover-reveal").clip(shape)
+        .background(if (revealed) Color.Black.copy(alpha = .06f) else Color.Black, shape)
+        .border(1.dp, Color.Black.copy(alpha = .2f), shape)
+        .clickable(onClickLabel = if (revealed) "Hide code" else "Show code", onClick = toggle)
+        .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val ink = if (revealed) Color.Black else Cargo.Accent
+        Icon(painterResource(if (revealed) R.drawable.ic_eye_off else R.drawable.ic_eye), null, Modifier.size(16.dp), tint = ink)
+        Text(if (revealed) "HIDE CODE" else "SHOW CODE", style = loanMono(10), color = ink)
+    }
+    if (!revealed) Text("Hidden from people nearby. The QR still scans.", Modifier.padding(top = 8.dp),
+        style = loanBody(11), color = Color.Black.copy(alpha = .5f))
+}
+
+/**
  * The confirmer's side: one big "Scan their QR" button, and six digit boxes
  * for typing the code instead. A good scan confirms straight away.
  */
 @Composable fun HandoverConfirmCard(kind: String, token: String, setToken: (String) -> Unit, busy: Boolean, scanError: String?,
-    scan: () -> Unit, confirm: () -> Unit, confirmLabel: String = "Confirm $kind") {
+    scan: () -> Unit, confirm: () -> Unit, confirmLabel: String = "Confirm $kind", confirming: Boolean = false) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     Column(Modifier.fillMaxWidth().testTag("handover-confirm"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        ScanQrButton(busy, scan)
+        ScanQrButton(busy, scan, confirming = confirming, kind = kind)
         scanError?.let { CargoLabel("[ $it ]", Cargo.Warn, Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.weight(1f).height(1.dp).background(Cargo.Line))
@@ -206,23 +293,47 @@ private fun Context.activity(): Activity? = when (this) {
                     }
                 }
             })
-        CargoButton(confirmLabel, confirm, enabled = !busy && token.length == 6, modifier = Modifier.fillMaxWidth().testTag("handover-confirm-button"))
+        CargoButton(if (confirming) "Confirming…" else confirmLabel, confirm, enabled = !busy && token.length == 6,
+            modifier = Modifier.fillMaxWidth().testTag("handover-confirm-button"))
     }
 }
 
-/** The big amber "Scan their QR" button. */
-@Composable fun ScanQrButton(busy: Boolean, scan: () -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("handover-scan").background(Cargo.Accent.copy(alpha = if (busy) .5f else 1f), RoundedCornerShape(12.dp))
-        .clickable(enabled = !busy, onClick = scan).semantics { contentDescription = "Scan their QR code" }.padding(horizontal = 18.dp, vertical = 14.dp),
+/**
+ * The big amber "Scan their QR" button. While a scanned code is being checked
+ * it turns into a progress state with a light sweeping across it, so the wait
+ * after a scan never looks like nothing happened.
+ */
+@Composable fun ScanQrButton(busy: Boolean, scan: () -> Unit, modifier: Modifier = Modifier, confirming: Boolean = false, kind: String = "") {
+    val shape = RoundedCornerShape(12.dp)
+    val sweep = if (confirming && !rememberReducedMotion()) {
+        val transition = rememberInfiniteTransition(label = "confirming")
+        transition.animateFloat(-.4f, 1.4f, infiniteRepeatable(tween(1100, easing = LinearEasing)), label = "sweep").value
+    } else null
+    val label = if (confirming) "Confirming ${kind.ifBlank { "handover" }}" else "Scan their QR code"
+    Row(modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("handover-scan").clip(shape)
+        .background(Cargo.Accent.copy(alpha = if (busy && !confirming) .5f else 1f), shape)
+        .drawWithContent {
+            drawContent()
+            sweep?.let { x ->
+                val band = size.width * .35f
+                drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = .38f), Color.Transparent),
+                    start = Offset(size.width * x - band, 0f), end = Offset(size.width * x + band, size.height)))
+            }
+        }
+        .clickable(enabled = !busy, onClick = scan).semantics { contentDescription = label; if (confirming) liveRegion = LiveRegionMode.Polite }
+        .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Box(Modifier.size(40.dp).background(Color.Black.copy(alpha = .15f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-            Icon(painterResource(R.drawable.ic_scan), null, Modifier.size(24.dp), tint = Color.Black)
+            if (confirming) CircularProgressIndicator(Modifier.size(22.dp), color = Color.Black, strokeWidth = 2.5.dp)
+            else Icon(painterResource(R.drawable.ic_scan), null, Modifier.size(24.dp), tint = Color.Black)
         }
         Column(Modifier.weight(1f)) {
-            Text("SCAN THEIR QR", style = loanBody(15).copy(fontFamily = Cargo.Strong), color = Color.Black)
-            Text("Point at the pass on their phone", style = loanBody(12), color = Color.Black.copy(alpha = .7f))
+            Text(if (!confirming) "SCAN THEIR QR" else if (kind.isBlank()) "CONFIRMING…" else "CONFIRMING ${kind.uppercase()}…",
+                style = loanBody(15).copy(fontFamily = Cargo.Strong), color = Color.Black)
+            Text(if (confirming) "Code read. Checking it with BorrowBuddy" else "Point at the pass on their phone",
+                style = loanBody(12), color = Color.Black.copy(alpha = .7f))
         }
-        Icon(painterResource(R.drawable.ic_camera), null, Modifier.size(20.dp), tint = Color.Black)
+        if (!confirming) Icon(painterResource(R.drawable.ic_camera), null, Modifier.size(20.dp), tint = Color.Black)
     }
 }
 

@@ -66,6 +66,15 @@ class HostedCampusTest {
         await { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
         scroll(matcher); compose.onNode(matcher).assertIsDisplayed().performClick()
     }
+    /** The pass hides its digits until asked; reveal them before reading the code. */
+    private fun revealCode() {
+        await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() ||
+            compose.onAllNodesWithTag("collection-code-hidden").fetchSemanticsNodes().isNotEmpty() }
+        if (compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty()) return
+        val toggle = hasTestTag("handover-reveal")
+        scroll(toggle); compose.onNode(toggle).assertIsDisplayed().performClick()
+        await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
+    }
     private fun field(label: String, value: String, parent: SemanticsMatcher? = null) {
         val matcher = hasSetTextAction() and hasText(label) and (parent?.let { hasAnyAncestor(it) } ?: SemanticsMatcher("any") { true })
         await { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
@@ -128,13 +137,13 @@ class HostedCampusTest {
             await { runBlocking { repository.campus.claims(post = found) }.any { it.status == "approved" } }
             val transfer = host.rows("campus_transfers?post_id=eq.$found").getJSONObject(0).getString("id")
             logout(); login(required("qaEmail")); collection(transfer)
-            tap("GENERATE / REPLACE MY CODE")
-            await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
+            tap("GENERATE CODE")
+            revealCode()
             val code = compose.onNodeWithTag("collection-code").fetchSemanticsNode().config[SemanticsProperties.Text].single().text
             assertTrue(code.matches(Regex("[0-9]{6}")))
             assertCollectionQr(code)
             compose.activityRule.scenario.recreate()
-            await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
+            revealCode()
             compose.onNodeWithTag("collection-code").assertTextEquals(code)
             logout(); login(required("qaHostEmail")); collection(transfer)
             assertFalse(shown("Original Case Proof: amber triangle inside the case."))
@@ -211,7 +220,7 @@ class HostedCampusTest {
             }
             tap("CANCEL THIS APPOINTMENT"); confirm()
             await { runBlocking { repository.campus.appointments(transfer = transfer.id) }.none { it.status == "booked" } }
-            tap("GENERATE / REPLACE MY CODE"); await { compose.onAllNodesWithTag("collection-code").fetchSemanticsNodes().isNotEmpty() }
+            tap("GENERATE CODE"); revealCode()
             phase = "collection-receipt"
             val code = compose.onNodeWithTag("collection-code").fetchSemanticsNode().config[SemanticsProperties.Text].single().text
             assertCollectionQr(code)
