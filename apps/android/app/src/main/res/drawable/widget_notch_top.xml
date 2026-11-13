@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Half-circle bite at the top of the perforation, in the canvas blue. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="12dp" android:height="6dp" android:viewportWidth="12" android:viewportHeight="6">
+    <path android:fillColor="#003993" android:pathData="M0,0 A6,6 0 0,0 12,0 Z" />
+</vector>

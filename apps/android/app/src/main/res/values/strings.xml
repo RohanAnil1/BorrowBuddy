@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_pass_label">Boarding pass</string>
+    <string name="widget_pass_description">Your next BorrowBuddy return with a live countdown, plus pending requests, unread chats and fines. Tap through to the loan or straight to Browse.</string>
+    <string name="widget_small_label">Next return</string>
+    <string name="widget_parcel_label">Parcel</string>
+    <string name="widget_parcel_description">Parcel, the BorrowBuddy mascot, keeps an eye on your loans. Its face and speech bubble change when something is due, overdue or new.</string>
+    <string name="widget_small_description">A pocket boarding pass: how long until your next loan is due back, and what needs your attention.</string>
+</resources>

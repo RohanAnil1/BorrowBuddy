@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for the 2x2 pocket pass (static sample data). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_canvas"
+    android:padding="6dp"
+    tools:ignore="HardcodedText,SmallSp,UselessLeaf,NestedWeights,DisableBaselineAlignment,UseCompoundDrawables,ContentDescription">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_ticket"
+        android:orientation="vertical"
+        android:paddingStart="10dp"
+        android:paddingTop="9dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="9dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView style="@style/WidgetPreview.Mono" android:layout_width="0dp" android:layout_weight="1" android:text="[ BORROWING ]" android:textColor="#cb840e" android:textSize="8sp" />
+            <ImageView android:layout_width="14dp" android:layout_height="12dp" android:src="@drawable/widget_logo" android:contentDescription="@null" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView style="@style/WidgetPreview.Mono" android:layout_width="wrap_content" android:fontFamily="@font/thermo" android:text="02" android:textColor="#ff9f00" android:textSize="34sp" />
+            <TextView style="@style/WidgetPreview.Mono" android:layout_width="wrap_content" android:layout_marginStart="5dp" android:maxLines="2" android:text="DAYS\nLEFT" android:textColor="#ff9f00" android:textSize="8sp" />
+        </LinearLayout>
+
+        <TextView style="@style/WidgetPreview.Title" android:text="CANON EOS 1500D" android:textSize="14sp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+        <ImageView android:layout_width="match_parent" android:layout_height="2dp" android:scaleType="fitXY" android:src="@drawable/widget_dash" android:contentDescription="@null" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView style="@style/WidgetPreview.Mono" android:layout_width="0dp" android:layout_weight="1" android:text="02 REQ · 01 MSG" android:textColor="#ff9f00" android:textSize="8sp" />
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:background="@drawable/widget_browse_dot" android:padding="5dp" android:src="@drawable/widget_search_dark" android:contentDescription="@null" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

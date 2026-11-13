@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BorrowBuddy web
 
-## Getting Started
+The BorrowBuddy website, PWA and Buddy API. It runs on Next.js 16 (App Router), React 19 and Tailwind CSS 4, on Supabase.
+Live at **[borrow-buddy-web.vercel.app](https://borrow-buddy-web.vercel.app)**. On an iPhone, open it in Safari and tap
+**Share → Add to Home Screen**.
 
-First, run the development server:
+For what the product does, the monorepo layout and the full environment-variable list, see the [root README](../../README.md).
+
+## Run it
+
+From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+It needs `apps/web/.env.local` with at least `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY`. Without the Supabase keys the app starts, but it can't sign anyone in.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Check it
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint --workspace @borrowbuddy/web
+npm run typecheck --workspace @borrowbuddy/web   # next typegen && tsc --noEmit
+npm run build --workspace @borrowbuddy/web
+```
 
-## Learn More
+CI runs all three on every pull request. Browser end-to-end scripts are in [`tools/`](tools).
 
-To learn more about Next.js, take a look at the following resources:
+## Where things live
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | What |
+| --- | --- |
+| `src/app/(app)/` | Signed-in portal: browse (`home`), dashboard, items, loans, chat, campus, map, fines, admin, Buddy |
+| `src/app/login`, `signup`, `onboarding`, `pending` | Sign-up and student ID verification |
+| `src/app/offline` | The self-contained offline page |
+| `src/app/api/assistant` | Buddy (Gemini, Groq or a local fallback, chosen by `ASSISTANT_PROVIDER`) |
+| `src/app/api/cron/notification-emails` | Email delivery, called by the database scheduler with `CRON_SECRET` |
+| `src/app/api/loans/[id]/calendar` | A loan's due date and appointments as an `.ics` file |
+| `src/lib/env.ts` / `env-client.ts` | Validated server and browser configuration |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Shared types, schemas and campus date rules come from [`@borrowbuddy/shared`](../../packages/shared). The native
+Android app in [`apps/android`](../android) uses the same Supabase project, and it calls this app's `/api/assistant`
+for Buddy.

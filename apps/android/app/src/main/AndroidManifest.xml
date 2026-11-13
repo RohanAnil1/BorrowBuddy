@@ -21,5 +21,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Home-screen widget: a 4x2 boarding pass and a 2x2 pocket pass, both CargoWidget. -->
+        <receiver android:name=".widget.CargoWidgetReceiver" android:exported="true" android:label="@string/widget_pass_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/cargo_widget_info" />
+        </receiver>
+        <receiver android:name=".widget.CargoWidgetSmallReceiver" android:exported="true" android:label="@string/widget_small_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/cargo_widget_small_info" />
+        </receiver>
+        <receiver android:name=".widget.ParcelWidgetReceiver" android:exported="true" android:label="@string/widget_parcel_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/parcel_widget_info" />
+        </receiver>
     </application>
 </manifest>
