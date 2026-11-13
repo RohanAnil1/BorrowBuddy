@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for the 4x2 boarding pass (static sample data). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_canvas"
+    android:orientation="horizontal"
+    android:padding="6dp"
+    tools:ignore="HardcodedText,SmallSp,UselessLeaf,NestedWeights,DisableBaselineAlignment,UseCompoundDrawables,ContentDescription">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/widget_ticket_start"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingTop="9dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="9dp">
+
+        <TextView style="@style/WidgetPreview.Mono" android:text="[ BORROWING ]" android:textColor="#cb840e" android:textSize="9sp" />
+        <TextView style="@style/WidgetPreview.Title" android:layout_marginTop="3dp" android:text="CANON EOS 1500D" android:textSize="21sp" />
+        <TextView style="@style/WidgetPreview.Mono" android:text="FROM PRIYA S. · BB-7F3A21" android:textColor="#b3ffffff" android:textSize="9sp" />
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView style="@style/WidgetPreview.Tile" android:text="REQS\n02" />
+            <FrameLayout android:layout_width="4dp" android:layout_height="1dp" />
+            <TextView style="@style/WidgetPreview.Tile" android:text="CHATS\n01" />
+            <FrameLayout android:layout_width="4dp" android:layout_height="1dp" />
+            <TextView style="@style/WidgetPreview.Tile" android:textColor="#b3ffffff" android:text="FINES\n00" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="12dp"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+        <ImageView android:layout_width="12dp" android:layout_height="6dp" android:src="@drawable/widget_notch_top" android:contentDescription="@null" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView style="@style/WidgetPreview.Dot" />
+        <ImageView android:layout_width="12dp" android:layout_height="6dp" android:src="@drawable/widget_notch_bottom" android:contentDescription="@null" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="90dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_ticket_end"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="6dp"
+        android:paddingTop="9dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="9dp">
+        <TextView style="@style/WidgetPreview.Mono" android:gravity="center" android:text="DUE 15 NOV" android:textColor="#80ffffff" android:textSize="8sp" />
+        <TextView style="@style/WidgetPreview.Mono" android:fontFamily="@font/thermo" android:gravity="center" android:text="02" android:textColor="#ff9f00" android:textSize="38sp" />
+        <TextView style="@style/WidgetPreview.Mono" android:gravity="center" android:text="DAYS LEFT" android:textColor="#ff9f00" android:textSize="8sp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+        <TextView style="@style/WidgetPreview.Pill" android:text="BROWSE →" />
+    </LinearLayout>
+</LinearLayout>

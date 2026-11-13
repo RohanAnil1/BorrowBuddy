@@ -22,8 +22,9 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import `in`.borrowbuddy.android.data.BuddyClient
 import `in`.borrowbuddy.android.domain.Profile
+import kotlinx.coroutines.flow.MutableStateFlow
 
-@Composable fun BorrowBuddyApp(model: SessionViewModel) {
+@Composable fun BorrowBuddyApp(model: SessionViewModel, widgetRoute: MutableStateFlow<String?> = remember { MutableStateFlow(null) }) {
     val state by model.state.collectAsStateWithLifecycle()
     var authenticating by rememberSaveable { mutableStateOf(false) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -47,14 +48,14 @@ import `in`.borrowbuddy.android.domain.Profile
                 !profile.is_admin && (profile.full_name.isBlank() ||
                     (profile.verification_status == "pending" && profile.student_id_path.isNullOrBlank())) -> OnboardingScreen(model, state, profile)
                 profile.verification_status != "verified" -> PendingScreen(model, state, profile)
-                else -> key(profile.id) { CampusPortal(model, profile) }
+                else -> key(profile.id) { CampusPortal(model, profile, widgetRoute) }
             }
         }
     }
     }
 }
 
-@Composable private fun CampusPortal(model: SessionViewModel, profile: Profile) {
+@Composable private fun CampusPortal(model: SessionViewModel, profile: Profile, widgetRoute: MutableStateFlow<String?>) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route.orEmpty().substringBefore('?')
@@ -69,6 +70,13 @@ import `in`.borrowbuddy.android.domain.Profile
     }
     val homeRequest by model.homeRequests.collectAsStateWithLifecycle()
     LaunchedEffect(homeRequest) { if (homeRequest > 0) section("home") }
+    // A home-screen widget tap: top-level screens replace the stack, a loan opens on top.
+    val widgetTarget by widgetRoute.collectAsStateWithLifecycle()
+    LaunchedEffect(widgetTarget) {
+        val target = widgetTarget ?: return@LaunchedEffect
+        widgetRoute.value = null
+        if (target.startsWith("loans/")) open(target) else section(target)
+    }
     val repository = model.repository
     val buddy = repository.buddy
     LaunchedEffect(profile.id) { buddy.bind(profile.id) }

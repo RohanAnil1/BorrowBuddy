@@ -86,8 +86,7 @@ private object P {
         scope.launch { squashY.snapTo(.84f); squashY.animateTo(1f, spring(dampingRatio = .35f, stiffness = 500f)) }
     }
     LaunchedEffect(mood) { if (mood == BuddyMood.Happy || mood == BuddyMood.Found || mood == BuddyMood.Wave) boing() }
-    val lidTarget = when { mood == BuddyMood.Found -> 1f; peek || mood == BuddyMood.Wave || mood == BuddyMood.Happy -> .45f; mood == BuddyMood.Thinking -> .2f; else -> 0f }
-    val lid by animateFloatAsState(lidTarget, spring(dampingRatio = .45f, stiffness = 260f), label = "lid")
+    val lid by animateFloatAsState(lidFor(mood, peek), spring(dampingRatio = .45f, stiffness = 260f), label = "lid")
 
     val gestures = if (!interactive) Modifier else Modifier
         .pointerInput(reduced) { detectTapGestures(onPress = { boing() }) }
@@ -128,6 +127,25 @@ private object P {
                 }
             }
             drawExtras(mood, drift?.value ?: .5f, reduced)
+        }
+    }
+}
+
+private fun lidFor(mood: BuddyMood, peek: Boolean = false): Float =
+    when { mood == BuddyMood.Found -> 1f; peek || mood == BuddyMood.Wave || mood == BuddyMood.Happy -> .45f; mood == BuddyMood.Thinking -> .2f; else -> 0f }
+
+/**
+ * Parcel frozen mid-gesture (arm up, Z's drifting), for places without a
+ * composition such as the home-screen widget, which draws this into a bitmap.
+ * Fits the 120x120 grid into the draw area and centres it.
+ */
+fun DrawScope.drawParcelStill(mood: BuddyMood) {
+    val k = size.minDimension / 120f
+    translate((size.width - 120f * k) / 2f, (size.height - 120f * k) / 2f) {
+        scale(k, k, pivot = Offset.Zero) {
+            drawOval(P.Deep.copy(alpha = .5f), Offset(60 - 31 * .95f, 106.5f), Size(62 * .95f, 9f))
+            drawBody(mood, lidFor(mood), blink = false, ex = 0f, ey = 0f, wave = .25f, fast = .25f, scan = .75f, pulse = 1f, reduced = false)
+            drawExtras(mood, drift = .15f, reduced = false)
         }
     }
 }

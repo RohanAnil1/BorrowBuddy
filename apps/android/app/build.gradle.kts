@@ -95,6 +95,9 @@ dependencies {
     implementation(libs.zxing)
     implementation(libs.code.scanner)
     implementation(libs.play.services.base)
+    // Home-screen widget: Glance renders it, WorkManager refreshes the cached snapshot.
+    implementation(libs.glance.appwidget)
+    implementation(libs.work.runtime)
     testImplementation(libs.junit)
     testImplementation(libs.ktor.mock)
     androidTestImplementation(platform(libs.compose.bom))
