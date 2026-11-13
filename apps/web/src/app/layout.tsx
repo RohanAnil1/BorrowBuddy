@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { IosInputZoomGuard } from "@/components/ios-input-zoom";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { MotionProvider } from "@/components/motion-provider";
 import {
@@ -9,6 +10,31 @@ import {
   thermoSemibold,
 } from "./fonts";
 import "./globals.css";
+
+/** iPhone launch screens for home-screen installs (portrait only — the
+ *  manifest locks orientation). Generated at device resolution: canvas blue
+ *  with the cargo mark, ~2–5 KB each, and iOS fetches only the one whose
+ *  media query matches the phone. */
+const STARTUP_IMAGES = (
+  [
+    [440, 956, 3],
+    [430, 932, 3],
+    [428, 926, 3],
+    [420, 912, 3],
+    [414, 896, 3],
+    [414, 896, 2],
+    [414, 736, 3],
+    [402, 874, 3],
+    [393, 852, 3],
+    [390, 844, 3],
+    [375, 812, 3],
+    [375, 667, 2],
+    [320, 568, 2],
+  ] as const
+).map(([width, height, ratio]) => ({
+  url: `/splash/iphone-${width * ratio}x${height * ratio}.png`,
+  media: `(device-width: ${width}px) and (device-height: ${height}px) and (-webkit-device-pixel-ratio: ${ratio}) and (orientation: portrait)`,
+}));
 
 export const metadata: Metadata = {
   title: {
@@ -21,18 +47,36 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "BorrowBuddy",
+    // Content runs under the status bar; globals.css pads it back out with
+    // env(safe-area-inset-top) and lays a black plate behind the clock.
     statusBarStyle: "black-translucent",
+    startupImage: STARTUP_IMAGES,
   },
+  // Handover codes and PINs are digits — keep iOS from turning them into
+  // tappable phone numbers.
+  formatDetection: { telephone: false },
   icons: {
-    icon: { url: "/icons/favicon.svg", type: "image/svg+xml" },
-    apple: "/icons/apple-touch-icon.png",
+    icon: [
+      { url: "/icons/favicon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: { url: "/icons/apple-touch-icon.png", sizes: "180x180" },
+  },
+  other: {
+    // Next emits only the unprefixed `mobile-web-app-capable`; older iOS
+    // releases look for Apple's name before they honour standalone mode.
+    "apple-mobile-web-app-capable": "yes",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#003993",
+  // Black matches the app shell's header and the iOS status-bar plate.
+  themeColor: "#000000",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
+  // Draw under the notch / home indicator; safe-area insets pad it back.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -62,6 +106,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <MotionProvider>
           {children}
           <ServiceWorkerRegistrar />
+          <IosInputZoomGuard />
         </MotionProvider>
       </body>
     </html>

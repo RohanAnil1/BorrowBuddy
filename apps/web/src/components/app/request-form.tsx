@@ -165,7 +165,7 @@ export function RequestForm({
         {armed && (
           <motion.div
             animate={{ y: 0, opacity: 1 }}
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-black px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dt:hidden"
+            className="hide-on-keyboard fixed inset-x-0 bottom-0 z-40 border-t border-line bg-black px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dt:hidden"
             exit={{ y: 24, opacity: 0 }}
             initial={{ y: 24, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}

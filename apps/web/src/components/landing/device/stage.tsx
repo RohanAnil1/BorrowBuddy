@@ -30,10 +30,17 @@ export function DeviceStage() {
   const [gpu, setGpu] = useState<Gpu>("checking");
 
   useEffect(() => {
-    // WebGL support is only knowable client-side; a single derived set here is
-    // the standard "browser capability probe" pattern.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGpu(detectWebGL());
+    // WebGL support is only knowable client-side. The probe (and with it the
+    // three.js chunk download + scene compile) waits for an idle moment, so
+    // the landing page hydrates and answers taps first; the 2D stand-in
+    // holds the slot meanwhile, exactly as it does while the chunk loads.
+    const probe = () => setGpu(detectWebGL());
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(probe, { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(probe, 300);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -48,7 +55,7 @@ export function DeviceStage() {
       />
 
       <div className="relative z-[1] size-full">
-        {gpu === "fallback" ? <DeviceFallback /> : <CargoDeviceCanvas />}
+        {gpu === "webgl" ? <CargoDeviceCanvas /> : <DeviceFallback />}
       </div>
 
       {/* boot scanline — one sweep, fires after the preloader hands over */}

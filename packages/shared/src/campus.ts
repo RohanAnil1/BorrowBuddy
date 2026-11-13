@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// Date helpers live in campus-dates.ts so client components can format
+// campus times without pulling the zod schemas below into the browser.
+export { CAMPUS_TIMEZONE, campusDate, campusToday } from "./campus-dates";
+
 export type CampusKind = "found" | "giveaway";
 export interface CampusPost {
   id: string;
@@ -80,7 +84,6 @@ export interface HandoverAppointment extends HandoverSlot {
   kind: "pickup" | "return" | "collection";
   status: "booked" | "cancelled" | "completed";
 }
-export const CAMPUS_TIMEZONE = "Asia/Kolkata";
 export const campusPostSchema = z
   .object({
     id: z.uuid(),
@@ -110,20 +113,3 @@ export const campusPostSchema = z
         message: "Choose the condition.",
       });
   });
-export function campusDate(value: string | Date, includeTime = true): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    timeZone: CAMPUS_TIMEZONE,
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    ...(includeTime ? { hour: "numeric", minute: "2-digit" } : {}),
-  }).format(new Date(value));
-}
-export function campusToday(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: CAMPUS_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}

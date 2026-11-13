@@ -1,8 +1,8 @@
 /* BorrowBuddy service worker — offline shell + static asset cache.
    Supabase API and storage requests are never cached. */
 
-// v4: "Parcel's Signal Hunt" offline page. Older borrowbuddy-* caches are retired on activate.
-const VERSION = "borrowbuddy-v4";
+// v5: Latin-subset offline fonts + cached backdrop plates. Older borrowbuddy-* caches are retired on activate.
+const VERSION = "borrowbuddy-v5";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   OFFLINE_URL,
@@ -80,7 +80,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/_next/static") || url.pathname.startsWith("/icons") || url.pathname.startsWith("/offline-assets/")) {
+  if (url.pathname.startsWith("/_next/static") || url.pathname.startsWith("/icons") || url.pathname.startsWith("/offline-assets/") || url.pathname.startsWith("/backdrop/")) {
     const network = fetch(request)
       .then(async (response) => {
         await storePublicResponse(request, response);

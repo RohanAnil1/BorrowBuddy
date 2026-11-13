@@ -6,6 +6,39 @@ import { MAX_IMAGE_SIZE_BYTES, MAX_ITEM_IMAGES } from "@borrowbuddy/shared";
 import { createClient } from "@/lib/supabase/client";
 import { BUCKETS, publicUrl } from "@/lib/storage";
 
+/** Longest edge kept for listing photos — the item page shows them at most
+ *  ~1200px wide on a 2x desktop, cards far smaller. */
+const LISTING_MAX_EDGE = 1600;
+
+/**
+ * Phone cameras hand over 3–5 MB, 4000px photos; every browse card then
+ * downloads that original. Re-encode listing photos in the browser before
+ * upload. Anything that fails (old browser, odd format such as HEIC that
+ * the browser can't decode) uploads untouched, exactly as before.
+ */
+async function shrinkForListing(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 350 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const scale = Math.min(1, LISTING_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    // JPEG has no alpha: give transparent PNGs the card's black, not grey.
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 export function ImageUploader({
   ownerId,
   initialPaths = [],
@@ -17,6 +50,7 @@ export function ImageUploader({
   allowedTypes,
   minBytes,
   onChange,
+  shrink = bucket === BUCKETS.itemImages,
 }: {
   ownerId: string;
   initialPaths?: string[];
@@ -30,6 +64,9 @@ export function ImageUploader({
   /** Reject files smaller than this — blurry or fake thumbnails. */
   minBytes?: number;
   onChange?: (paths: string[]) => void;
+  /** Downscale photos before upload. On for listing photos only — ID
+   *  scans and evidence photos stay at full resolution. */
+  shrink?: boolean;
 }) {
   const [paths, setPaths] = useState<string[]>(initialPaths);
   const [uploading, setUploading] = useState(false);
@@ -45,15 +82,16 @@ export function ImageUploader({
     const room = max - next.length;
 
     try {
-      for (const file of Array.from(files).slice(0, room)) {
-        if (allowedTypes && !allowedTypes.includes(file.type)) {
+      for (const picked of Array.from(files).slice(0, room)) {
+        if (allowedTypes && !allowedTypes.includes(picked.type)) {
           setError("Only PNG and JPG images are allowed.");
           continue;
         }
-        if (minBytes && file.size < minBytes) {
-          setError(`${file.name} is too small — retake the photo.`);
+        if (minBytes && picked.size < minBytes) {
+          setError(`${picked.name} is too small — retake the photo.`);
           continue;
         }
+        const file = shrink ? await shrinkForListing(picked) : picked;
         if (file.size > MAX_IMAGE_SIZE_BYTES) {
           setError(`${file.name} is larger than ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB.`);
           continue;

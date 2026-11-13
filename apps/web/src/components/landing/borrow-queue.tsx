@@ -50,6 +50,9 @@ export function BorrowQueue() {
   const sectionRef = useRef<HTMLElement>(null);
   const lastGate = useRef<number | null>(null);
   const [inView, setInView] = useState(false);
+  // Latches true once the section comes within a screen of the viewport, so
+  // the three.js scene isn't downloaded and compiled during first load.
+  const [nearView, setNearView] = useState(false);
   const [tabHidden, setTabHidden] = useState(false);
   const [gpu, setGpu] = useState<Gpu>("checking");
   const [rich, setRich] = useState(false);
@@ -91,7 +94,19 @@ export function BorrowQueue() {
       threshold: 0.12,
     });
     io.observe(el);
-    return () => io.disconnect();
+    const near = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setNearView(true);
+        near.disconnect();
+      },
+      { rootMargin: "100% 0px" },
+    );
+    near.observe(el);
+    return () => {
+      io.disconnect();
+      near.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -160,7 +175,7 @@ export function BorrowQueue() {
                 "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
             }}
           >
-            {gpu === "webgl" ? (
+            {gpu === "webgl" && nearView ? (
               <CargoLineCanvas
                 onSync={handleSync}
                 reduced={reduced}

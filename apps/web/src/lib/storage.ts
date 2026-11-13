@@ -1,4 +1,4 @@
-import { getClientEnv } from "@/lib/env";
+import { getClientEnv } from "@/lib/env-client";
 
 export const BUCKETS = {
   itemImages: "item-images",

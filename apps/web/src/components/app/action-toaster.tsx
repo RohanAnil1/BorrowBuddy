@@ -27,7 +27,7 @@ export function ActionToaster({ flash }: { flash: Flash | null }) {
   return (
     <div
       aria-live={visible?.tone === "error" ? "assertive" : "polite"}
-      className="pointer-events-none fixed inset-x-4 bottom-24 z-50 flex justify-center sm:bottom-8 sm:left-8 sm:right-auto sm:justify-start"
+      className="hide-on-keyboard pointer-events-none fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex justify-center sm:bottom-[calc(2rem+env(safe-area-inset-bottom))] sm:left-[calc(2rem+env(safe-area-inset-left))] sm:right-auto sm:justify-start"
     >
       <AnimatePresence>
         {visible && (
