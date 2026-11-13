@@ -2,7 +2,6 @@ import { BellRing, CheckCheck } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { SubmitButton } from "@/components/app/submit-button";
-import type { Notification } from "@borrowbuddy/shared";
 import { relativeTime } from "@/lib/format";
 import { requireProfile } from "@/lib/auth/guards";
 import { getNotifications } from "@/lib/data/notifications";
