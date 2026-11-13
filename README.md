@@ -155,7 +155,7 @@ The `Android` workflow runs only when `apps/android/**` changes. Browser and dev
 Android builds ship as **GitHub pre-releases** named `vX.Y.Z`. Each one attaches a single `BorrowBuddy-vX.Y.Z-qa.apk`.
 
 - **QA builds are debug-signed.** They install over the previous QA build and keep you signed in. They aren't production-signed, so a future production release will need the QA app uninstalled first.
-- The latest is **[v0.4.0](https://github.com/RohanAnil1/BorrowBuddy/releases/tag/v0.4.0)** (version code 6, Android 12+). Its notes list the APK's SHA-256 and the website it talks to.
+- The latest is **[v0.4.1](https://github.com/RohanAnil1/BorrowBuddy/releases/tag/v0.4.1)** (version code 7, Android 12+). Its notes list the APK's SHA-256 and the website it talks to.
 - To cut one, bump `versionCode`/`versionName` in `apps/android/app/build.gradle.kts` in its own PR. Build with `BORROWBUDDY_WEB_URL=https://borrow-buddy-web.vercel.app`, then publish the APK as a pre-release.
 - A production-signed build needs a `keystore.properties` (see `keystore.properties.example`). None is stored in this repository.
 
