@@ -6,7 +6,7 @@ import { buildSystemPrompt } from "@/lib/assistant/system-prompt";
 import { ASSISTANT_TOOLS, runTool } from "@/lib/assistant/tools";
 import { ASSISTANT_LIMITS, type AssistantEvent } from "@/lib/assistant/types";
 import type { Profile } from "@borrowbuddy/shared";
-import { getCurrentProfile } from "@/lib/data/profiles";
+import { getCurrentProfile, loadOwnProfile } from "@/lib/data/profiles";
 import { createClient, tokenClient, withBearerToken } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
@@ -39,8 +39,7 @@ async function profileForToken(token: string): Promise<Profile | null> {
   const supabase = tokenClient(token);
   const { data: user } = await supabase.auth.getUser(token);
   if (!user.user) return null;
-  const { data } = await supabase.from("profiles").select("*").eq("id", user.user.id).maybeSingle();
-  return (data as Profile | null) ?? null;
+  return loadOwnProfile(supabase, user.user);
 }
 
 export async function POST(request: Request) {
