@@ -150,7 +150,7 @@ export function AssistantLauncher({ userId, firstName }: { userId: string; first
   if (onPage) return null;
 
   return (
-    <div className={cn("buddy-dock", lifted && "buddy-dock-lifted")} data-open={state.open}>
+    <div className={cn("buddy-dock", lifted && "buddy-dock-lifted", !state.open && "hide-on-keyboard")} data-open={state.open}>
       <AnimatePresence
         onExitComplete={() => {
           // The launcher is hidden behind the mobile sheet until the exit ends.

@@ -50,6 +50,17 @@ android {
             signingConfig = signingConfigs.findByName("production")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // Release code (R8, baseline profile, no debuggable JIT penalty) under its
+        // own package id and the debug key, so startup and jank can be measured
+        // next to an installed, signed-in debug build without replacing it:
+        //   gradlew :app:installBenchmark   ->  in.borrowbuddy.android.benchmark
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".benchmark"
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -65,6 +76,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.tooling.preview)
     implementation(libs.activity.compose)
+    // Installs the baseline profile (ours in src/main/baseline-prof.txt plus the
+    // ones Compose, Coil and friends ship) on sideloaded and Play installs alike.
+    implementation(libs.profileinstaller)
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.lifecycle.runtime)
     implementation(libs.navigation.compose)

@@ -1,0 +1,28 @@
+# BorrowBuddy baseline profile.
+#
+# ART otherwise interprets/JITs our code on every cold start until the
+# background dexopt pass catches up, which is where first-launch and
+# first-scroll jank comes from. These rules ask for ahead-of-time
+# compilation at install time (profileinstaller applies them for sideloaded
+# QA builds too). AGP rewrites them through the R8 mapping for release.
+#
+# Compose, Activity, Lifecycle, Navigation and Coil ship their own profiles,
+# which merge in automatically. The rules below cover what doesn't:
+#  - all app code (screens, view models, repository, domain rules), and
+#  - the session-restore / JSON path every launch goes through before the
+#    first real frame (supabase-kt auth + postgrest, kotlinx.serialization).
+
+HSPLin/borrowbuddy/android/**->**(**)**
+Lin/borrowbuddy/android/**;
+
+HSPLio/github/jan/supabase/auth/**->**(**)**
+Lio/github/jan/supabase/auth/**;
+HSPLio/github/jan/supabase/postgrest/**->**(**)**
+Lio/github/jan/supabase/postgrest/**;
+HSPLio/github/jan/supabase/*->**(**)**
+Lio/github/jan/supabase/*;
+
+HSPLkotlinx/serialization/json/**->**(**)**
+Lkotlinx/serialization/json/**;
+HSPLkotlinx/serialization/internal/**->**(**)**
+Lkotlinx/serialization/internal/**;

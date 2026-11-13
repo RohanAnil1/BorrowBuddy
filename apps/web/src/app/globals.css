@@ -48,12 +48,58 @@
    to the document canvas so the fixed -z-10 photographic backdrop (layout.tsx)
    paints above it. An opaque html background would cover that layer. */
 
+html {
+  /* iOS: no font inflation on rotate, no grey flash on tap. Every control
+     has its own hover/active/focus-visible state, so the native highlight
+     only ever doubled them up. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-transform: uppercase;
+  /* `viewport-fit=cover` (layout.tsx) lets pages draw under the notch, the
+     Dynamic Island and the home indicator. Insets are 0 in a normal browser
+     tab, so these only bite on iPhone home-screen installs and in landscape. */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Black plate behind the iOS status bar (style `black-translucent`) so page
+   content scrolling up never shows through the clock and battery. Zero
+   height outside standalone mode. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  height: env(safe-area-inset-top);
+  background: var(--color-panel);
+  pointer-events: none;
+}
+
+/* Installed app: no rubber-band bounce revealing the canvas behind the black
+   shell, and no browser pull-to-refresh fighting in-app scroll areas. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Touch keyboards: fixed bottom chrome (request bar, toasts, Buddy button)
+   would otherwise ride up over the field being typed into on iOS, which
+   keeps fixed elements pinned to the layout viewport. */
+@media (pointer: coarse) {
+  body:has(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="submit"], [type="button"]), textarea, select, [contenteditable="true"]):focus) .hide-on-keyboard {
+    display: none;
+  }
 }
 
 ::selection {
@@ -152,15 +198,27 @@ body {
    (lossless batik pattern, transparent navy strokes; screen blend lifts them to the
    grey etching on navy seen in the reference). */
 .backdrop-photo {
-  background-image: url("/bg.jpg");
+  background-image: url("/backdrop/plate.jpg");
+  background-image: image-set(
+    url("/backdrop/plate.avif") type("image/avif"),
+    url("/backdrop/plate.webp") type("image/webp"),
+    url("/backdrop/plate.jpg") type("image/jpeg")
+  );
   background-size: cover;
   background-position: center;
 }
 
+/* The batik print is pre-flattened onto black: under `mix-blend-mode: screen`
+   black is the identity, so the opaque file composites exactly like the old
+   transparent PNG at a fraction of the bytes (422 KB -> ~30 KB). */
 .batik-corner {
   pointer-events: none;
-  background-image: url("/bgpattern.png");
-  background-image: image-set(url("/bgpattern.webp") type("image/webp"), url("/bgpattern.png") type("image/png"));
+  background-image: url("/backdrop/batik.jpg");
+  background-image: image-set(
+    url("/backdrop/batik.avif") type("image/avif"),
+    url("/backdrop/batik.webp") type("image/webp"),
+    url("/backdrop/batik.jpg") type("image/jpeg")
+  );
   background-repeat: no-repeat;
   background-position: right top;
   background-size: cover;

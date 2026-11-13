@@ -30,7 +30,7 @@ export function AppShell({
     <div className="flex min-h-full flex-1 flex-col">
       <StatusTicker />
 
-      <header className="sticky top-0 z-40 border-b border-line bg-black">
+      <header className="sticky top-[env(safe-area-inset-top)] z-40 border-b border-line bg-black">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 px-4 pt-3 dt:flex-nowrap dt:px-10">
           <Link aria-label="BorrowBuddy — home" className="flex items-center gap-2.5" href="/home">
             <CargoMark className="size-8" />
@@ -80,7 +80,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col pb-8">{children}</main>
+      <main className="flex flex-1 flex-col pb-[calc(2rem+env(safe-area-inset-bottom))]">{children}</main>
     </div>
   );
 }

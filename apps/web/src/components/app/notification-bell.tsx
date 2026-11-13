@@ -103,7 +103,7 @@ export function NotificationBell({ userId, unreadCount }: { userId: string; unre
 
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-4 top-20 z-50 flex flex-col items-end gap-2 sm:left-auto sm:right-6 sm:w-80"
+        className="pointer-events-none fixed inset-x-4 top-[calc(5rem+env(safe-area-inset-top))] z-50 flex flex-col items-end gap-2 sm:left-auto sm:right-6 sm:w-80"
       >
         <AnimatePresence initial={false}>
           {toasts.map((toast) => (
