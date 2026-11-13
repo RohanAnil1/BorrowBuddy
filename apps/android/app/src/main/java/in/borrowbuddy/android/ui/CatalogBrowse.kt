@@ -157,6 +157,9 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
             val titleSize = (maxWidth.value * .06f).coerceIn(40f, 64f)
             val gutter = ((maxWidth - 1152.dp).coerceAtLeast(0.dp) / 2) + if (wide) 40.dp else 16.dp
             val columns = if (maxWidth >= 1024.dp) 3 else if (maxWidth >= 640.dp) 2 else 1
+            // Re-chunk only when the result set or the column count changes, not on
+            // every keystroke in the search field above the list.
+            val rows = remember(items, columns) { items.chunked(columns) }
             LazyColumn(Modifier.fillMaxSize().testTag("catalog-scroll").semantics {
                 this[CatalogColumns] = columns; this[CatalogLoading] = loading
                 this[CatalogResultCount] = items.size; this[CatalogFailed] = error != null
@@ -179,8 +182,11 @@ val CatalogFailed = SemanticsPropertyKey<Boolean>("CatalogFailed")
                 if (!loading && error == null && items.isEmpty()) item(key = "empty") {
                     CatalogEmpty(appliedQuery.isNotBlank() || listOf(category, condition, location).any { it.isNotBlank() }, listItem)
                 }
-                items(items.chunked(columns), key = { row -> row.first().id }) { row ->
-                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(rows, key = { row -> row.first().id }, contentType = { "item-row" }) { row ->
+                    // Equal-height cards only matter side by side; a phone's single column
+                    // skips the extra intrinsic-measure pass for every row it scrolls in.
+                    Row(Modifier.fillMaxWidth().then(if (columns > 1) Modifier.height(IntrinsicSize.Min) else Modifier),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         row.forEach { item ->
                             val mine = item.owner_id == profile.id
                             ItemCard(item, repository, open, Modifier.weight(1f).fillMaxHeight(),

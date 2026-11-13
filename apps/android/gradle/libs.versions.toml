@@ -13,6 +13,7 @@ zxing = "3.5.4"
 codeScanner = "16.1.0"
 playServicesBase = "18.5.0"
 junit = "4.13.2"
+profileinstaller = "1.4.1"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose" }
@@ -42,6 +43,7 @@ zxing = { module = "com.google.zxing:core", version.ref = "zxing" }
 play-services-base = { module = "com.google.android.gms:play-services-base", version.ref = "playServicesBase" }
 code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "codeScanner" }
 junit = { module = "junit:junit", version.ref = "junit" }
+profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

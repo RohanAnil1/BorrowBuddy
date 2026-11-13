@@ -173,7 +173,7 @@ private data class CampusDetail(val post: CampusPost, val claims: List<CampusCla
         CampusPhoto(repository, post.images.getOrNull(index), post.title, Modifier.fillMaxWidth().heightIn(max = 420.dp).aspectRatio(4f / 3))
     }
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        itemsIndexed(post.images) { number, path ->
+        itemsIndexed(post.images, key = { number, path -> "$number:$path" }) { number, path ->
             Box(Modifier.size(80.dp).border(2.dp, if (index == number) Cargo.Accent else Cargo.Line)
                 .semantics { contentDescription = "Photo ${number + 1} of ${post.images.size}"; this.selected = index == number }
                 .clickable { select(number) }) { CampusPhoto(repository, path, "", Modifier.fillMaxSize()) }

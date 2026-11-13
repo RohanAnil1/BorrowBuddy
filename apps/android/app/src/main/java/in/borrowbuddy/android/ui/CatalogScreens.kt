@@ -49,7 +49,7 @@ import androidx.compose.ui.platform.testTag
             CargoLabel("PHOTO ${pager.currentPage + 1}/${images.size.coerceAtLeast(1)}", modifier = Modifier.padding(12.dp).background(Cargo.Panel).padding(horizontal = 8.dp, vertical = 4.dp))
         }
         if (images.size > 1) LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            itemsIndexed(images) { index, image ->
+            itemsIndexed(images, key = { index, image -> "$index:$image" }) { index, image ->
                 Box(Modifier.size(80.dp).border(1.dp, if (pager.currentPage == index) Cargo.Accent else Cargo.Line)
                     .semantics { contentDescription = "Photo ${index + 1}" }
                     .clickable { scope.launch { pager.animateScrollToPage(index) } }) {
