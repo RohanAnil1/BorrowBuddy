@@ -4,6 +4,26 @@ Native Kotlin/Jetpack Compose client for the existing BorrowBuddy Supabase backe
 The endgame is complete website feature, visual and animation parity; this project is
 under active implementation and must not yet be labelled production-ready.
 
+For setup, releases and the monorepo overview, start at the [root README](../../README.md).
+
+## Home-screen widget
+
+`widget/` holds Jetpack Glance widgets in the Campus Cargo style. The picker lists three:
+
+- **Boarding pass** (4x2 by default, resizable from 2x2 up to 4x3+). The main panel shows the next loan due back: the role, the item, who it's with and the loan code. A perforated stub holds a thermal-font countdown (`02 DAYS LEFT`). Below sit tiles for pending requests, unread chats and fines, plus **Browse →**.
+- **Next return** (2x2). Shows the countdown, the item and the two most urgent counts.
+- **Parcel** (2x2, stretches to 4x2). The mascot stands on the campus canvas under a speech bubble. Its face follows your loans, most urgent first (`ParcelCues`): asleep when signed out, thinking while your ID is checked, worried with a question mark when something is overdue or a fine is unpaid, waving when a return is a day or two away, bursting with brackets when there are new requests or chats, calm when a loan is on track, and happy when nothing is due. Offline, it shows its no-signal eyes. Tapping it opens whatever the bubble is about. Parcel is drawn by the same `ParcelMascot.kt` code as in the app (`drawParcelStill`), into a bitmap.
+
+Behaviour:
+
+- **States.** Signed out, it asks you to sign in. While verification is pending, it says so. With no open loans, it shows "All clear".
+- **Data.** `WidgetLoader` reads through the app's single `BorrowRepository`, so the encrypted session is shared. The data is loans, the pending-request count, unread conversations and pending fines. In a background-only process, supabase-kt hasn't restored the session yet, so the loader restores it and renews an expiring token once.
+- **Refresh.** `WidgetSyncWorker` runs hourly (only when the battery isn't low). It also runs once when a widget is placed, when the app is updated, when you leave the app, and when you tap the `SYNCED …` label. There's no `updatePeriodMillis` and no polling.
+- **Offline.** The last snapshot is cached in private preferences. Countdowns are recomputed from the due date at every render, so they keep moving without the network, and the label switches to `OFFLINE · 3H AGO`. Signing out clears the widget straight away.
+- **Taps.** Taps open `MainActivity` with an allow-listed route (`WidgetRoutes`): the loan, `home` (Browse), `my/items`, `chat`, `fines` or `dashboard`.
+- **Fonts.** Launchers inflate widget views in a restricted context, where `TextView` won't load app fonts. So `TextArt` typesets brand text (Noto Sans ExtraCondensed, Noto Sans Mono, Thermochrome, Gotham) into alpha-only bitmaps, which are tinted on the home screen. Each one carries its text as a content description. Both widgets use `SizeMode.Responsive` buckets rather than `Exact`. ColorOS reports a landscape size and then draws that layout in portrait, so `Exact` overstated the space. The bucket the host picks never does.
+- **Tests.** `WidgetModelTest` covers countdowns, formatting, loan selection and route rules. `ParcelCuesTest` covers Parcel's moods. `WidgetRenderTest` (instrumented) renders every widget and mood to PNGs in the app's external files (`widget-renders/`) for review.
+
 ## Latest header/accessibility delivery — 30 October 2026
 
 `verification/header-a11y-checkpoint-20261030.json` records this delivery's exact
