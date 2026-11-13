@@ -22,6 +22,15 @@ data class Profile(
     val updated_at: String = "",
 )
 
+/** Your own private profile fields, from my_private_profile(). Other students' never reach the app. */
+@Serializable
+data class PrivateProfileFields(
+    val email: String? = null,
+    val phone: String? = null,
+    val student_id_path: String? = null,
+    val verification_note: String? = null,
+)
+
 @Serializable
 data class Category(val id: String, val name: String, val slug: String = "", val icon: String = "box", val sort_order: Int = 0)
 

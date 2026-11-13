@@ -24,9 +24,29 @@ $$;
 select set_config('request.jwt.claims', json_build_object('sub', student_id)::text, true) from private_profile_context;
 set local role authenticated;
 do $$
-declare v_context private_profile_context; v_rows int; v_email text;
+declare v_context private_profile_context; v_rows int; v_email text; v_column text;
 begin
   select * into v_context from private_profile_context;
+  -- Public columns of another verified student still read fine...
+  if not exists(select 1 from public.profiles where id = v_context.other_id and full_name = 'Private QA other' and is_admin = false) then
+    raise exception 'FAIL: public profile columns are no longer readable';
+  end if;
+  -- ...but private columns are refused outright, even on your own row and even via select *.
+  foreach v_column in array array['email', 'phone', 'student_id_path', 'verification_note'] loop
+    begin
+      execute format('select %I from public.profiles where id = $1', v_column) using v_context.other_id;
+      raise exception 'FAIL: % of another student is readable', v_column;
+    exception when insufficient_privilege then null;
+    end;
+  end loop;
+  begin
+    perform * from public.profiles where id = v_context.student_id;
+    raise exception 'FAIL: select * on profiles still allowed';
+  exception when insufficient_privilege then null;
+  end;
+  -- Editing your own row keeps working.
+  update public.profiles set phone = '9000000002' where id = v_context.student_id;
+  if (select phone from public.my_private_profile()) <> '9000000002' then raise exception 'FAIL: own phone update lost'; end if;
   select count(*), max(email) into v_rows, v_email from public.my_private_profile();
   if v_rows <> 1 then raise exception 'FAIL: expected exactly one private row, got %', v_rows; end if;
   if v_email <> 'private-qa-student-' || v_context.student_id || '@bennett.edu.in' then raise exception 'FAIL: wrong private email returned'; end if;
@@ -57,10 +77,15 @@ end;
 $$;
 reset role;
 
--- Signed out: neither function is callable.
+-- Signed out: neither function is callable, and private columns are refused.
 set local role anon;
 do $$
 begin
+  begin
+    perform email from public.profiles limit 1;
+    raise exception 'FAIL: anon read profile emails';
+  exception when insufficient_privilege then null;
+  end;
   begin
     perform public.my_private_profile();
     raise exception 'FAIL: anon called my_private_profile';

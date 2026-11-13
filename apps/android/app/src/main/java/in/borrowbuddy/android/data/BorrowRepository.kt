@@ -43,7 +43,9 @@ class BorrowRepository(private val context: Context) {
             install(Realtime)
         }
     }
-    private val itemColumns = Columns.raw("*,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*)")
+    /** Profile columns any signed-in student may read. Keep in step with the grant in the private-profile migration. */
+    private val publicProfileColumns = Columns.raw("id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,email_notifications,created_at,updated_at")
+    private val itemColumns =Columns.raw("*,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*)")
     private val loanColumns = Columns.raw("id,request_id,item_id,owner_id,borrower_id,start_date,due_date,returned_at,status,handover_token_expires_at,return_token_expires_at,handover_attempts,return_attempts,pickup_confirmed_at,return_confirmed_at,created_at,updated_at,item:items(*),owner:profiles!loans_owner_id_fkey(id,full_name,avatar_path,trust_score),borrower:profiles!loans_borrower_id_fkey(id,full_name,avatar_path,trust_score)")
     suspend fun initialize() { if (configured) client.auth.awaitInitialization() }
     suspend fun profile(): Profile? {
@@ -51,8 +53,12 @@ class BorrowRepository(private val context: Context) {
         // Android auth pauses auto refresh as Initializing in the background.
         // Resume must finish restoring the encrypted session before deciding signed-out.
         client.auth.awaitInitialization()
-        val id = client.auth.currentUserOrNull()?.id ?: return null
-        return client.from("profiles").select { filter { eq("id", id) } }.decodeSingleOrNull()
+        val user = client.auth.currentUserOrNull() ?: return null
+        val row = client.from("profiles").select(publicProfileColumns) { filter { eq("id", user.id) } }.decodeSingleOrNull<Profile>() ?: return null
+        // Email, phone, ID path and the review note are private: only my_private_profile() serves them, and only your own.
+        val own = rpc("my_private_profile").decodeList<PrivateProfileFields>().firstOrNull()
+        return row.copy(email = own?.email ?: user.email.orEmpty(), phone = own?.phone,
+            student_id_path = own?.student_id_path, verification_note = own?.verification_note)
     }
     suspend fun signIn(email: String, password: String) {
         Rules.validateEmail(email)?.let { error(it) }
@@ -268,7 +274,8 @@ class BorrowRepository(private val context: Context) {
             select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)"))
         }.decodeSingle()
     }
-    suspend fun pendingProfiles(): List<Profile> = client.from("profiles").select { filter { eq("verification_status", "pending") }; order("created_at", Order.ASCENDING); limit(50) }.decodeList()
+    /** The verification queue with email and ID upload; the database refuses anyone who isn't an admin. */
+    suspend fun pendingProfiles(): List<Profile> = rpc("admin_pending_profiles", buildJsonObject { put("p_limit", 50) }).decodeList()
     suspend fun incidents(loanId: String? = null): List<Incident> = client.from("incidents").select(Columns.raw("*,reporter:profiles!incidents_reporter_id_fkey(id,full_name),photos:incident_photos(*),loan:loans(*,item:items(*),owner:profiles!loans_owner_id_fkey(id,full_name),borrower:profiles!loans_borrower_id_fkey(id,full_name))")) {
         filter { if (loanId != null) eq("loan_id", loanId) else isIn("status", listOf("open", "under_review")) }; order("created_at", Order.ASCENDING)
     }.decodeList()
