@@ -64,12 +64,19 @@ class BorrowRepository(private val context: Context) {
         // Resume must finish restoring the encrypted session before deciding signed-out.
         client.auth.awaitInitialization()
         val user = client.auth.currentUserOrNull() ?: return null
-        val row = client.from("profiles").select(publicProfileColumns) { filter { eq("id", user.id) } }.decodeSingleOrNull<Profile>() ?: return null
+        val row = ownProfileRow(user.id) ?: run {
+            // No profile row: it was deleted. A live sign-in starts a fresh one;
+            // a sign-in the deletion ended is cleared here, so the app asks again.
+            if (rpc("ensure_my_profile").decodeAs<Boolean>()) ownProfileRow(user.id)
+            else { client.auth.clearSession(); null }
+        } ?: return null
         // Email, phone, ID path and the review note are private: only my_private_profile() serves them, and only your own.
         val own = rpc("my_private_profile").decodeList<PrivateProfileFields>().firstOrNull()
         return row.copy(email = own?.email ?: user.email.orEmpty(), phone = own?.phone,
             student_id_path = own?.student_id_path, verification_note = own?.verification_note)
     }
+    private suspend fun ownProfileRow(id: String) =
+        client.from("profiles").select(publicProfileColumns) { filter { eq("id", id) } }.decodeSingleOrNull<Profile>()
     suspend fun signIn(email: String, password: String) {
         Rules.validateEmail(email)?.let { error(it) }
         require(password.isNotBlank()) { "Enter your password." }

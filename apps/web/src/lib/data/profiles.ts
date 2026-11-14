@@ -47,7 +47,12 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
-  return loadOwnProfile(supabase, user);
+  const profile = await loadOwnProfile(supabase, user);
+  if (profile) return profile;
+  // No profile row: it was deleted. ensure_my_profile() starts a fresh one
+  // only for a live sign-in; a sign-in the deletion ended gets false.
+  const { data: live } = await supabase.rpc("ensure_my_profile");
+  return live === true ? loadOwnProfile(supabase, user) : null;
 });
 
 export async function getProfile(id: string): Promise<PublicProfile | null> {

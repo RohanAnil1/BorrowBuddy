@@ -45,7 +45,9 @@ async function ensureBootstrapAdmin(profile: Profile): Promise<Profile> {
 export async function requireProfile(): Promise<Profile> {
   if (!isSupabaseConfigured()) redirect("/login");
   const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
+  // Signed in as far as the cookie says, but the sign-in has ended (its
+  // profile was deleted): clear the cookie, or /login and /home bounce forever.
+  if (!profile) redirect("/auth/session-ended");
   return ensureBootstrapAdmin(profile);
 }
 

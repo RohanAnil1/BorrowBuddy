@@ -26,6 +26,14 @@ create table if not exists auth.users (
   created_at timestamptz not null default now()
 );
 
+-- Sign-in sessions; refresh tokens cascade with them in real Supabase.
+create table if not exists auth.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
 create or replace function auth.uid()
 returns uuid
 language sql

@@ -99,3 +99,5 @@ jobs:
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/campus_contract.sql
       - name: Validate private profile fields
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/private_profile_fields.sql
+      - name: Validate that deleting a profile signs the account out
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/deleted_profile_sessions.sql
