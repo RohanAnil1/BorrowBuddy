@@ -19,9 +19,10 @@ function readSettings(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const visibility = formData.get("visibility") === "invite" ? "invite" : "open";
+  const posting = formData.get("posting") === "admins" ? "admins" : "everyone";
   if (!title || title.length > GROUP_TITLE_MAX) return { error: `Give the group a name of up to ${GROUP_TITLE_MAX} characters.` } as const;
   if (description.length > GROUP_DESCRIPTION_MAX) return { error: `Keep the description under ${GROUP_DESCRIPTION_MAX} characters.` } as const;
-  return { title, description: description || null, visibility } as const;
+  return { title, description: description || null, visibility, posting } as const;
 }
 
 async function finish(error: { message: string } | null, success: string, path: string) {
@@ -40,6 +41,7 @@ export async function createGroup(formData: FormData): Promise<void> {
     p_title: settings.title,
     p_description: settings.description,
     p_visibility: settings.visibility,
+    p_posting: settings.posting,
   });
   await finish(error, `Created ${settings.title}.`, error ? "/admin/groups" : `/admin/groups/${data as string}`);
 }
@@ -56,6 +58,7 @@ export async function updateGroup(formData: FormData): Promise<void> {
     p_description: settings.description,
     p_visibility: settings.visibility,
     p_archived: formData.get("archived") === "on",
+    p_posting: settings.posting,
   });
   await finish(error, "Group saved.", `/admin/groups/${id}`);
 }
@@ -66,6 +69,15 @@ export async function deleteGroup(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_delete_group", { p_group_id: id });
   await finish(error, "Group deleted.", error ? `/admin/groups/${id}` : "/admin/groups");
+}
+
+export async function unpinGroupMessage(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = readId(formData, "group_id", "/admin/groups");
+  const messageId = readId(formData, "message_id", `/admin/groups/${id}`);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("pin_message", { p_message_id: messageId, p_pinned: false });
+  await finish(error, "Message unpinned.", `/admin/groups/${id}`);
 }
 
 export async function addGroupMember(formData: FormData): Promise<void> {

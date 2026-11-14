@@ -11,7 +11,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.time.Instant
 
@@ -30,9 +33,45 @@ data class ChatUiState(
     // Server-side search and jumping to a result
     val searchHits: List<MessageSearchHit>? = null, val searching: Boolean = false,
     val highlight: String? = null, val revealRequest: Int = 0,
+    // Announcements, mute, pins, photos, mentions and typing
+    val posting: String = "everyone", val isAdmin: Boolean = false, val muted: Boolean = false,
+    val pinned: List<Message> = emptyList(), val uploading: Boolean = false,
+    val mentionables: List<GroupMember> = emptyList(), val typers: Map<String, Typer> = emptyMap(),
 ) {
-    val canPost: Boolean get() = isMember && !archived
+    /** Reacting and voting: members of a chat that isn't archived. */
+    val canReact: Boolean get() = isMember && !archived
+    /** Announcement-only groups: only admins post. */
+    val canPost: Boolean get() = canReact && (posting != "admins" || isAdmin)
     val canJoin: Boolean get() = community && !isMember && !archived
+    /** Admins pin in groups; either student pins in a loan chat. */
+    val canPin: Boolean get() = if (community) isAdmin && !archived else canReact
+    val canPoll: Boolean get() = community && isAdmin && canPost
+    val announcements: Boolean get() = community && posting == "admins"
+    val typingLabel: String get() = typingText(typers.values.map { it.name })
+}
+
+data class Typer(val name: String, val at: Long)
+
+internal fun typingText(names: List<String>): String = when (names.size) {
+    0 -> ""
+    1 -> "${names[0]} is typing…"
+    2 -> "${names[0]} and ${names[1]} are typing…"
+    else -> "Several people are typing…"
+}
+
+/** Students whose "@Full Name" appears in the text. */
+internal fun mentionedIds(text: String, people: List<GroupMember>): List<String> =
+    people.filter { it.full_name.isNotBlank() && text.contains("@${it.full_name}") }.map { it.user_id }.distinct()
+
+/** The "@query" being typed at the end of the draft, if any. */
+internal fun mentionQuery(draft: String): String? = Regex("(?:^|\\s)@([^\\s@]{0,30})$").find(draft)?.groupValues?.get(1)
+
+/** Keeps the newest pins first, adding, updating or dropping one row. */
+internal fun updatePins(current: List<Message>, row: Message): List<Message> {
+    val without = current.filter { it.id != row.id }
+    if (row.pinned_at == null || row.deleted_at != null) return without
+    val sender = row.sender ?: current.firstOrNull { it.id == row.id }?.sender
+    return (without + row.copy(sender = sender)).sortedByDescending { it.pinned_at }
 }
 
 /** Adds new rows and replaces changed ones (edits, deletes, reactions), keeping a known sender. */
@@ -52,9 +91,13 @@ internal fun toggledReactions(reactions: Map<String, List<String>>, emoji: Strin
 
 /** Entry-scoped state survives rotation; only STARTED screens own a subscription/read cursor. */
 class ChatViewModel(private val repository: BorrowRepository, private val userId: String,
-    private val id: String, private val saved: SavedStateHandle, val isAdmin: Boolean = false) : ViewModel() {
-    var ui by mutableStateOf(ChatUiState(draft = saved["draft"] ?: "")); private set
+    private val id: String, private val saved: SavedStateHandle, val isAdmin: Boolean = false,
+    private val userName: String = "") : ViewModel() {
+    var ui by mutableStateOf(ChatUiState(draft = saved["draft"] ?: "", isAdmin = isAdmin)); private set
     private var session: Job? = null
+    private var typingSession: Job? = null
+    private var typingChannel: RealtimeChannel? = null
+    private var typingSentAt = 0L
     private var searchJob: Job? = null
     private val mutation = Mutex()
     private val senderCache = linkedMapOf<String, Profile>()
@@ -65,13 +108,20 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
         val text = value.take(2000)
         if (ui.editing == null) saved["draft"] = text
         ui = ui.copy(draft = text)
+        if (ui.editing == null && text.isNotBlank()) announceTyping()
+    }
+    /** Replaces the "@query" being typed with "@Full Name ". */
+    fun pickMention(member: GroupMember) {
+        val query = mentionQuery(ui.draft) ?: return
+        updateDraft(ui.draft.dropLast(query.length + 1) + "@${member.full_name} ")
     }
     fun start() {
         if (session?.isActive == true) return
         val previous = session
         session = viewModelScope.launch { previous?.cancelAndJoin(); runSession() }
+        if (typingSession?.isActive != true) typingSession = viewModelScope.launch { runTyping() }
     }
-    fun stop() { session?.cancel(); ui = ui.copy(connected = false) }
+    fun stop() { session?.cancel(); typingSession?.cancel(); ui = ui.copy(connected = false, typers = emptyMap()) }
     fun retry() { stop(); start() }
 
     /** Only members keep a read cursor; previewing an open group must not join it. */
@@ -108,11 +158,15 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
         val group = conversation.type == "community"
         val counterpart = if (!group) repository.members(id).firstOrNull { it.user_id != userId }?.profile else null
         val members = if (group) repository.groupMembers(id) else emptyList()
+        val member = !group || members.any { it.user_id == userId }
+        val mentionables = if (group) members.filter { it.user_id != userId }
+            else listOfNotNull(counterpart?.let { GroupMember(it.id, it.full_name) })
         ui = ui.copy(title = if (group) conversation.title ?: "Group" else counterpart?.full_name ?: "Loan chat",
             community = group, counterpart = counterpart,
             loan = conversation.loan_id?.let { repository.loan(it) },
             description = conversation.description, visibility = conversation.visibility, archived = conversation.archived_at != null,
-            isMember = !group || members.any { it.user_id == userId }, members = members)
+            posting = conversation.posting, isMember = member, members = members, mentionables = mentionables,
+            pinned = repository.pinnedMessages(id), muted = member && repository.isMuted(id, userId))
         return true
     }
     private suspend fun runSession() {
@@ -162,7 +216,7 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                                 sender?.let { senderCache[row.sender_id] = it; if (senderCache.size > 64) senderCache.remove(senderCache.keys.first()) }
                                 mutation.withLock {
                                     ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row.copy(sender = sender))),
-                                        events = ui.events + 1)
+                                        events = ui.events + 1, typers = ui.typers - row.sender_id)
                                     markRead()
                                     loadQuoted()
                                 }
@@ -181,6 +235,8 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                                         ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), events = ui.events + 1)
                                     }
                                     if (ui.quoted.containsKey(row.id)) ui = ui.copy(quoted = ui.quoted + (row.id to row))
+                                    val sender = ui.messages.firstOrNull { it.id == row.id }?.sender
+                                    ui = ui.copy(pinned = updatePins(ui.pinned, row.copy(sender = sender)))
                                 }
                             }
                         }
@@ -235,7 +291,7 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                     }
                     return@launch
                 }
-                val row = repository.sendMessage(id, userId, text, replyTo?.id)
+                val row = repository.sendMessage(id, userId, text, replyTo?.id, mentionedIds(text, ui.mentionables))
                 mutation.withLock {
                     ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), scrollRequest = ui.scrollRequest + 1, replyTo = null)
                     if (ui.draft == originalDraft) updateDraft("")
@@ -332,4 +388,123 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
         }
     }
     fun clearHighlight() { ui = ui.copy(highlight = null) }
+
+    /** Typing: a private broadcast channel the database authorises per chat. Optional: failures stay quiet. */
+    private suspend fun runTyping() = coroutineScope {
+        val channel = repository.client.channel("typing:$id") { isPrivate = true; broadcast { receiveOwnBroadcasts = false } }
+        launch {
+            while (isActive) {
+                delay(1_500)
+                val cutoff = System.currentTimeMillis() - 6_000
+                if (ui.typers.values.any { it.at < cutoff }) ui = ui.copy(typers = ui.typers.filterValues { it.at >= cutoff })
+            }
+        }
+        try {
+            val events = channel.broadcastFlow<JsonObject>("typing")
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                events.collect { payload ->
+                    val who = payload["user_id"]?.jsonPrimitive?.contentOrNull ?: return@collect
+                    if (who == userId) return@collect
+                    val name = payload["name"]?.jsonPrimitive?.contentOrNull?.trim()?.take(40)?.ifBlank { null } ?: "Someone"
+                    ui = ui.copy(typers = ui.typers + (who to Typer(name, System.currentTimeMillis())))
+                }
+            }
+            withContext(Dispatchers.IO) { withTimeout(15_000) { channel.subscribe(blockUntilSubscribed = true) } }
+            typingChannel = channel
+            awaitCancellation()
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { /* Chat keeps working without a typing indicator. */ }
+        finally {
+            typingChannel = null
+            withContext(NonCancellable) {
+                runCatching { withTimeoutOrNull(5_000) { channel.unsubscribe() } }
+                repository.client.realtime.removeChannel(channel)
+            }
+        }
+    }
+
+    private fun announceTyping() {
+        val channel = typingChannel ?: return
+        val now = System.currentTimeMillis()
+        if (!ui.canPost || now - typingSentAt < 2_500) return
+        typingSentAt = now
+        val name = userName.trim().substringBefore(' ')
+        viewModelScope.launch {
+            runCatching { channel.broadcast("typing", buildJsonObject { put("user_id", userId); put("name", name.ifBlank { "Someone" }) }) }
+        }
+    }
+
+    fun toggleMute() {
+        val muted = !ui.muted
+        ui = ui.copy(muted = muted)
+        viewModelScope.launch {
+            try { repository.setMuted(id, muted) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(muted = !muted, error = friendlyError(failure)) }
+        }
+    }
+
+    fun pin(message: Message, pinned: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.pinMessage(message.id, pinned)
+                val stamp = if (pinned) Instant.now().toString() else null
+                val row = (ui.messages.firstOrNull { it.id == message.id } ?: message).copy(pinned_at = stamp, pinned_by = if (pinned) userId else null)
+                ui = ui.copy(messages = ui.messages.map { if (it.id == message.id) row else it }, pinned = updatePins(ui.pinned, row))
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+        }
+    }
+
+    fun vote(message: Message, option: Int) {
+        viewModelScope.launch {
+            try {
+                val poll = repository.votePoll(message.id, option)
+                ui = ui.copy(messages = ui.messages.map { if (it.id == message.id) it.copy(poll = poll) else it })
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+        }
+    }
+
+    fun closePoll(message: Message, closed: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.closePoll(message.id, closed)
+                ui = ui.copy(messages = ui.messages.map { if (it.id == message.id) it.copy(poll = it.poll?.copy(closed = closed)) else it })
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+        }
+    }
+
+    fun createPoll(question: String, options: List<String>, done: () -> Unit) {
+        val cleaned = options.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        if (question.isBlank()) { ui = ui.copy(error = "Ask a question for the poll."); return }
+        if (cleaned.size < 2) { ui = ui.copy(error = "Give at least two different options."); return }
+        viewModelScope.launch {
+            try { repository.createPoll(id, question, cleaned); done(); refreshTail() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+        }
+    }
+
+    /** Uploads a photo to your own folder, then sends it with the draft as its caption. */
+    fun sendPhoto(uri: android.net.Uri) {
+        if (ui.uploading || !ui.canPost) return
+        val caption = ui.draft.trim()
+        val replyTo = ui.replyTo
+        ui = ui.copy(uploading = true, error = null)
+        viewModelScope.launch {
+            try {
+                repository.initialize()
+                val path = repository.upload(uri, "chat-images", userId)
+                val row = repository.sendMessage(id, userId, caption, replyTo?.id, mentionedIds(caption, ui.mentionables), path)
+                mutation.withLock {
+                    ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), scrollRequest = ui.scrollRequest + 1, replyTo = null)
+                    if (caption.isNotEmpty() && ui.draft.trim() == caption) updateDraft("")
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+            finally { ui = ui.copy(uploading = false) }
+        }
+    }
 }

@@ -298,11 +298,14 @@ class BorrowRepository(private val context: Context) {
         }
         order("created_at", Order.DESCENDING); order("id", Order.DESCENDING); limit(pageSize.toLong())
     }.decodeList<Message>().reversed()
-    suspend fun sendMessage(id: String, userId: String, text: String, replyTo: String? = null): Message {
-        require(text.trim().length in 1..2000) { "Write a message of up to 2000 characters." }
+    suspend fun sendMessage(id: String, userId: String, text: String, replyTo: String? = null,
+        mentions: List<String> = emptyList(), imagePath: String? = null): Message {
+        require(text.trim().length <= 2000 && (text.isNotBlank() || imagePath != null)) { "Write a message of up to 2000 characters." }
         return client.from("messages").insert(buildJsonObject {
             put("conversation_id", id); put("sender_id", userId); put("body", text.trim())
             if (replyTo != null) put("reply_to_id", replyTo)
+            if (mentions.isNotEmpty()) put("mentions", JsonArray(mentions.distinct().take(20).map(::JsonPrimitive)))
+            if (imagePath != null) put("image_path", imagePath)
         }) {
             select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)"))
         }.decodeSingle()
@@ -322,20 +325,44 @@ class BorrowRepository(private val context: Context) {
     suspend fun searchMessages(conversationId: String, query: String): List<MessageSearchHit> =
         rpc("search_conversation_messages", buildJsonObject { put("p_conversation_id", conversationId); put("p_query", query.trim()); put("p_limit", 30) }).decodeList()
 
+    /** Pinned messages, newest pin first. */
+    suspend fun pinnedMessages(id: String): List<Message> = client.from("messages").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
+        filter {
+            eq("conversation_id", id); exact("deleted_at", null)
+            filterNot("pinned_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, "null")
+        }
+        order("pinned_at", Order.DESCENDING); limit(20)
+    }.decodeList<Message>().filter { it.pinned_at != null }
+    suspend fun pinMessage(messageId: String, pinned: Boolean) { rpc("pin_message", buildJsonObject { put("p_message_id", messageId); put("p_pinned", pinned) }) }
+    suspend fun isMuted(conversationId: String, userId: String): Boolean = client.from("conversation_members").select(Columns.raw("muted")) {
+        filter { eq("conversation_id", conversationId); eq("user_id", userId) }
+    }.decodeList<JsonObject>().firstOrNull()?.get("muted")?.jsonPrimitive?.booleanOrNull ?: false
+    suspend fun setMuted(conversationId: String, muted: Boolean) {
+        rpc("set_conversation_muted", buildJsonObject { put("p_conversation_id", conversationId); put("p_muted", muted) })
+    }
+    suspend fun createPoll(conversationId: String, question: String, options: List<String>): String =
+        rpc("create_poll", buildJsonObject {
+            put("p_conversation_id", conversationId); put("p_question", question.trim())
+            put("p_options", JsonArray(options.map { JsonPrimitive(it.trim()) }))
+        }).decodeAs()
+    suspend fun votePoll(messageId: String, option: Int): Poll = rpc("vote_poll", buildJsonObject { put("p_message_id", messageId); put("p_option", option) }).decodeAs()
+    suspend fun closePoll(messageId: String, closed: Boolean) { rpc("close_poll", buildJsonObject { put("p_message_id", messageId); put("p_closed", closed) }) }
+
     // Groups
     suspend fun groupMembers(id: String): List<GroupMember> = rpc("get_group_members", buildJsonObject { put("p_group_id", id) }).decodeList()
     suspend fun joinGroup(id: String) { rpc("join_group", buildJsonObject { put("p_group_id", id) }) }
     suspend fun leaveGroup(id: String) { rpc("leave_group", buildJsonObject { put("p_group_id", id) }) }
     /** Admin only; the database refuses everyone else. */
     suspend fun adminGroups(): List<AdminGroup> = rpc("admin_list_groups").decodeList()
-    suspend fun createGroup(title: String, description: String, visibility: String): String =
+    suspend fun createGroup(title: String, description: String, visibility: String, posting: String = "everyone"): String =
         rpc("admin_create_group", buildJsonObject {
             put("p_title", title.trim()); put("p_description", description.trim().ifEmpty { null }); put("p_visibility", visibility)
+            put("p_posting", posting)
         }).decodeAs()
-    suspend fun updateGroup(id: String, title: String, description: String, visibility: String, archived: Boolean) {
+    suspend fun updateGroup(id: String, title: String, description: String, visibility: String, archived: Boolean, posting: String = "everyone") {
         rpc("admin_update_group", buildJsonObject {
             put("p_group_id", id); put("p_title", title.trim()); put("p_description", description.trim().ifEmpty { null })
-            put("p_visibility", visibility); put("p_archived", archived)
+            put("p_visibility", visibility); put("p_archived", archived); put("p_posting", posting)
         })
     }
     suspend fun deleteGroup(id: String) { rpc("admin_delete_group", buildJsonObject { put("p_group_id", id) }) }

@@ -69,3 +69,27 @@ immutable
 as $$
   select string_to_array(p_name, '/');
 $$;
+
+-- Realtime Authorization: policies on realtime.messages decide who may join
+-- or send on a private channel; realtime.topic() is the channel being checked.
+create schema if not exists realtime;
+create table if not exists realtime.messages (
+  id uuid primary key default gen_random_uuid(),
+  topic text not null,
+  extension text not null,
+  event text,
+  payload jsonb,
+  private boolean default true,
+  inserted_at timestamp not null default now()
+);
+alter table realtime.messages enable row level security;
+grant usage on schema realtime to authenticated, anon;
+grant select, insert on realtime.messages to authenticated;
+
+create or replace function realtime.topic()
+returns text
+language sql
+stable
+as $$
+  select nullif(current_setting('realtime.topic', true), '');
+$$;

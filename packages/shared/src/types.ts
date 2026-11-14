@@ -189,7 +189,18 @@ export interface WaitlistEntry {
   created_at: Timestamp;
 }
 
+/** "open" is shown as Public, "invite" as Private. */
 export type GroupVisibility = "open" | "invite";
+/** Who can post in a group: everyone, or only admins (announcements). */
+export type GroupPosting = "everyone" | "admins";
+
+export interface Poll {
+  question: string;
+  options: string[];
+  /** Option index (as a string) -> ids of the students who chose it. */
+  votes: Record<string, string[]>;
+  closed: boolean;
+}
 
 export interface Conversation {
   id: string;
@@ -200,6 +211,7 @@ export interface Conversation {
   description: string | null;
   visibility: GroupVisibility;
   archived_at: Timestamp | null;
+  posting: GroupPosting;
   created_by: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -224,6 +236,11 @@ export interface Message {
   deleted_at: Timestamp | null;
   /** Emoji -> ids of the students who reacted with it. */
   reactions: Record<string, string[]>;
+  /** Ids of the students this message mentions. */
+  mentions: string[];
+  pinned_at: Timestamp | null;
+  pinned_by: string | null;
+  poll: Poll | null;
   created_at: Timestamp;
 }
 

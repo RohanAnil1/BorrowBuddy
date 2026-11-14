@@ -1,4 +1,4 @@
-import { Archive, ArrowLeft, Hash, Lock, MessagesSquare, Plus, Users } from "lucide-react";
+import { Archive, ArrowLeft, Globe, Lock, Megaphone, MessagesSquare, Pin, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { GroupSettingsFields } from "@/components/app/group-settings-fields";
@@ -23,8 +23,8 @@ export default async function AdminGroupsPage() {
       <p className="status-bracket mt-6 text-[10px]">[ CONTROL ROOM — ADMIN ONLY ]</p>
       <h1 className="type-title mt-3 text-[2rem] dt:text-[2.5rem]">Group chats</h1>
       <p className="type-body mt-2 max-w-[60ch] text-[13px] normal-case text-ink/70">
-        Campus-wide groups for clubs, hostels and courses. Open groups appear in every verified student’s
-        Messages; invite-only groups are visible only to the members you add.
+        Campus-wide groups for clubs, hostels and courses. Public groups appear in every verified student’s
+        Messages; private groups are visible only to the members you add.
       </p>
 
       <section className="mt-10" aria-labelledby="groups-heading">
@@ -43,8 +43,14 @@ export default async function AdminGroupsPage() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="type-body-alt flex items-center gap-2 text-[14px] normal-case">
-                    {group.visibility === "invite" ? <Lock className="size-3.5 text-ink/60" aria-label="Invite-only" /> : <Hash className="size-3.5 text-accent" aria-label="Open" />}
+                    {group.visibility === "invite" ? <Lock className="size-3.5 text-ink/60" aria-hidden="true" /> : <Globe className="size-3.5 text-accent" aria-hidden="true" />}
                     <span className="truncate">{group.title}</span>
+                    <span className="font-secondary border border-line px-1.5 py-0.5 text-[8px] text-ink/60">{group.visibility === "invite" ? "PRIVATE" : "PUBLIC"}</span>
+                    {group.posting === "admins" && (
+                      <span className="font-secondary inline-flex items-center gap-1 border border-line px-1.5 py-0.5 text-[8px] text-ink/60">
+                        <Megaphone className="size-2.5" /> ANNOUNCEMENTS
+                      </span>
+                    )}
                     {group.archived_at && (
                       <span className="font-secondary inline-flex items-center gap-1 border border-line px-1.5 py-0.5 text-[8px] text-ink/60">
                         <Archive className="size-2.5" /> ARCHIVED
@@ -56,6 +62,7 @@ export default async function AdminGroupsPage() {
                 <dl className="font-secondary flex gap-5 text-[10px] text-ink/60">
                   <div className="flex items-center gap-1.5"><Users className="size-3.5" /><dt className="sr-only">Members</dt><dd>{group.member_count}</dd></div>
                   <div className="flex items-center gap-1.5"><MessagesSquare className="size-3.5" /><dt className="sr-only">Messages</dt><dd>{group.message_count}</dd></div>
+                  {group.pinned_count > 0 && <div className="flex items-center gap-1.5"><Pin className="size-3.5" /><dt className="sr-only">Pinned</dt><dd>{group.pinned_count}</dd></div>}
                   <div><dt className="sr-only">Last message</dt><dd>{group.last_message_at ? relativeTime(group.last_message_at) : "No messages"}</dd></div>
                 </dl>
               </Link>

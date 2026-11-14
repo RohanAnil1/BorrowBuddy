@@ -24,6 +24,19 @@ export async function joinGroup(formData: FormData): Promise<void> {
   redirect(`/chat/${id}`);
 }
 
+/** Mute or unmute a chat for yourself: no unread count, no mention notifications. */
+export async function setMuted(formData: FormData): Promise<void> {
+  await requireVerified();
+  const id = String(formData.get("conversation_id") ?? "");
+  if (!uuid.test(id)) redirect("/chat");
+  const muted = formData.get("muted") === "true";
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_conversation_muted", { p_conversation_id: id, p_muted: muted });
+  await flash(error ? error.message : muted ? "Chat muted." : "Chat unmuted.", error ? "error" : "success");
+  revalidatePath("/chat", "layout");
+  redirect(`/chat/${id}`);
+}
+
 export async function leaveGroup(formData: FormData): Promise<void> {
   await requireVerified();
   const id = groupId(formData);

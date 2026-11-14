@@ -1,19 +1,20 @@
 "use client";
 
-import { Archive, Hash, Lock, Search } from "lucide-react";
+import { Archive, BellOff, Globe, Lock, Megaphone, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { ConversationSummary } from "@/lib/data/chat";
 import { initials, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const filters = ["All", "Unread", "Groups", "Private"] as const;
+const filters = ["All", "Unread", "Groups", "Loans"] as const;
 type Filter = (typeof filters)[number];
 
 function GroupIcon({ row }: { row: ConversationSummary }) {
   if (row.archived) return <Archive aria-hidden="true" size={15} />;
+  if (row.posting === "admins") return <Megaphone aria-hidden="true" size={15} />;
   if (row.visibility === "invite") return <Lock aria-hidden="true" size={14} />;
-  return <Hash aria-hidden="true" size={16} />;
+  return <Globe aria-hidden="true" size={15} />;
 }
 
 function Row({ row, selected }: { row: ConversationSummary; selected: boolean }) {
@@ -26,7 +27,10 @@ function Row({ row, selected }: { row: ConversationSummary; selected: boolean })
           {community ? <GroupIcon row={row} /> : initials(row.title)}
         </span>
         <span className="chat-directory-copy">
-          <span className="chat-directory-title">{row.title}</span>
+          <span className="chat-directory-title">
+            {row.title}
+            {community && <span className="chat-kind">{row.visibility === "invite" ? "Private" : "Public"}</span>}
+          </span>
           <span className="chat-directory-preview">
             {row.isMember
               ? row.lastMessage || (community ? "Say hello to the group" : "Plan your pickup or return")
@@ -35,6 +39,7 @@ function Row({ row, selected }: { row: ConversationSummary; selected: boolean })
         </span>
         <span className="chat-directory-meta">
           <span>{row.isMember && row.lastMessageAt ? relativeTime(row.lastMessageAt) : ""}</span>
+          {row.muted && <BellOff className="chat-muted-icon" aria-label="Muted" size={13} />}
           {unread && (
             <span className="chat-unread-count" aria-label={`${row.unreadCount >= 100 ? "99+" : row.unreadCount} unread`}>
               {row.unreadCount >= 100 ? "99+" : row.unreadCount}
@@ -58,7 +63,7 @@ export function ChatDirectory({ conversations, activeId }: {
   const matches = conversations.filter((row) => {
     if (filter === "Unread" && (!row.unread || row.id === activeId)) return false;
     if (filter === "Groups" && row.type !== "community") return false;
-    if (filter === "Private" && row.type !== "private") return false;
+    if (filter === "Loans" && row.type !== "private") return false;
     return `${row.title} ${row.lastMessage ?? ""}`.toLowerCase().includes(term);
   });
   const mine = matches.filter((row) => row.isMember);

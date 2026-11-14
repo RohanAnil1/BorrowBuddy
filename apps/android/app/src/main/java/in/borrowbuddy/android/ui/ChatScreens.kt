@@ -1,6 +1,12 @@
 package `in`.borrowbuddy.android.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,7 +52,7 @@ val ChatMessageCount = SemanticsPropertyKey<Int>("ChatMessageCount")
     val model: ChatViewModel = viewModel(key = "thread-$id-${profile.id}", factory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
-            ChatViewModel(repository, profile.id, id, extras.createSavedStateHandle(), profile.is_admin) as T
+            ChatViewModel(repository, profile.id, id, extras.createSavedStateHandle(), profile.is_admin, profile.full_name) as T
     })
     val state = model.ui
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -62,6 +68,9 @@ val ChatMessageCount = SemanticsPropertyKey<Int>("ChatMessageCount")
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var membersOpen by rememberSaveable { mutableStateOf(false) }
+    var pollOpen by rememberSaveable { mutableStateOf(false) }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(model::sendPhoto) }
+    if (pollOpen) PollDialog({ pollOpen = false }) { question, options -> model.createPoll(question, options) { pollOpen = false } }
     val keyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val focus = LocalFocusManager.current
     val threadScroll = rememberThreadScroll(state.messages.size, state.hasOlder, state.scrollRequest)
@@ -86,9 +95,10 @@ val ChatMessageCount = SemanticsPropertyKey<Int>("ChatMessageCount")
         this[ChatConnections] = state.connections; this[ChatMessageCount] = state.messages.size
         this[ChatViewportWidth] = viewport.roundToLong().toInt()
       }.padding(horizontal = if (viewport >= 800) 32.dp else 8.dp, vertical = 6.dp).background(ChatPanel)) {
-        ChatHeader(state, openProfile, back, searchOpen) { if (searchOpen) closeSearch() else searchOpen = true }
+        ChatHeader(state, openProfile, back, searchOpen, { if (searchOpen) closeSearch() else searchOpen = true }, model::toggleMute)
         if (state.community && !keyboardOpen) ChatGroupStrip(state, membersOpen, { membersOpen = !membersOpen }, openProfile) { model.leave(back) }
         if (!keyboardOpen) state.loan?.let { ChatLoanChip(it, openLoan) }
+        if (!keyboardOpen) ChatPinnedBar(state, model::reveal, if (state.canPin) { message -> model.pin(message, false) } else null)
         if (state.initialized && !state.connected && !keyboardOpen) {
             Text("Connecting to chat…", Modifier.padding(horizontal = 13.dp, vertical = 5.dp), style = loanBody(11), color = ChatMuted)
         }
@@ -168,6 +178,12 @@ val ChatMessageCount = SemanticsPropertyKey<Int>("ChatMessageCount")
                             reply = { model.startReply(message) }, edit = { model.startEdit(message) },
                             delete = { model.delete(message) },
                             openQuote = { message.reply_to_id?.let(model::reveal) },
+                            canReact = state.canReact, canPin = state.canPin, pin = { pinned -> model.pin(message, pinned) },
+                            vote = { option -> model.vote(message, option) }, canClosePoll = mine || profile.is_admin,
+                            closePoll = { closed -> model.closePoll(message, closed) },
+                            mentionNames = state.mentionables.map { it.full_name }, myName = profile.full_name,
+                            photo = { path -> PrivatePhoto(repository, "chat-images", path,
+                                Modifier.size(220.dp, 165.dp).clip(RoundedCornerShape(6.dp)).testTag("chat-photo-${message.id}"), previewScale = ContentScale.Crop) },
                         ))
                 }
             }
@@ -177,12 +193,16 @@ val ChatMessageCount = SemanticsPropertyKey<Int>("ChatMessageCount")
                 }
             }
         }
+        if (state.typingLabel.isNotEmpty()) Text(state.typingLabel, Modifier.padding(horizontal = 13.dp, vertical = 3.dp).testTag("chat-typing"),
+            style = loanBody(11).copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = ChatMuted)
         if (state.canPost) ChatComposer(state, model::updateDraft, {
             if (state.draft.isNotBlank() && !state.sending && state.initialized) {
                 if (searchOpen) closeSearch()
                 model.send()
             }
-        }, showSuggestions = !keyboardOpen && !searchOpen, cancelContext = model::cancelCompose)
+        }, showSuggestions = !keyboardOpen && !searchOpen, cancelContext = model::cancelCompose,
+            pickPhoto = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            openPoll = if (state.canPoll) ({ pollOpen = true }) else null, pickMention = model::pickMention)
         else if (state.initialized) ChatClosedComposer(state, model::join)
       }
     }
