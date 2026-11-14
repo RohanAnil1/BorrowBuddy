@@ -12,14 +12,14 @@ import `in`.borrowbuddy.android.domain.*
 import kotlinx.serialization.json.*
 import kotlinx.coroutines.async
 
-@Composable fun AdminScreen(repository: BorrowRepository, profile: Profile, openLoan: (String) -> Unit) {
+@Composable fun AdminScreen(repository: BorrowRepository, profile: Profile, openLoan: (String) -> Unit, openGroups: () -> Unit = {}) {
     if (!profile.is_admin) { ScreenColumn { CargoLabel("[ ADMIN ACCESS REQUIRED ]", Cargo.Warn) }; return }
     val actions = rememberActions()
     LoadScreen(profile.id, { kotlinx.coroutines.coroutineScope {
         val profiles = async { repository.pendingProfiles() }; val incidents = async { repository.incidents() }
         val fines = async { repository.fines() }; val locations = async { repository.locations(admin = true) }
         AdminData(profiles.await(), incidents.await(), fines.await(), locations.await())
-    } }, refreshKey = actions.revision) { data -> AdminContent(data, repository, actions, openLoan) }
+    } }, refreshKey = actions.revision) { data -> AdminContent(data, repository, actions, openGroups, openLoan) }
 }
 internal suspend fun savePin(repository: BorrowRepository, id: String?, name: String, description: String, x: Double, y: Double, label: String, active: Boolean) {
     require(name.trim().length in 3..60) { "Pin name must be 3–60 characters." }

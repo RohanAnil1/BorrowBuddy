@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, ExternalLink, MapPin, Receipt, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Check, ExternalLink, MapPin, MessagesSquare, Receipt, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { PinForm } from "@/components/app/pin-form";
@@ -68,6 +68,9 @@ export default async function AdminPage({
 
       <Link href="/campus/admin" className="mt-6 inline-flex items-center gap-3 border border-accent/40 bg-black px-5 py-4 font-secondary text-xs text-accent hover:border-accent">
         <ShieldCheck className="size-5" /> CAMPUS OWNERSHIP CLAIMS & COLLECTION REVIEWS →
+      </Link>
+      <Link href="/admin/groups" className="mt-3 flex w-fit items-center gap-3 border border-accent/40 bg-black px-5 py-4 font-secondary text-xs text-accent hover:border-accent">
+        <MessagesSquare className="size-5" /> GROUP CHATS — CREATE, EDIT, MEMBERS →
       </Link>
 
       {error && (

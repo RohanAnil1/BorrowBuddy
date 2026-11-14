@@ -87,18 +87,72 @@ data class WaitlistEntry(
 )
 
 @Serializable
-data class Conversation(val id: String, val type: String, val loan_id: String? = null, val title: String? = null, val created_at: String = "")
+data class Conversation(val id: String, val type: String, val loan_id: String? = null, val title: String? = null, val created_at: String = "",
+    /** Groups (type "community") only: description, "open" or "invite", archived time. */
+    val description: String? = null, val visibility: String = "open", val archived_at: String? = null)
 
 @Serializable
 data class ConversationMember(val conversation_id: String, val user_id: String, val last_read_at: String? = null, val profile: Profile? = null)
 
-data class ConversationSummary(val conversation: Conversation, val title: String, val latest: Message?, val unread: Boolean)
+data class ConversationSummary(val conversation: Conversation, val title: String, val latest: Message?, val unread: Boolean,
+    /** Others' messages after your read cursor (the database caps it at 100). */
+    val unreadCount: Int = if (unread) 1 else 0,
+    /** False for an open group you haven't joined. */
+    val isMember: Boolean = true, val memberCount: Int? = null, val latestSender: String? = null)
+
+/** One row of get_chat_inbox(): every chat you can see, with unread counts. */
+@Serializable
+data class ChatInboxRow(
+    val conversation_id: String, val type: String, val title: String? = null, val description: String? = null,
+    val visibility: String = "open", val archived_at: String? = null, val loan_id: String? = null, val created_at: String = "",
+    val is_member: Boolean = true, val member_count: Int? = null, val unread_count: Int = 0,
+    val last_message_id: String? = null, val last_message_body: String? = null, val last_message_sender_id: String? = null,
+    val last_message_sender_name: String? = null, val last_message_at: String? = null, val last_message_deleted: Boolean? = null,
+    val counterpart_id: String? = null, val counterpart_name: String? = null,
+)
+
+fun ChatInboxRow.toSummary(userId: String): ConversationSummary {
+    val community = type == "community"
+    val conversation = Conversation(conversation_id, type, loan_id, title, created_at, description, visibility, archived_at)
+    val latest = last_message_id?.let { id ->
+        Message(id, conversation_id, last_message_sender_id.orEmpty(),
+            body = if (last_message_deleted == true) "" else last_message_body.orEmpty(), created_at = last_message_at.orEmpty(),
+            deleted_at = if (last_message_deleted == true) last_message_at else null)
+    }
+    val sender = when {
+        !community || latest == null -> null
+        last_message_sender_id == userId -> "You"
+        else -> last_message_sender_name?.substringBefore(' ')?.takeIf { it.isNotBlank() }
+    }
+    return ConversationSummary(conversation, if (community) title ?: "Group" else counterpart_name ?: "Loan chat", latest,
+        unread_count > 0, unread_count, is_member, member_count, sender)
+}
+
+@Serializable
+data class GroupMember(val user_id: String, val full_name: String = "", val avatar_path: String? = null, val is_admin: Boolean = false, val joined_at: String = "")
+
+@Serializable
+data class AdminGroup(
+    val id: String, val title: String, val description: String? = null, val visibility: String = "open", val archived_at: String? = null,
+    val created_at: String = "", val updated_at: String = "", val member_count: Int = 0, val message_count: Int = 0, val last_message_at: String? = null,
+)
+
+@Serializable
+data class MessageSearchHit(val id: String, val sender_id: String, val sender_name: String? = null, val body: String = "", val created_at: String = "")
+
+/** The reactions toggle_message_reaction() accepts, in picker order. */
+val MessageReactions = listOf("👍", "❤️", "😂", "😮", "😢", "🙏", "🎉")
 
 @Serializable
 data class Message(
     val id: String, val conversation_id: String, val sender_id: String,
     val body: String = "", val image_path: String? = null, val created_at: String = "",
     val sender: Profile? = null,
+    val reply_to_id: String? = null, val edited_at: String? = null,
+    /** Set when the sender or an admin deleted it; body and image are cleared. */
+    val deleted_at: String? = null,
+    /** Emoji -> ids of the students who reacted with it. */
+    val reactions: Map<String, List<String>> = emptyMap(),
 )
 
 @Serializable

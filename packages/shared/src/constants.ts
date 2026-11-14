@@ -16,6 +16,13 @@ export const CAMPUS = {
   emailDomain: "bennett.edu.in",
 } as const;
 
+/* ---------------------------------- chat ---------------------------------- */
+
+/** The reactions toggle_message_reaction() accepts, in picker order. */
+export const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉"] as const;
+export const GROUP_TITLE_MAX = 80;
+export const GROUP_DESCRIPTION_MAX = 500;
+
 /* --------------------------------- limits --------------------------------- */
 
 export const MAX_ITEM_IMAGES = 6;

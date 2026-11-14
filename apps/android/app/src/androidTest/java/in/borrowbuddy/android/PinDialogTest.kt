@@ -36,7 +36,7 @@ class PinDialogTest {
             CargoTheme { Column(Modifier.fillMaxSize()) {
                 PortalHeader(Profile("qa-local-admin",full_name="QA Admin",is_admin=true),"admin",0,0,{},{})
                 val data=remember { AdminData(emptyList(),emptyList(),emptyList(),listOf(pin)) }
-                AdminContent(data,repository,rememberActions(),{})
+                AdminContent(data,repository,rememberActions()) {}
             } }
         }
         val row=hasTestTag("pin-${pin.id}")
