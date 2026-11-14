@@ -24,9 +24,21 @@ import `in`.borrowbuddy.android.data.BuddyClient
 import `in`.borrowbuddy.android.domain.Profile
 import kotlinx.coroutines.flow.MutableStateFlow
 
-@Composable fun BorrowBuddyApp(model: SessionViewModel, widgetRoute: MutableStateFlow<String?> = remember { MutableStateFlow(null) }) {
+@Composable fun BorrowBuddyApp(model: SessionViewModel, widgetRoute: MutableStateFlow<String?> = remember { MutableStateFlow(null) },
+    resetLink: MutableStateFlow<ResetLink?> = remember { MutableStateFlow(null) }) {
     val state by model.state.collectAsStateWithLifecycle()
     var authenticating by rememberSaveable { mutableStateOf(false) }
+    // A link back from the reset email.
+    val link by resetLink.collectAsStateWithLifecycle()
+    LaunchedEffect(link) { link?.let { resetLink.value = null; model.openResetLink(it) } }
+    LaunchedEffect(state.resetNotice) { if (state.resetNotice != null) authenticating = true }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var wasResetting by remember { mutableStateOf(false) }
+    LaunchedEffect(state.resetting, state.error, state.busy) {
+        if (wasResetting && !state.resetting && state.error == null && !state.busy && state.profile != null)
+            android.widget.Toast.makeText(context, "Password changed. Your other devices were signed out.", android.widget.Toast.LENGTH_LONG).show()
+        wasResetting = state.resetting
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, model) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) model.refresh() }
@@ -40,6 +52,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
             val profile = state.profile
             when {
                 state.initializing -> OpeningShelf()
+                state.resetting -> { BackHandler { model.skipNewPassword() }; NewPasswordScreen(model, state) }
                 profile == null -> {
                     BackHandler(authenticating) { authenticating = false }
                     if (authenticating) AuthScreen(model, state) { authenticating = false }

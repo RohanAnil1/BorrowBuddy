@@ -8,13 +8,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
-import `in`.borrowbuddy.android.BuildConfig
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -22,32 +18,49 @@ import androidx.compose.ui.unit.sp
 import `in`.borrowbuddy.android.domain.Profile
 import `in`.borrowbuddy.android.domain.Rules
 
+private enum class AuthMode { SignIn, SignUp, Forgot }
+
 @Composable fun AuthScreen(model: SessionViewModel, state: SessionState, back: () -> Unit) {
-    var signup by rememberSaveable { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableStateOf(if (state.resetNotice != null) AuthMode.Forgot else AuthMode.SignIn) }
+    LaunchedEffect(state.resetNotice) { if (state.resetNotice != null) mode = AuthMode.Forgot }
+    val signup = mode == AuthMode.SignUp
     var email by rememberSaveable { mutableStateOf("") }
     // Passwords stay in memory rather than the saved-state bundle.
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
+    var sentTo by rememberSaveable { mutableStateOf<String?>(null) }
     ScreenColumn {
         CargoButton("← BorrowBuddy", back, secondary = true)
-        CargoTitle(if (signup) "Get your campus pass" else "Welcome back")
-        CargoPanel {
+        CargoTitle(when (mode) { AuthMode.SignUp -> "Get your campus pass"; AuthMode.Forgot -> "Locked out?"; AuthMode.SignIn -> "Welcome back" })
+        if (mode == AuthMode.Forgot) CargoPanel {
+            CargoLabel("[ RESET PASS · LINKS WORK ONCE ]")
+            val sent = sentTo
+            if (sent != null) {
+                CargoLabel("[ CHECK YOUR INBOX ]", Cargo.Accent)
+                CargoBody("If $sent has a BorrowBuddy pass, a reset link is on its way. Open it on this phone: it brings you back here to choose a new password. It works once and expires in an hour.")
+                CargoBody("Nothing after a few minutes? Check spam, or send it again. Only the newest link works.")
+                CargoButton("Send it again", { model.requestPasswordReset(sent) {} }, secondary = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
+            } else {
+                CargoBody("Enter your college email. We'll send a one-time link that opens BorrowBuddy so you can choose a new password.")
+                CargoField("Bennett email", email, { email = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Email))
+                CargoButton("Email me a reset link", { model.requestPasswordReset(email) { sentTo = email.trim().lowercase() } },
+                    enabled = !state.busy && model.repository.configured, modifier = Modifier.fillMaxWidth().testTag("auth-send-reset"))
+            }
+            (state.error ?: state.resetNotice.takeIf { sent == null })?.let { CargoLabel("[ $it ]", Cargo.Warn) }
+            if (state.busy) CircularProgressIndicator(color = Cargo.Accent)
+            TextButton({ mode = AuthMode.SignIn; sentTo = null }, Modifier.testTag("auth-back-to-sign-in")) { CargoLabel("← Back to sign in") }
+        } else CargoPanel {
             CargoLabel("[ BENNETT UNIVERSITY · VERIFIED STUDENTS ONLY ]")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CargoButton("Sign in", { signup = false }, secondary = signup)
-                CargoButton("Sign up", { signup = true }, secondary = !signup)
+                CargoButton("Sign in", { mode = AuthMode.SignIn }, secondary = signup)
+                CargoButton("Sign up", { mode = AuthMode.SignUp }, secondary = !signup)
             }
             CargoField("Bennett email", email, { email = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Email))
             CargoField("Password", password, { password = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Password),
                 transform = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailing = { TextButton({ visible = !visible }) { CargoLabel(if (visible) "Hide" else "Show") } })
-            if (!signup) forgotPasswordUrl(webBase(), email)?.let { url ->
-                // The reset runs on the website, so the emailed link opens in the same browser that asked for it.
-                val context = LocalContext.current
-                TextButton({ runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                    Modifier.testTag("auth-forgot-password")) { CargoLabel("Forgot password?") }
-            }
+            if (!signup) TextButton({ mode = AuthMode.Forgot; sentTo = null }, Modifier.testTag("auth-forgot-password")) { CargoLabel("Forgot password?") }
             if (signup) CargoField("Repeat password", confirmation, { confirmation = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Password), transform = PasswordVisualTransformation())
             state.error?.let { CargoLabel("[ $it ]", Cargo.Warn) }
             if (!model.repository.configured) CargoBody("The app's Supabase configuration is missing. Configure the project before using account features.")
@@ -58,15 +71,29 @@ import `in`.borrowbuddy.android.domain.Rules
     }
 }
 
-private fun webBase() = BuildConfig.BORROWBUDDY_WEB_URL.ifBlank { if (BuildConfig.DEBUG) "http://localhost:3000" else "" }
-
-/** The website's reset page, with the address filled in when it's a Bennett email; null without a web address. */
-internal fun forgotPasswordUrl(base: String, email: String): String? {
-    val root = base.trim().trimEnd('/').ifBlank { return null }
-    val address = email.trim().lowercase()
-    return if (address.isNotEmpty() && Rules.validateEmail(address) == null)
-        "$root/forgot-password?email=${java.net.URLEncoder.encode(address, Charsets.UTF_8.name())}"
-    else "$root/forgot-password"
+/** After a reset link signs you in: choose the new password before anything else. */
+@Composable fun NewPasswordScreen(model: SessionViewModel, state: SessionState) {
+    var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    ScreenColumn {
+        CargoTitle("Choose a new password")
+        CargoPanel {
+            CargoLabel("[ RESET PASS${state.profile?.email?.takeIf { it.isNotBlank() }?.let { " · ${it.uppercase()}" }.orEmpty()} ]")
+            CargoField("New password", password, { password = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Password),
+                transform = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailing = { TextButton({ visible = !visible }) { CargoLabel(if (visible) "Hide" else "Show") } })
+            CargoField("Repeat new password", confirmation, { confirmation = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Password),
+                transform = if (visible) VisualTransformation.None else PasswordVisualTransformation())
+            CargoLabel("8+ CHARACTERS WITH AT LEAST ONE LETTER AND ONE NUMBER.", Cargo.Ink.copy(alpha = .4f))
+            state.error?.let { CargoLabel("[ $it ]", Cargo.Warn) }
+            CargoButton("Save new password", { model.setNewPassword(password, confirmation) }, enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().testTag("reset-save-password"))
+            if (state.busy) CircularProgressIndicator(color = Cargo.Accent)
+            CargoBody("Saving signs you out on your other devices. You stay signed in here.")
+            TextButton(model::skipNewPassword, enabled = !state.busy) { CargoLabel("Not now") }
+        }
+    }
 }
 
 private class ProfileDraft(name: String, phone: String, department: String, year: Int) {

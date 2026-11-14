@@ -6,6 +6,10 @@ import `in`.borrowbuddy.android.BuildConfig
 import `in`.borrowbuddy.android.domain.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
+import io.github.jan.supabase.auth.SignOutScope
+import io.github.jan.supabase.auth.exception.AuthErrorCode
+import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.createSupabaseClient
@@ -27,6 +31,8 @@ import kotlinx.serialization.json.*
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
+const val RESET_LINK_EXPIRED = "That reset link has expired or was already used. Ask for a new one."
+
 class BorrowRepository(private val context: Context) {
     val campus by lazy { CampusRepository(context, this) }
     val buddy by lazy { BuddyStore(context, this) }
@@ -37,7 +43,11 @@ class BorrowRepository(private val context: Context) {
     val client: SupabaseClient by lazy {
         check(configured) { "Supabase project configuration is missing." }
         createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY) {
-            install(Auth) { sessionManager = SecureSessionManager(context) }
+            install(Auth) {
+                sessionManager = SecureSessionManager(context)
+                // Email links come back with a one-time code only this install can redeem.
+                flowType = FlowType.PKCE
+            }
             install(Postgrest)
             install(Storage)
             install(Realtime)
@@ -73,6 +83,38 @@ class BorrowRepository(private val context: Context) {
         require(client.auth.currentUserOrNull() != null) { "Your Supabase project requires email confirmation. Confirm the email before signing in." }
     }
     suspend fun signOut() { client.auth.signOut() }
+    /** Emails a reset link that comes back into this app (through the website, which hands the code over). */
+    suspend fun requestPasswordReset(email: String) {
+        Rules.validateEmail(email)?.let { error(it) }
+        val web = BuildConfig.BORROWBUDDY_WEB_URL.trim().trimEnd('/')
+        check(web.isNotBlank()) { "Password reset isn't set up in this build." }
+        try {
+            client.auth.resetPasswordForEmail(email.trim().lowercase(), redirectUrl = "$web/auth/callback?app=reset")
+        } catch (failure: AuthRestException) {
+            if (failure.errorCode == AuthErrorCode.OverEmailSendRateLimit || failure.errorCode == AuthErrorCode.OverRequestRateLimit)
+                error("Too many reset emails. Wait a few minutes, then ask again.")
+            throw failure
+        }
+    }
+    /** Signs in with the code from the reset link. Fails unless this install asked for that link. */
+    suspend fun redeemResetCode(code: String) {
+        try { client.auth.exchangeCodeForSession(code) }
+        catch (failure: AuthRestException) { error(RESET_LINK_EXPIRED) }
+    }
+    suspend fun setNewPassword(password: String, confirmation: String) {
+        Rules.validatePassword(password)?.let { error(it) }
+        require(password == confirmation) { "Passwords don't match." }
+        try { client.auth.updateUser { this.password = password } }
+        catch (failure: AuthRestException) {
+            when (failure.errorCode) {
+                AuthErrorCode.SamePassword -> error("That's your current password. Choose a different one.")
+                AuthErrorCode.WeakPassword -> error("That password is too easy to guess. Try a longer one.")
+                else -> throw failure
+            }
+        }
+        // Anyone else holding the old password is signed out everywhere else.
+        runCatching { client.auth.signOut(SignOutScope.OTHERS) }
+    }
     suspend fun updateProfile(profile: Profile, name: String, phone: String, department: String, year: Int) {
         Rules.validateProfile(name, phone, department, year)?.let { error(it) }
         client.from("profiles").update(buildJsonObject {
