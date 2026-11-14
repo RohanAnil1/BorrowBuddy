@@ -14,10 +14,11 @@ export function AuthPanel({
   mode,
   children,
 }: {
-  mode: "login" | "signup";
+  mode: "login" | "signup" | "reset";
   children: ReactNode;
 }) {
   const isSignup = mode === "signup";
+  const isReset = mode === "reset";
 
   return (
     <div className="relative z-10 grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[1fr_420px] lg:gap-14">
@@ -51,6 +52,15 @@ export function AuthPanel({
                 Create your pass.
               </motion.span>
             </>
+          ) : isReset ? (
+            <>
+              <motion.span className="block" variants={staggerChild}>
+                Locked out?
+              </motion.span>
+              <motion.span className="block text-accent" variants={staggerChild}>
+                Get back in.
+              </motion.span>
+            </>
           ) : (
             <>
               <motion.span className="block" variants={staggerChild}>
@@ -69,7 +79,9 @@ export function AuthPanel({
         >
           {isSignup
             ? "Set your Bennett email and password, upload your student ID, and a campus admin unlocks the lending feed for you."
-            : "Sign in with your Bennett email and password to see what is moving around campus right now: cameras, projectors, fans and everything else someone is not using today."}
+            : isReset
+              ? "We email a one-time link to your Bennett address. Open it, choose a new password, and you're back on the lending feed."
+              : "Sign in with your Bennett email and password to see what is moving around campus right now: cameras, projectors, fans and everything else someone is not using today."}
         </motion.p>
 
         {isSignup ? (
@@ -160,7 +172,7 @@ export function AuthPanel({
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2.5">
               <span className="font-label text-[10px] tracking-[0.14em] text-ink/70">
-                {isSignup ? "NEW PASS" : "SIGN-IN PASS"}
+                {isSignup ? "NEW PASS" : isReset ? "RESET PASS" : "SIGN-IN PASS"}
               </span>
               <CargoMark className="size-6" />
             </div>
@@ -183,7 +195,7 @@ export function AuthPanel({
         >
           <MicroBars className="h-5 w-24 opacity-70" />
           <p className="font-label text-[9px] text-ink/45">
-            {isSignup ? "COUNTS AS YOUR FIRST LOAN DOCUMENT" : "VALID FOR ONE SESSION"}
+            {isSignup ? "COUNTS AS YOUR FIRST LOAN DOCUMENT" : isReset ? "RESET LINKS WORK ONCE" : "VALID FOR ONE SESSION"}
           </p>
         </motion.div>
       </motion.div>

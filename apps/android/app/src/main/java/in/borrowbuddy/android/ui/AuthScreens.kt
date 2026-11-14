@@ -8,8 +8,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import `in`.borrowbuddy.android.BuildConfig
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -37,6 +42,12 @@ import `in`.borrowbuddy.android.domain.Rules
             CargoField("Password", password, { password = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Password),
                 transform = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailing = { TextButton({ visible = !visible }) { CargoLabel(if (visible) "Hide" else "Show") } })
+            if (!signup) forgotPasswordUrl(webBase(), email)?.let { url ->
+                // The reset runs on the website, so the emailed link opens in the same browser that asked for it.
+                val context = LocalContext.current
+                TextButton({ runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                    Modifier.testTag("auth-forgot-password")) { CargoLabel("Forgot password?") }
+            }
             if (signup) CargoField("Repeat password", confirmation, { confirmation = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Password), transform = PasswordVisualTransformation())
             state.error?.let { CargoLabel("[ $it ]", Cargo.Warn) }
             if (!model.repository.configured) CargoBody("The app's Supabase configuration is missing. Configure the project before using account features.")
@@ -45,6 +56,17 @@ import `in`.borrowbuddy.android.domain.Rules
             CargoBody("Use your @bennett.edu.in account. An admin reviews your student ID before the portal unlocks.")
         }
     }
+}
+
+private fun webBase() = BuildConfig.BORROWBUDDY_WEB_URL.ifBlank { if (BuildConfig.DEBUG) "http://localhost:3000" else "" }
+
+/** The website's reset page, with the address filled in when it's a Bennett email; null without a web address. */
+internal fun forgotPasswordUrl(base: String, email: String): String? {
+    val root = base.trim().trimEnd('/').ifBlank { return null }
+    val address = email.trim().lowercase()
+    return if (address.isNotEmpty() && Rules.validateEmail(address) == null)
+        "$root/forgot-password?email=${java.net.URLEncoder.encode(address, Charsets.UTF_8.name())}"
+    else "$root/forgot-password"
 }
 
 private class ProfileDraft(name: String, phone: String, department: String, year: Int) {

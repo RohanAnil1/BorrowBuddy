@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 /** Segmented [ SIGN IN | SIGN UP ] switch — real routes, pass-card styled. */
-export function AuthTabs({ mode }: { mode: "login" | "signup" }) {
+export function AuthTabs({ mode }: { mode: "login" | "signup" | "reset" }) {
   const tabs = [
     { href: "/login", label: "Sign in", active: mode === "login" },
     { href: "/signup", label: "Sign up", active: mode === "signup" },

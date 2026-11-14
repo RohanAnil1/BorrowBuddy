@@ -5,6 +5,9 @@ const PUBLIC_ROUTES = [
   "/",
   "/login",
   "/signup",
+  "/forgot-password",
+  // Reached from the reset email; the page itself checks for the reset session.
+  "/reset-password",
   "/auth",
   "/about",
   "/offline",

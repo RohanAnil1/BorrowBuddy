@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
   signInWithCredentials,
@@ -49,7 +50,17 @@ export function AuthCredentialsForm({
       </label>
 
       <label className="flex flex-col gap-2">
-        <span className="font-secondary text-[10px] text-ink/60">PASSWORD</span>
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="font-secondary text-[10px] text-ink/60">PASSWORD</span>
+          {!isSignup && (
+            <Link
+              className="font-secondary text-[10px] text-accent underline-offset-4 hover:underline"
+              href="/forgot-password"
+            >
+              FORGOT PASSWORD?
+            </Link>
+          )}
+        </span>
         <span className="relative block">
           <input
             required
