@@ -22,8 +22,8 @@ android {
         applicationId = "in.borrowbuddy.android"
         minSdk = 31
         targetSdk = 37
-        versionCode = 13
-        versionName = "0.4.7"
+        versionCode = 14
+        versionName = "0.4.8"
         testInstrumentationRunner = "in.borrowbuddy.android.BorrowBuddyQaRunner"
         // Ephemeral QA credentials are runner arguments only, never BuildConfig or APK assets.
         System.getenv("BORROWBUDDY_QA_EMAIL")?.let { testInstrumentationRunnerArguments["qaEmail"] = it }
