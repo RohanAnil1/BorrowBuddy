@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; ended?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, ended } = await searchParams;
 
   return (
     <AuthShell>
@@ -21,6 +21,11 @@ export default async function LoginPage({
         <p className="font-secondary mt-3 mb-8 text-[11px] leading-5 text-ink/60">
           YOUR COLLEGE EMAIL AND PASSWORD. THAT&apos;S THE DOOR.
         </p>
+        {ended === "1" && (
+          <p className="mb-6 border border-warn/50 bg-warn/10 px-4 py-3 font-secondary text-[10px] leading-5 text-warn">
+            [ YOU&apos;VE BEEN SIGNED OUT. SIGN IN AGAIN TO CONTINUE. ]
+          </p>
+        )}
         <AuthCredentialsForm mode="login" next={next} />
       </AuthPanel>
     </AuthShell>

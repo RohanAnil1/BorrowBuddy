@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import `in`.borrowbuddy.android.data.BorrowRepository
 import `in`.borrowbuddy.android.data.RESET_LINK_EXPIRED
 import `in`.borrowbuddy.android.domain.Profile
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +24,17 @@ class SessionViewModel(val repository: BorrowRepository) : ViewModel() {
     private val homeRequest = MutableStateFlow(0)
     val homeRequests = homeRequest.asStateFlow()
     fun openHome() { homeRequest.value++ }
-    init { refresh(initialize = true) }
+    init {
+        refresh(initialize = true)
+        // The session can end without the app asking: a revoked refresh token
+        // (e.g. the profile was deleted) clears it. Leave the portal right away.
+        if (repository.configured) viewModelScope.launch {
+            repository.client.auth.sessionStatus.collect {
+                if (it is SessionStatus.NotAuthenticated && mutable.value.profile != null)
+                    mutable.value = SessionState(initializing = false)
+            }
+        }
+    }
     fun refresh(initialize: Boolean = false) {
         viewModelScope.launch {
             try {
