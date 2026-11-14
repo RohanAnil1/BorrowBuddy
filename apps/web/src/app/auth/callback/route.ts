@@ -25,6 +25,14 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
 
+  // A reset the Android app asked for: only the app holds the code verifier,
+  // so hand the code over untouched (useless to anyone without that verifier).
+  if (searchParams.get("app") === "reset") {
+    return NextResponse.redirect(
+      code ? `${origin}/auth/app-reset?code=${encodeURIComponent(code)}` : `${origin}/auth/app-reset?error=link`,
+    );
+  }
+
   let signedIn = false;
   try {
     const supabase = await createClient();

@@ -15,10 +15,17 @@
         android:usesCleartextTraffic="false">
         <!-- Ask Play services to fetch Google's QR scanner UI ahead of the first scan. -->
         <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
-        <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- The password-reset email comes back here through the website. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="borrowbuddy" android:host="auth" android:path="/reset" />
             </intent-filter>
         </activity>
         <!-- Home-screen widget: a 4x2 boarding pass and a 2x2 pocket pass, both CargoWidget. -->

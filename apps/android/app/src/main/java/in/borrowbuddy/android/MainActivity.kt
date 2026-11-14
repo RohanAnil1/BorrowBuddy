@@ -12,6 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import `in`.borrowbuddy.android.ui.BorrowBuddyApp
 import `in`.borrowbuddy.android.ui.CargoTheme
+import `in`.borrowbuddy.android.ui.ResetLink
+import `in`.borrowbuddy.android.ui.parseResetLink
 import `in`.borrowbuddy.android.ui.SessionViewModel
 import `in`.borrowbuddy.android.widget.WidgetRoutes
 import `in`.borrowbuddy.android.widget.WidgetSync
@@ -21,6 +23,8 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     /** A screen a home-screen widget asked for; the portal consumes it once signed in. */
     private val widgetRoute = MutableStateFlow<String?>(null)
+    /** A link back from the password-reset email. */
+    private val resetLink = MutableStateFlow<ResetLink?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +40,7 @@ class MainActivity : ComponentActivity() {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>): T = SessionViewModel(repository) as T
                 })
-                BorrowBuddyApp(model, widgetRoute)
+                BorrowBuddyApp(model, widgetRoute, resetLink)
             }
         }
     }
@@ -57,5 +61,6 @@ class MainActivity : ComponentActivity() {
     private fun acceptRoute(intent: Intent?) {
         WidgetRoutes.accept(intent?.getStringExtra(WidgetRoutes.EXTRA))?.let { widgetRoute.value = it }
         intent?.removeExtra(WidgetRoutes.EXTRA)
+        parseResetLink(intent?.dataString)?.let { resetLink.value = it; intent?.data = null }
     }
 }
