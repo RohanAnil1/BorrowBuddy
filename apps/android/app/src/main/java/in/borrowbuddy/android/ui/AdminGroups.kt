@@ -33,36 +33,57 @@ internal fun validateGroup(title: String, description: String) {
     require(description.trim().length <= GroupDescriptionMax) { "Keep the description under $GroupDescriptionMax characters." }
 }
 
-@Composable private fun GroupVisibilityChoice(value: String, change: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("WHO CAN JOIN", style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
-        listOf("open" to "Open — any verified student can find, read, join and leave it.",
-            "invite" to "Invite-only — hidden; only members you add can read and post.").forEach { (key, label) ->
-            Row(Modifier.fillMaxWidth().selectable(value == key, role = Role.RadioButton) { change(key) }.padding(vertical = 4.dp),
+/** Two clear options, each with a one-line explanation. */
+@Composable private fun GroupChoice(heading: String, value: String, options: List<Triple<String, String, String>>, change: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(heading, style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
+        options.forEach { (key, title, body) ->
+            val selected = value == key
+            Row(Modifier.fillMaxWidth().border(1.dp, if (selected) Cargo.Accent else Cargo.Line)
+                .background(if (selected) Cargo.Accent.copy(alpha = .1f) else Cargo.Panel)
+                .selectable(selected, role = Role.RadioButton) { change(key) }.padding(10.dp).testTag("group-choice-$key"),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RadioButton(value == key, null, colors = RadioButtonDefaults.colors(selectedColor = Cargo.Accent))
-                Text(label, style = loanBody(13), color = Cargo.Ink)
+                RadioButton(selected, null, colors = RadioButtonDefaults.colors(selectedColor = Cargo.Accent))
+                Column {
+                    Text(title, style = loanBody(14).copy(fontFamily = Cargo.Strong), color = Cargo.Ink)
+                    Text(body, style = loanBody(12), color = Cargo.Ink.copy(alpha = .7f))
+                }
             }
         }
     }
 }
 
+@Composable private fun GroupVisibilityChoice(value: String, change: (String) -> Unit) = GroupChoice("PUBLIC OR PRIVATE", value, listOf(
+    Triple("open", "Public", "Any verified student can find it, read it and join."),
+    Triple("invite", "Private", "Hidden. Only members you add can see, read and post.")), change)
+
+@Composable private fun GroupPostingChoice(value: String, change: (String) -> Unit) = GroupChoice("WHO CAN POST", value, listOf(
+    Triple("everyone", "Every member", "A normal group chat."),
+    Triple("admins", "Only admins (announcements)", "Members read, react and vote in polls.")), change)
+
+internal fun groupBadge(group: AdminGroup): String = listOfNotNull(
+    if (group.visibility == "invite") "PRIVATE" else "PUBLIC",
+    "ANNOUNCEMENTS".takeIf { group.posting == "admins" },
+    "ARCHIVED".takeIf { group.archived_at != null }).joinToString(" · ")
+
 @Composable private fun GroupSettingsForm(initial: AdminGroup?, busy: Boolean, submitLabel: String,
-    save: (title: String, description: String, visibility: String, archived: Boolean) -> Unit) {
+    save: (title: String, description: String, visibility: String, archived: Boolean, posting: String) -> Unit) {
     var title by rememberSaveable(initial?.id) { mutableStateOf(initial?.title.orEmpty()) }
     var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description.orEmpty()) }
     var visibility by rememberSaveable(initial?.id) { mutableStateOf(initial?.visibility ?: "open") }
     var archived by rememberSaveable(initial?.id) { mutableStateOf(initial?.archived_at != null) }
+    var posting by rememberSaveable(initial?.id) { mutableStateOf(initial?.posting ?: "everyone") }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         AdminFieldLabel("NAME") { AdminInput("Group name", title, { title = it }, Modifier.fillMaxWidth().testTag("group-title"), "Photography club", GroupTitleMax) }
         AdminFieldLabel("DESCRIPTION (OPTIONAL)") { AdminInput("Group description", description, { description = it }, Modifier.fillMaxWidth().testTag("group-description"), "What the group is for", GroupDescriptionMax) }
         GroupVisibilityChoice(visibility) { visibility = it }
+        GroupPostingChoice(posting) { posting = it }
         if (initial != null) Row(Modifier.fillMaxWidth().toggleable(archived, role = Role.Checkbox) { archived = it }.padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Checkbox(archived, null, colors = CheckboxDefaults.colors(checkedColor = Cargo.Accent))
             Text("Archived — members keep the history read-only; nobody can post or join.", style = loanBody(13), color = Cargo.Ink)
         }
-        AdminAction(submitLabel, { save(title, description, visibility, archived) }, Modifier.testTag("group-save"), enabled = !busy)
+        AdminAction(submitLabel, { save(title, description, visibility, archived, posting) }, Modifier.testTag("group-save"), enabled = !busy)
     }
 }
 
@@ -76,7 +97,7 @@ internal fun validateGroup(title: String, description: String) {
                 item("header") {
                     Text("[ CONTROL ROOM — ADMIN ONLY ]", style = loanMono(10), color = Cargo.Accent)
                     Text("GROUP CHATS", Modifier.padding(top = 12.dp).semantics { heading() }, style = sourceDisplayTitleStyle(), color = Cargo.Ink)
-                    Text("Campus-wide groups for clubs, hostels and courses. Open groups appear in every verified student’s Messages; invite-only groups only to the members you add.",
+                    Text("Campus-wide groups for clubs, hostels and courses. Public groups appear in every verified student’s Messages; private groups only to the members you add.",
                         Modifier.padding(top = 8.dp), style = loanBody(13), color = Cargo.Ink.copy(alpha = .7f))
                     val active = groups.count { it.archived_at == null }
                     Text("[ GROUPS ]  $active ACTIVE · ${groups.size - active} ARCHIVED", Modifier.padding(top = 24.dp), style = loanMono(11), color = Cargo.Ink.copy(alpha = .6f))
@@ -92,23 +113,23 @@ internal fun validateGroup(title: String, description: String) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(group.title, Modifier.weight(1f, fill = false), style = loanBody(15).copy(fontFamily = Cargo.Strong), color = Cargo.Ink,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(if (group.archived_at != null) "ARCHIVED" else if (group.visibility == "invite") "INVITE-ONLY" else "OPEN",
+                            Text(groupBadge(group),
                                 Modifier.border(1.dp, Cargo.Line).padding(horizontal = 6.dp, vertical = 2.dp), style = loanMono(8),
                                 color = if (group.visibility == "open" && group.archived_at == null) Cargo.Accent else Cargo.Ink.copy(alpha = .6f))
                         }
                         group.description?.let { Text(it, Modifier.padding(top = 4.dp), style = loanBody(12), color = Cargo.Ink.copy(alpha = .6f), maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                        Text("${group.member_count} MEMBERS · ${group.message_count} MESSAGES · ${group.last_message_at?.let { "LAST ${loanRelativeTime(it)}" } ?: "NO MESSAGES"}",
+                        Text("${group.member_count} MEMBERS · ${group.message_count} MESSAGES${if (group.pinned_count > 0) " · ${group.pinned_count} PINNED" else ""} · ${group.last_message_at?.let { "LAST ${loanRelativeTime(it)}" } ?: "NO MESSAGES"}",
                             Modifier.padding(top = 8.dp), style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
                     }
                 }
                 item("create") {
                     Column(Modifier.fillMaxWidth().padding(top = 24.dp).background(Cargo.Panel).border(1.dp, Cargo.Line).padding(18.dp).testTag("admin-create-group")) {
                         Text("[ CREATE A GROUP ]", Modifier.padding(bottom = 14.dp), style = loanMono(10), color = Cargo.Ink.copy(alpha = .6f))
-                        GroupSettingsForm(null, actions.busy, "Create group") { title, description, visibility, _ ->
+                        GroupSettingsForm(null, actions.busy, "Create group") { title, description, visibility, _, posting ->
                             actions.run("Group created.") {
                                 validateGroup(title, description)
                                 repository.initialize()
-                                open("admin/groups/${repository.createGroup(title, description, visibility)}")
+                                open("admin/groups/${repository.createGroup(title, description, visibility, posting)}")
                             }
                         }
                         Text("YOU JOIN EVERY GROUP YOU CREATE. ADD MEMBERS ON THE GROUP’S PAGE.", Modifier.padding(top = 12.dp), style = loanMono(9), color = Cargo.Ink.copy(alpha = .4f))
@@ -119,7 +140,7 @@ internal fun validateGroup(title: String, description: String) {
     }
 }
 
-private data class AdminGroupData(val group: AdminGroup?, val members: List<GroupMember>)
+private data class AdminGroupData(val group: AdminGroup?, val members: List<GroupMember>, val pinned: List<Message>)
 
 @Composable fun AdminGroupScreen(repository: BorrowRepository, profile: Profile, id: String, open: (String) -> Unit, back: () -> Unit) {
     if (!profile.is_admin) { ScreenColumn { CargoLabel("[ ADMIN ACCESS REQUIRED ]", Cargo.Warn) }; return }
@@ -134,7 +155,8 @@ private data class AdminGroupData(val group: AdminGroup?, val members: List<Grou
     }
     LoadScreen(id, { coroutineScope {
         val groups = async { repository.adminGroups() }; val members = async { repository.groupMembers(id) }
-        AdminGroupData(groups.await().firstOrNull { it.id == id }, members.await())
+        val pinned = async { repository.pinnedMessages(id) }
+        AdminGroupData(groups.await().firstOrNull { it.id == id }, members.await(), pinned.await())
     } }, refreshKey = actions.revision) { data ->
         val group = data.group ?: run { ScreenColumn { CargoLabel("[ GROUP NOT FOUND ]", Cargo.Warn) }; return@LoadScreen }
         if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { CargoTitle("Delete this group?") },
@@ -146,7 +168,7 @@ private data class AdminGroupData(val group: AdminGroup?, val members: List<Grou
             LazyColumn(Modifier.widthIn(max = 896.dp).fillMaxSize().testTag("admin-group-page"), contentPadding = PaddingValues(16.dp, 32.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item("header") {
-                    Text("[ GROUP — ${if (group.visibility == "invite") "INVITE-ONLY" else "OPEN"}${if (group.archived_at != null) " · ARCHIVED" else ""} ]", style = loanMono(10), color = Cargo.Accent)
+                    Text("[ ${groupBadge(group)} GROUP ]", style = loanMono(10), color = Cargo.Accent)
                     Text(group.title, Modifier.padding(top = 12.dp).semantics { heading() }, style = loanBody(28).copy(fontFamily = Cargo.Strong), color = Cargo.Ink)
                     Text("${group.member_count} MEMBERS · ${group.message_count} MESSAGES", Modifier.padding(top = 6.dp), style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
                     AdminAction("Open chat", { open("chat/${group.id}") }, Modifier.padding(top = 12.dp), AdminActionStyle.Secondary)
@@ -155,9 +177,23 @@ private data class AdminGroupData(val group: AdminGroup?, val members: List<Grou
                 item("settings") {
                     Column(Modifier.fillMaxWidth().background(Cargo.Panel).border(1.dp, Cargo.Line).padding(18.dp)) {
                         Text("[ SETTINGS ]", Modifier.padding(bottom = 14.dp), style = loanMono(10), color = Cargo.Ink.copy(alpha = .6f))
-                        GroupSettingsForm(group, actions.busy, "Save changes") { title, description, visibility, archived ->
-                            actions.run("Group saved.") { validateGroup(title, description); repository.updateGroup(group.id, title, description, visibility, archived) }
+                        GroupSettingsForm(group, actions.busy, "Save changes") { title, description, visibility, archived, posting ->
+                            actions.run("Group saved.") { validateGroup(title, description); repository.updateGroup(group.id, title, description, visibility, archived, posting) }
                         }
+                    }
+                }
+                item("pins-heading") { Text("[ PINNED MESSAGES ]  ${data.pinned.size}", Modifier.padding(top = 16.dp), style = loanMono(11), color = Cargo.Ink.copy(alpha = .6f)) }
+                if (data.pinned.isEmpty()) item("no-pins") { Text("Nothing is pinned. Pin a message from its menu in the chat.", style = loanBody(13), color = Cargo.Ink.copy(alpha = .6f)) }
+                items(data.pinned, key = { "pin-${it.id}" }) { message ->
+                    Row(Modifier.fillMaxWidth().background(Cargo.Panel).border(1.dp, Cargo.Line).padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(message.poll?.let { "Poll: ${it.question}" } ?: message.body.ifBlank { "Photo" }, style = loanBody(13), color = Cargo.Ink,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text((message.sender?.full_name ?: "Campus member").uppercase(), style = loanMono(9), color = Cargo.Ink.copy(alpha = .5f))
+                        }
+                        AdminAction("Unpin", { actions.run("Message unpinned.") { repository.pinMessage(message.id, false) } },
+                            style = AdminActionStyle.Secondary, enabled = !actions.busy, fontSize = 11, verticalPadding = 6.dp)
                     }
                 }
                 item("members-heading") { Text("[ MEMBERS ]  ${data.members.size}", Modifier.padding(top = 16.dp), style = loanMono(11), color = Cargo.Ink.copy(alpha = .6f)) }
@@ -191,7 +227,7 @@ private data class AdminGroupData(val group: AdminGroup?, val members: List<Grou
                                 }
                             }
                         }
-                        Text("ADDED STUDENTS GET A NOTIFICATION. IN AN OPEN GROUP, A REMOVED STUDENT CAN JOIN AGAIN — MAKE IT INVITE-ONLY TO KEEP SOMEONE OUT.",
+                        Text("ADDED STUDENTS GET A NOTIFICATION. IN A PUBLIC GROUP, A REMOVED STUDENT CAN JOIN AGAIN — MAKE IT PRIVATE TO KEEP SOMEONE OUT.",
                             style = loanMono(9), color = Cargo.Ink.copy(alpha = .4f))
                     }
                 }

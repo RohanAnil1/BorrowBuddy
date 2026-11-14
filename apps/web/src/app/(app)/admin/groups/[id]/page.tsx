@@ -1,14 +1,14 @@
-import { ArrowLeft, ArrowUpRight, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Pin, Search, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ConfirmSubmit } from "@/components/app/confirm-submit";
 import { GroupSettingsFields } from "@/components/app/group-settings-fields";
 import { SubmitButton } from "@/components/app/submit-button";
 import { requireAdmin } from "@/lib/auth/guards";
-import { getAdminGroups, getGroupMembers } from "@/lib/data/chat";
+import { getAdminGroups, getGroupMembers, getPinnedMessages } from "@/lib/data/chat";
 import { initials, relativeTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { addGroupMember, deleteGroup, removeGroupMember, updateGroup } from "../actions";
+import { addGroupMember, deleteGroup, removeGroupMember, unpinGroupMessage, updateGroup } from "../actions";
 
 export const metadata = { title: "Group · Admin" };
 
@@ -40,7 +40,7 @@ export default async function AdminGroupPage({
   const group = (await getAdminGroups()).find((row) => row.id === id);
   if (!group) notFound();
 
-  const members = await getGroupMembers(id);
+  const [members, pinned] = await Promise.all([getGroupMembers(id), getPinnedMessages(id)]);
   const candidates = await findStudents(q, new Set(members.map((member) => member.user_id)));
 
   return (
@@ -48,7 +48,7 @@ export default async function AdminGroupPage({
       <Link className="font-secondary inline-flex items-center gap-2 text-[10px] text-ink/60 hover:text-accent" href="/admin/groups">
         <ArrowLeft className="size-3.5" /> ALL GROUPS
       </Link>
-      <p className="status-bracket mt-6 text-[10px]">[ GROUP — {group.visibility === "invite" ? "INVITE-ONLY" : "OPEN"}{group.archived_at ? " · ARCHIVED" : ""} ]</p>
+      <p className="status-bracket mt-6 text-[10px]">[ {group.visibility === "invite" ? "PRIVATE" : "PUBLIC"} GROUP{group.posting === "admins" ? " · ANNOUNCEMENTS" : ""}{group.archived_at ? " · ARCHIVED" : ""} ]</p>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
         <h1 className="type-title text-[2rem] normal-case dt:text-[2.5rem]">{group.title}</h1>
         <Link className="font-secondary inline-flex items-center gap-1.5 text-[10px] text-accent hover:underline" href={`/chat/${group.id}`}>
@@ -66,6 +66,29 @@ export default async function AdminGroupPage({
           <GroupSettingsFields group={group} />
           <div><SubmitButton pendingLabel="Saving…">Save changes</SubmitButton></div>
         </form>
+      </section>
+
+      <section className="mt-10" aria-labelledby="pins-heading">
+        <h2 id="pins-heading" className="font-secondary text-[11px] uppercase text-ink/60">[ PINNED MESSAGES ] <span className="ml-2 text-ink/40">{pinned.length}</span></h2>
+        <ul className="mt-4 divide-y divide-line border border-line bg-panel">
+          {pinned.length === 0 && <li className="p-5 text-[13px] normal-case text-ink/60">Nothing is pinned. Pin a message from its menu in the chat.</li>}
+          {pinned.map((message) => (
+            <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-3" key={message.id}>
+              <span className="flex min-w-0 flex-1 items-start gap-2 text-[13px] normal-case">
+                <Pin className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block truncate">{message.poll ? `Poll: ${message.poll.question}` : message.body || "Photo"}</span>
+                  <span className="font-secondary block text-[9px] text-ink/50">{message.sender?.full_name ?? "Campus member"}{message.pinned_at ? ` · PINNED ${relativeTime(message.pinned_at).toUpperCase()}` : ""}</span>
+                </span>
+              </span>
+              <form action={unpinGroupMessage}>
+                <input name="group_id" type="hidden" value={group.id} />
+                <input name="message_id" type="hidden" value={message.id} />
+                <SubmitButton pendingLabel="…" variant="secondary">Unpin</SubmitButton>
+              </form>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="mt-10" aria-labelledby="members-heading">
@@ -117,7 +140,7 @@ export default async function AdminGroupPage({
               ))}
             </ul>
           )}
-          <p className="font-secondary mt-3 text-[9px] text-ink/40">ADDED STUDENTS GET A NOTIFICATION. IN AN OPEN GROUP, A REMOVED STUDENT CAN JOIN AGAIN — MAKE IT INVITE-ONLY TO KEEP SOMEONE OUT.</p>
+          <p className="font-secondary mt-3 text-[9px] text-ink/40">ADDED STUDENTS GET A NOTIFICATION. IN A PUBLIC GROUP, A REMOVED STUDENT CAN JOIN AGAIN — MAKE IT PRIVATE TO KEEP SOMEONE OUT.</p>
         </div>
       </section>
 

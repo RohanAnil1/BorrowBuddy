@@ -1,6 +1,8 @@
 package `in`.borrowbuddy.android.ui
 
 import `in`.borrowbuddy.android.domain.ChatInboxRow
+import `in`.borrowbuddy.android.domain.GroupMember
+import `in`.borrowbuddy.android.domain.Poll
 import `in`.borrowbuddy.android.domain.Message
 import `in`.borrowbuddy.android.domain.MessageReactions
 import `in`.borrowbuddy.android.domain.Profile
@@ -59,7 +61,7 @@ class GroupChatTest {
 
         val joinable = ChatInboxRow("o", "community", title = "Hostel B", visibility = "open", is_member = false, member_count = 1).toSummary("me")
         assertFalse(joinable.isMember); assertFalse(joinable.unread)
-        assertEquals("Open group · 1 member", chatPreview(joinable))
+        assertEquals("Public group · 1 member", chatPreview(joinable))
 
         val loan = ChatInboxRow("l", "private", loan_id = "loan", counterpart_name = "Ravi K", last_message_id = "m", last_message_body = "",
             last_message_deleted = true, last_message_sender_id = "x", last_message_at = "2026-11-15T10:00:00Z").toSummary("me")
@@ -68,8 +70,9 @@ class GroupChatTest {
     }
 
     @Test fun groupKindsAndQuotes() {
-        assertEquals("Invite-only group · 3 members", groupKind("invite", false, 3))
-        assertEquals("Archived group", groupKind("open", true, null))
+        assertEquals("Private group · 3 members", groupKind("invite", false, 3))
+        assertEquals("Archived public group", groupKind("open", true, null))
+        assertEquals("Public group · Announcements · 2 members", groupKind("open", false, 2, "admins"))
         assertEquals("Earlier message" to "", quotePreview(null, "me"))
         val quoted = Message("1", "c", "me", "line one\n  line two", created_at = "2026-11-15T10:00:00Z")
         assertEquals("You" to "line one line two", quotePreview(quoted, "me"))
@@ -82,5 +85,50 @@ class GroupChatTest {
         assertTrue(ChatUiState(community = true, isMember = false).canJoin)
         assertFalse(ChatUiState(community = true, isMember = false, archived = true).canJoin)
         assertTrue(ChatUiState(community = false).canPost)
+    }
+
+    @Test fun announcementGroupsLetMembersReactButOnlyAdminsPost() {
+        val member = ChatUiState(community = true, isMember = true, posting = "admins")
+        assertFalse(member.canPost); assertTrue(member.canReact); assertFalse(member.canPin); assertFalse(member.canPoll)
+        val admin = member.copy(isAdmin = true)
+        assertTrue(admin.canPost); assertTrue(admin.canPin); assertTrue(admin.canPoll)
+        assertTrue(ChatUiState(community = false).canPin)
+        assertFalse(ChatUiState(community = true, isMember = true, isAdmin = true, archived = true).canPin)
+    }
+
+    @Test fun mentionsMatchFullNamesAndTheTokenBeingTyped() {
+        val people = listOf(GroupMember("a", "Asha Rao"), GroupMember("b", "Ravi K"), GroupMember("c", ""))
+        assertEquals(listOf("a"), mentionedIds("Hi @Asha Rao, see you", people))
+        assertEquals(listOf("a", "b"), mentionedIds("@Ravi K and @Asha Rao", people))
+        assertTrue(mentionedIds("email me@example.com", people).isEmpty())
+        assertEquals("As", mentionQuery("hello @As"))
+        assertEquals("", mentionQuery("@"))
+        assertNull(mentionQuery("mail@x"))
+        assertNull(mentionQuery("@Asha Rao "))
+    }
+
+    @Test fun pinsStayNewestFirstAndDropWhenUnpinnedOrDeleted() {
+        val a = Message("a", "c", "s", "first", created_at = "2026-11-16T10:00:00Z", pinned_at = "2026-11-16T10:00:00Z")
+        val b = Message("b", "c", "s", "second", created_at = "2026-11-16T10:01:00Z", pinned_at = "2026-11-16T11:00:00Z")
+        val pins = updatePins(updatePins(emptyList(), a), b)
+        assertEquals(listOf("b", "a"), pins.map { it.id })
+        assertEquals(listOf("b"), updatePins(pins, a.copy(pinned_at = null)).map { it.id })
+        assertEquals(listOf("a"), updatePins(pins, b.copy(deleted_at = "x")).map { it.id })
+    }
+
+    @Test fun typingLabelsAndPollRows() {
+        assertEquals("", typingText(emptyList()))
+        assertEquals("Asha is typing…", typingText(listOf("Asha")))
+        assertEquals("Asha and Ravi are typing…", typingText(listOf("Asha", "Ravi")))
+        assertEquals("Several people are typing…", typingText(listOf("A", "B", "C")))
+        val row = json.decodeFromString(Message.serializer(), """{"id":"p","conversation_id":"c","sender_id":"s","body":"Movie?","created_at":"2026-11-16T10:00:00Z",
+            "mentions":["x"],"pinned_at":null,"poll":{"question":"Movie?","options":["Fri","Sat"],"votes":{"1":["me"]},"closed":false}}""")
+        assertEquals(Poll("Movie?", listOf("Fri", "Sat"), mapOf("1" to listOf("me")), false), row.poll)
+        assertEquals(listOf("x"), row.mentions)
+    }
+
+    @Test fun mutedInboxRowsCarryTheFlag() {
+        val muted = ChatInboxRow("g", "community", title = "Club", muted = true, posting = "admins").toSummary("me")
+        assertTrue(muted.muted); assertEquals("admins", muted.conversation.posting)
     }
 }

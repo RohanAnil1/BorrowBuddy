@@ -98,7 +98,7 @@ internal fun chatDay(message: Message) = chatDayFormat.format(Instant.parse(mess
     }
 }
 
-private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"), Groups("Groups"), Private("Private") }
+private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"), Groups("Groups"), Loans("Loans") }
 
 @Composable internal fun ChatsContent(chats: List<ConversationSummary>, open: (String) -> Unit) {
     val viewport = chatViewport()
@@ -110,7 +110,7 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
             ChatFilter.All -> true
             ChatFilter.Unread -> it.unread
             ChatFilter.Groups -> it.conversation.type == "community"
-            ChatFilter.Private -> it.conversation.type == "private"
+            ChatFilter.Loans -> it.conversation.type == "private"
         }
         visible && "${it.title} ${it.latest?.body.orEmpty()}".contains(term, ignoreCase = true)
     }
@@ -152,17 +152,19 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
     }
 }
 
-/** "Open group · 12 members", "Invite-only group", "Archived group". */
-internal fun groupKind(visibility: String, archived: Boolean, members: Int?): String {
-    val kind = if (archived) "Archived group" else if (visibility == "invite") "Invite-only group" else "Open group"
-    return if (members == null) kind else "$kind · $members ${if (members == 1) "member" else "members"}"
+/** "Public group · 12 members", "Private group · Announcements", "Archived public group". */
+internal fun groupKind(visibility: String, archived: Boolean, members: Int?, posting: String = "everyone"): String {
+    val base = if (visibility == "invite") "private group" else "public group"
+    val kind = if (archived) "Archived $base" else base.replaceFirstChar { it.uppercase() }
+    return listOfNotNull(kind, "Announcements".takeIf { posting == "admins" },
+        members?.let { "$it ${if (it == 1) "member" else "members"}" }).joinToString(" · ")
 }
 
 internal fun chatPreview(chat: ConversationSummary): String {
     val community = chat.conversation.type == "community"
-    if (!chat.isMember) return groupKind(chat.conversation.visibility, chat.conversation.archived_at != null, chat.memberCount)
+    if (!chat.isMember) return groupKind(chat.conversation.visibility, chat.conversation.archived_at != null, chat.memberCount, chat.conversation.posting)
     val latest = chat.latest ?: return if (community) "Say hello to the group" else "Plan your pickup or return"
-    val text = if (latest.deleted_at != null) "Message deleted" else latest.body.ifBlank { "Photo" }
+    val text = if (latest.deleted_at != null) "Message deleted" else latest.body.ifBlank { if (latest.image_path != null) "Photo" else "Message" }
     return chat.latestSender?.let { "$it: $text" } ?: text
 }
 
@@ -180,13 +182,22 @@ internal fun chatPreview(chat: ConversationSummary): String {
                     Box(Modifier.size(36.dp).background(if (community) Color(0xff233347) else Color(0xff2b333f), CircleShape),
                         contentAlignment = Alignment.Center) {
                         val initials = chat.title.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase()
-                        val glyph = when { !community -> initials; chat.conversation.archived_at != null -> "▤"; chat.conversation.visibility == "invite" -> "\uD83D\uDD12"; else -> "#" }
-                        Text(glyph, style = loanBody(if (community) 15 else 11), color = Color(0xffd4dbe7))
+                        val icon = when {
+                            !community -> null
+                            chat.conversation.posting == "admins" -> R.drawable.ic_megaphone
+                            chat.conversation.visibility == "invite" -> R.drawable.ic_lock
+                            else -> R.drawable.ic_globe
+                        }
+                        if (icon == null) Text(initials, style = loanBody(11), color = Color(0xffd4dbe7))
+                        else Icon(painterResource(icon), null, Modifier.size(16.dp), tint = Color(0xffd4dbe7))
                     }
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(chat.title, Modifier.weight(1f, fill = false), style = loanBody(14).copy(fontFamily = Cargo.Strong), color = Cargo.Ink,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (community) Text(if (chat.conversation.visibility == "invite") "Private" else "Public",
+                                Modifier.border(1.dp, ChatBorder, RoundedCornerShape(3.dp)).padding(horizontal = 4.dp), style = loanBody(9), color = ChatMuted)
+                            if (chat.muted) Icon(painterResource(R.drawable.ic_bell_off), "Muted", Modifier.size(12.dp), tint = ChatMuted)
                             if (chat.unreadCount > 0) {
                                 val count = if (chat.unreadCount >= 100) "99+" else chat.unreadCount.toString()
                                 Text(count, Modifier.background(ChatAmber, RoundedCornerShape(10.dp)).padding(horizontal = 6.dp, vertical = 1.dp)
@@ -225,7 +236,7 @@ internal fun chatPreview(chat: ConversationSummary): String {
 
 @Composable internal fun ChatHeader(
     state: ChatUiState, openProfile: (String) -> Unit, back: () -> Unit,
-    searchOpen: Boolean, toggleSearch: () -> Unit,
+    searchOpen: Boolean, toggleSearch: () -> Unit, toggleMute: (() -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxWidth().background(ChatPanel).testTag("chat-thread-header")) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 6.dp),
@@ -234,7 +245,7 @@ internal fun chatPreview(chat: ConversationSummary): String {
             Column(Modifier.weight(1f)) {
                 Text(state.title, Modifier.testTag("chat-thread-title").semantics { heading() },
                     style = loanBody(17).copy(fontFamily = Cargo.Strong), color = Cargo.Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(if (state.community) groupKind(state.visibility, state.archived, state.members.size) else "Private loan channel",
+                Text(if (state.community) groupKind(state.visibility, state.archived, state.members.size, state.posting) else "Private loan chat",
                     style = loanBody(11), color = ChatMuted)
             }
             state.counterpart?.let { user ->
@@ -245,6 +256,8 @@ internal fun chatPreview(chat: ConversationSummary): String {
                     Text(user.trust_score.roundToInt().toString(), style = loanBody(11), color = ChatMuted)
                 }
             }
+            if (toggleMute != null && state.isMember) ChatIconAction(if (state.muted) R.drawable.ic_bell_off else R.drawable.ic_bell,
+                if (state.muted) "Unmute this chat" else "Mute this chat", Modifier.testTag("chat-mute"), toggleMute)
             ChatIconAction(if (searchOpen) R.drawable.ic_x else R.drawable.ic_search,
                 if (searchOpen) "Close search" else "Search this chat", onClick = toggleSearch)
         }
@@ -276,13 +289,78 @@ internal data class MessageActions(
     val quote: Pair<String, String>? = null, val highlighted: Boolean = false,
     val react: (String) -> Unit = {}, val reply: () -> Unit = {}, val edit: () -> Unit = {},
     val delete: () -> Unit = {}, val openQuote: () -> Unit = {},
+    /** Reacting and voting (members, including in announcement-only groups). */
+    val canReact: Boolean = canPost, val canPin: Boolean = false, val pin: (Boolean) -> Unit = {},
+    val vote: (Int) -> Unit = {}, val canClosePoll: Boolean = false, val closePoll: (Boolean) -> Unit = {},
+    /** Names to pick out as @mentions in the text. */
+    val mentionNames: List<String> = emptyList(), val myName: String = "",
+    val photo: (@Composable (String) -> Unit)? = null,
 )
+
+/** Message text with known @mentions in bold amber (your own on a tint). */
+internal fun mentionText(text: String, names: List<String>, myName: String): androidx.compose.ui.text.AnnotatedString {
+    val known = (names + myName).filter { it.isNotBlank() }.distinct().sortedByDescending { it.length }
+    if (known.isEmpty() || '@' !in text) return androidx.compose.ui.text.AnnotatedString(text)
+    val pattern = Regex("@(" + known.joinToString("|") { Regex.escape(it) } + ")")
+    return androidx.compose.ui.text.buildAnnotatedString {
+        var last = 0
+        pattern.findAll(text).forEach { match ->
+            append(text.substring(last, match.range.first))
+            val mine = match.value == "@$myName"
+            pushStyle(androidx.compose.ui.text.SpanStyle(color = Color(0xffffd08c), fontFamily = Cargo.Strong,
+                background = if (mine) Color(0x2eefb35a) else Color.Transparent))
+            append(match.value); pop()
+            last = match.range.last + 1
+        }
+        append(text.substring(last))
+    }
+}
+
+@Composable internal fun PollCard(poll: Poll, userId: String, canVote: Boolean, canClose: Boolean, vote: (Int) -> Unit, close: (Boolean) -> Unit) {
+    val counts = poll.options.indices.map { poll.votes[it.toString()].orEmpty().size }
+    val total = counts.sum()
+    val mine = poll.options.indices.firstOrNull { userId in poll.votes[it.toString()].orEmpty() }
+    Column(Modifier.widthIn(min = 220.dp).testTag("chat-poll"), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(painterResource(R.drawable.ic_chart), null, Modifier.size(14.dp), tint = ChatAmber)
+            Text(poll.question, style = loanBody(14).copy(fontFamily = Cargo.Strong), color = Cargo.Ink)
+        }
+        poll.options.forEachIndexed { index, option ->
+            val share = if (total == 0) 0f else counts[index].toFloat() / total
+            val chosen = mine == index
+            Box(Modifier.fillMaxWidth().heightIn(min = 38.dp).border(1.dp, if (chosen) ChatAmber else ChatBorder, RoundedCornerShape(6.dp))
+                .clickable(enabled = canVote && !poll.closed, role = Role.Button) { vote(index) }
+                .semantics { contentDescription = "$option: ${counts[index]} ${if (counts[index] == 1) "vote" else "votes"}${if (chosen) ", your vote" else ""}"; selected = chosen }) {
+                Box(Modifier.matchParentSize().drawBehind { drawRect(Color(0x24efb35a), size = size.copy(width = size.width * share)) })
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (chosen) Icon(painterResource(R.drawable.ic_check), null, Modifier.size(13.dp), tint = ChatAmber)
+                    Text(option, Modifier.weight(1f), style = loanBody(13), color = Cargo.Ink)
+                    Text(counts[index].toString(), style = loanBody(12), color = ChatMuted)
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("$total ${if (total == 1) "vote" else "votes"}" + when {
+                poll.closed -> " · Closed"
+                !canVote -> ""
+                mine != null -> " · Tap again to take it back"
+                else -> " · One vote each"
+            }, Modifier.weight(1f, fill = false), style = loanBody(11), color = ChatMuted)
+            if (canClose) ChatTextAction(if (poll.closed) "Reopen" else "Close poll", { close(!poll.closed) })
+        }
+    }
+}
 
 /** Who a reply quotes and a one-line preview, or a placeholder when the message isn't loaded yet. */
 internal fun quotePreview(quoted: Message?, userId: String): Pair<String, String> {
     if (quoted == null) return "Earlier message" to ""
     val name = if (quoted.sender_id == userId) "You" else quoted.sender?.full_name ?: "Campus member"
-    val text = if (quoted.deleted_at != null) "Message deleted" else quoted.body.ifBlank { "Photo" }.replace(Regex("\\s+"), " ")
+    val text = when {
+        quoted.deleted_at != null -> "Message deleted"
+        quoted.poll != null -> "Poll: ${quoted.poll.question}"
+        else -> quoted.body.ifBlank { "Photo" }.replace(Regex("\\s+"), " ")
+    }
     return name to text
 }
 
@@ -327,22 +405,34 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
             }
             Box {
                 val shape = RoundedCornerShape(8.dp)
-                val label = when {
-                    deleted -> "Message deleted"
-                    message.edited_at != null -> "${message.body.ifBlank { "Photo" }}  (edited)"
-                    else -> message.body.ifBlank { "Photo" }
-                }
-                Text(label, Modifier.testTag("chat-bubble-${message.id}").semantics { this[ChatBubbleMine] = mine }
+                val mentioned = !mine && actions.userId in message.mentions
+                Column(Modifier.testTag("chat-bubble-${message.id}").semantics { this[ChatBubbleMine] = mine }
                     .then(if (deleted) Modifier.border(1.dp, ChatBorder, shape)
                         else Modifier.background(if (mine) Color(0xff333b48) else Color(0xff232832), shape))
-                    .then(if (actions.highlighted) Modifier.border(2.dp, ChatAmber, shape) else Modifier)
+                    .then(if (actions.highlighted) Modifier.border(2.dp, ChatAmber, shape) else if (mentioned)
+                        Modifier.drawBehind { drawLine(ChatAmber, Offset(0f, 0f), Offset(0f, size.height), 3.dp.toPx()) } else Modifier)
                     .then(if (deleted) Modifier else Modifier.combinedClickable(onClickLabel = "Message options", onClick = { menuOpen = true },
                         onLongClickLabel = "Message options", onLongClick = { menuOpen = true }))
-                    .padding(horizontal = 11.dp, vertical = 7.dp),
-                    style = loanBody(14).copy(lineHeight = 22.sp, fontStyle = if (deleted) androidx.compose.ui.text.font.FontStyle.Italic else null),
-                    color = if (deleted) ChatMuted else Cargo.Ink)
+                    .padding(horizontal = 11.dp, vertical = 7.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    if (message.pinned_at != null && !deleted) Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(painterResource(R.drawable.ic_pin), null, Modifier.size(11.dp), tint = ChatAmber)
+                        Text("Pinned", style = loanBody(10), color = ChatAmber)
+                    }
+                    val poll = message.poll
+                    when {
+                        deleted -> Text("Message deleted", style = loanBody(14).copy(lineHeight = 22.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = ChatMuted)
+                        poll != null -> PollCard(poll, actions.userId, actions.canReact, actions.canClosePoll, actions.vote, actions.closePoll)
+                        else -> {
+                            message.image_path?.let { path -> actions.photo?.invoke(path) }
+                            val body = message.body + if (message.edited_at != null) "  (edited)" else ""
+                            if (message.body.isNotBlank() || message.image_path == null)
+                                Text(mentionText(body.ifBlank { "Message" }, actions.mentionNames, actions.myName),
+                                    style = loanBody(14).copy(lineHeight = 22.sp), color = Cargo.Ink)
+                        }
+                    }
+                }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = ChatRaised) {
-                    if (actions.canPost) Row(Modifier.padding(horizontal = 6.dp).testTag("chat-reaction-picker"), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (actions.canReact) Row(Modifier.padding(horizontal = 6.dp).testTag("chat-reaction-picker"), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         MessageReactions.forEach { emoji ->
                             val reacted = actions.userId in message.reactions[emoji].orEmpty()
                             Box(Modifier.size(38.dp).background(if (reacted) Color(0x24efb35a) else Color.Transparent, RoundedCornerShape(7.dp))
@@ -354,12 +444,15 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
                     }
                     if (actions.canPost) DropdownMenuItem(text = { Text("Reply") }, onClick = { menuOpen = false; actions.reply() })
                     DropdownMenuItem(text = { Text("Copy message") }, onClick = {
-                        val clip = android.content.ClipData.newPlainText("BorrowBuddy message", message.body)
+                        val clip = android.content.ClipData.newPlainText("BorrowBuddy message", message.poll?.question ?: message.body)
                         clip.description.extras = android.os.PersistableBundle().apply { putBoolean("android.content.extra.IS_SENSITIVE", true) }
                         context.getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(clip)
                         menuOpen = false
                     })
-                    if (mine && actions.canPost) DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; actions.edit() })
+                    if (actions.canPin) DropdownMenuItem(text = { Text(if (message.pinned_at != null) "Unpin" else "Pin") },
+                        onClick = { menuOpen = false; actions.pin(message.pinned_at == null) })
+                    if (mine && actions.canPost && message.poll == null && message.body.isNotBlank())
+                        DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; actions.edit() })
                     if (actions.canDelete) DropdownMenuItem(text = { Text(if (mine) "Delete" else "Delete as admin", color = Cargo.Warn) },
                         onClick = { menuOpen = false; confirmDelete = true })
                 }
@@ -371,7 +464,7 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
                     val reacted = actions.userId in users
                     Row(Modifier.heightIn(min = 28.dp).background(if (reacted) Color(0x24efb35a) else ChatPanel, RoundedCornerShape(14.dp))
                         .border(1.dp, if (reacted) ChatAmber else ChatBorder, RoundedCornerShape(14.dp))
-                        .clickable(enabled = actions.canPost, role = Role.Button) { actions.react(emoji) }
+                        .clickable(enabled = actions.canReact, role = Role.Button) { actions.react(emoji) }
                         .semantics { contentDescription = "$emoji ${users.size}${if (reacted) ", including you" else ""}"; selected = reacted }
                         .padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(emoji, fontSize = 13.sp)
@@ -385,13 +478,24 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
     }
 }
 @Composable internal fun ChatComposer(state: ChatUiState, onDraft: (String) -> Unit, send: () -> Unit, showSuggestions: Boolean = true,
-    cancelContext: () -> Unit = {}) {
+    cancelContext: () -> Unit = {}, pickPhoto: (() -> Unit)? = null, openPoll: (() -> Unit)? = null,
+    pickMention: (GroupMember) -> Unit = {}) {
     val interactions = remember { MutableInteractionSource() }
     val focused by interactions.collectIsFocusedAsState()
     val focus = remember { FocusRequester() }
     Column(Modifier.fillMaxWidth().background(ChatPanel).testTag("chat-composer-panel")) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(ChatBorder))
         state.error?.let { Text(it, Modifier.padding(8.dp), style = loanBody(11), color = ChatAmber) }
+        val query = mentionQuery(state.draft)
+        val suggestions = if (query == null) emptyList() else state.mentionables.filter { it.full_name.contains(query, ignoreCase = true) }.take(6)
+        if (suggestions.isNotEmpty()) FlowRow(Modifier.padding(horizontal = 8.dp, vertical = 4.dp).testTag("chat-mention-suggestions"),
+            horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            suggestions.forEach { member ->
+                Text("@${member.full_name}", Modifier.background(ChatRaised, RoundedCornerShape(14.dp))
+                    .clickable(role = Role.Button) { pickMention(member); runCatching { focus.requestFocus() } }
+                    .padding(horizontal = 10.dp, vertical = 7.dp), style = loanBody(12), color = Cargo.Ink)
+            }
+        }
         val context = state.editing?.let { "Editing your message" to it.body }
             ?: state.replyTo?.let { "Replying to ${it.sender?.full_name ?: "Campus member"}" to it.body.ifBlank { "Photo" } }
         LaunchedEffect(state.editing?.id, state.replyTo?.id) { if (context != null) runCatching { focus.requestFocus() } }
@@ -408,6 +512,11 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.editing == null) {
+                pickPhoto?.let { ChatIconAction(R.drawable.ic_image_plus, if (state.uploading) "Sending photo" else "Send a photo",
+                    Modifier.testTag("chat-photo"), onClick = { if (!state.uploading) it() }) }
+                openPoll?.let { ChatIconAction(R.drawable.ic_chart, "Create a poll", Modifier.testTag("chat-poll-button"), onClick = it) }
+            }
             BasicTextField(state.draft, onDraft, Modifier.weight(1f).heightIn(min = 47.dp)
                 .background(ChatHistory, RoundedCornerShape(7.dp)).border(1.dp, if (focused) ChatAmber else ChatBorder, RoundedCornerShape(7.dp))
                 .focusRequester(focus)
@@ -420,7 +529,12 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
                 cursorBrush = SolidColor(Cargo.Accent), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { send() }),
                 decorationBox = { inner -> Box(Modifier.padding(horizontal = 17.dp, vertical = 13.dp)) {
-                    if (state.draft.isEmpty()) Text(if (state.editing != null) "Edit your message…" else "Write a message…", style = loanBody(14), color = ChatMuted)
+                    if (state.draft.isEmpty()) Text(when {
+                        state.editing != null -> "Edit your message…"
+                        state.uploading -> "Sending photo…"
+                        state.mentionables.isNotEmpty() -> "Message (@ to mention)…"
+                        else -> "Write a message…"
+                    }, style = loanBody(14), color = ChatMuted, maxLines = 1)
                     inner()
                 } })
             val enabled = !state.sending && state.draft.isNotBlank() && state.initialized
@@ -486,11 +600,69 @@ internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(when {
                 state.archived -> "This group is archived. You can read the history, but nobody can post."
-                state.canJoin && state.visibility == "invite" -> "You can read this invite-only group as an admin. Join to post."
-                state.canJoin -> "You’re previewing this group. Join to post, react and get unread counts."
+                state.canJoin && state.visibility == "invite" -> "You can read this private group as an admin. Join to post."
+                state.canJoin -> "You’re previewing this public group. Join to post, react and get unread counts."
+                state.announcements && state.isMember -> "Only admins post in this group. You can react and vote in polls."
                 else -> "Only members can post here."
             }, Modifier.weight(1f), style = loanBody(12), color = ChatMuted)
             if (state.canJoin) CargoButton(if (state.joining) "Joining…" else "Join group", join, enabled = !state.joining)
         }
     }
+}
+
+/** The newest pin, with the others a tap away. */
+@Composable internal fun ChatPinnedBar(state: ChatUiState, open: (String) -> Unit, unpin: ((Message) -> Unit)?) {
+    val top = state.pinned.firstOrNull() ?: return
+    var expanded by remember { mutableStateOf(false) }
+    fun label(message: Message) = when {
+        message.poll != null -> "Poll: ${message.poll.question}"
+        message.body.isNotBlank() -> message.body.replace(Regex("\\s+"), " ")
+        message.image_path != null -> "Photo"
+        else -> "Message"
+    }
+    Column(Modifier.fillMaxWidth().background(ChatPanel).testTag("chat-pins")) {
+        Row(Modifier.fillMaxWidth().clickable(role = Role.Button) { if (state.pinned.size > 1) expanded = !expanded else open(top.id) }
+            .padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_pin), null, Modifier.size(14.dp), tint = ChatAmber)
+            Text(androidx.compose.ui.text.buildAnnotatedString {
+                pushStyle(androidx.compose.ui.text.SpanStyle(fontFamily = Cargo.Strong, color = Color(0xffd4dbe7))); append("Pinned "); pop()
+                append(label(top))
+            }, Modifier.weight(1f), style = loanBody(12), color = ChatMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (state.pinned.size > 1) Text("${state.pinned.size} ${if (expanded) "▴" else "▾"}", style = loanBody(11), color = ChatMuted)
+        }
+        if (expanded) Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+            state.pinned.forEach { message ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).clickable(role = Role.Button) { expanded = false; open(message.id) }.padding(horizontal = 13.dp, vertical = 7.dp)) {
+                        Text(message.sender?.full_name ?: "Campus member", style = loanBody(10), color = ChatMuted)
+                        Text(label(message), style = loanBody(12), color = Cargo.Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    unpin?.let { ChatTextAction("Unpin", { it(message) }) }
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(ChatBorder))
+    }
+}
+
+/** Admins: a question and 2-10 options. */
+@Composable internal fun PollDialog(dismiss: () -> Unit, create: (String, List<String>) -> Unit) {
+    var question by rememberSaveable { mutableStateOf("") }
+    var options by rememberSaveable { mutableStateOf(listOf("", "")) }
+    androidx.compose.material3.AlertDialog(onDismissRequest = dismiss, containerColor = ChatRaised,
+        title = { Text("New poll") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChatSearchField("Ask a question", question, { question = it.take(300) }, Modifier.testTag("poll-question"))
+                options.forEachIndexed { index, option ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ChatSearchField("Option ${index + 1}", option, { value -> options = options.toMutableList().also { it[index] = value.take(100) } }, Modifier.weight(1f))
+                        if (options.size > 2) ChatIconAction(R.drawable.ic_x, "Remove option ${index + 1}") { options = options.filterIndexed { i, _ -> i != index } }
+                    }
+                }
+                if (options.size < 10) ChatTextAction("+ Add option", { options = options + "" })
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton({ create(question, options) }) { Text("Post poll", color = ChatAmber) } },
+        dismissButton = { androidx.compose.material3.TextButton(dismiss) { Text("Cancel") } })
 }

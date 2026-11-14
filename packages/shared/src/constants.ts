@@ -22,6 +22,9 @@ export const CAMPUS = {
 export const MESSAGE_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉"] as const;
 export const GROUP_TITLE_MAX = 80;
 export const GROUP_DESCRIPTION_MAX = 500;
+export const POLL_OPTIONS_MAX = 10;
+export const CHAT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+export const CHAT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 /* --------------------------------- limits --------------------------------- */
 

@@ -76,7 +76,7 @@ begin
   begin perform public.admin_create_group('', null, 'open'); raise exception 'FAIL: empty name';
   exception when others then if sqlerrm <> 'Give the group a name of up to 80 characters' then raise; end if; end;
   begin perform public.admin_create_group('Bad', null, 'secret'); raise exception 'FAIL: bad visibility';
-  exception when others then if sqlerrm <> 'Choose open or invite-only' then raise; end if; end;
+  exception when others then if sqlerrm <> 'Choose public or private' then raise; end if; end;
   insert into public.messages(conversation_id, sender_id, body) values (v_open, v_ctx.admin_id, 'Welcome 100% of you_all') returning id into v_msg;
   update group_test_context set open_id = v_open, invite_id = v_invite, admin_msg = v_msg;
 end;
