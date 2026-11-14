@@ -21,24 +21,51 @@ data class ChatUiState(
     val initialized: Boolean = false, val hasOlder: Boolean = false, val loadingOlder: Boolean = false,
     val connected: Boolean = false, val events: Int = 0, val connections: Int = 0,
     val scrollRequest: Int = 0, val draft: String = "", val sending: Boolean = false,
-    val error: String? = null
-)
+    val error: String? = null,
+    // Groups
+    val description: String? = null, val visibility: String = "open", val archived: Boolean = false,
+    val isMember: Boolean = true, val members: List<GroupMember> = emptyList(), val joining: Boolean = false,
+    // Replies, edits, and quoted messages that aren't loaded
+    val replyTo: Message? = null, val editing: Message? = null, val quoted: Map<String, Message> = emptyMap(),
+    // Server-side search and jumping to a result
+    val searchHits: List<MessageSearchHit>? = null, val searching: Boolean = false,
+    val highlight: String? = null, val revealRequest: Int = 0,
+) {
+    val canPost: Boolean get() = isMember && !archived
+    val canJoin: Boolean get() = community && !isMember && !archived
+}
 
+/** Adds new rows and replaces changed ones (edits, deletes, reactions), keeping a known sender. */
 internal fun mergeThreadMessages(current: List<Message>, incoming: List<Message>): List<Message> {
     val merged = current.associateByTo(linkedMapOf()) { it.id }
     incoming.forEach { row -> merged[row.id] = row.copy(sender = row.sender ?: merged[row.id]?.sender) }
     return merged.values.sortedWith(compareBy<Message> { Instant.parse(it.created_at) }.thenBy { it.id })
 }
 
+/** Toggles your reaction locally, the way toggle_message_reaction() does on the server. */
+internal fun toggledReactions(reactions: Map<String, List<String>>, emoji: String, userId: String): Map<String, List<String>> {
+    val users = reactions[emoji].orEmpty()
+    if (userId !in users) return reactions + (emoji to users + userId)
+    val rest = users - userId
+    return if (rest.isEmpty()) reactions - emoji else reactions + (emoji to rest)
+}
+
 /** Entry-scoped state survives rotation; only STARTED screens own a subscription/read cursor. */
 class ChatViewModel(private val repository: BorrowRepository, private val userId: String,
-    private val id: String, private val saved: SavedStateHandle) : ViewModel() {
+    private val id: String, private val saved: SavedStateHandle, val isAdmin: Boolean = false) : ViewModel() {
     var ui by mutableStateOf(ChatUiState(draft = saved["draft"] ?: "")); private set
     private var session: Job? = null
+    private var searchJob: Job? = null
     private val mutation = Mutex()
     private val senderCache = linkedMapOf<String, Profile>()
+    private val requestedQuotes = mutableSetOf<String>()
 
-    fun updateDraft(value: String) { val text = value.take(2000); saved["draft"] = text; ui = ui.copy(draft = text) }
+    /** The saved draft belongs to new messages; an edit in progress isn't persisted. */
+    fun updateDraft(value: String) {
+        val text = value.take(2000)
+        if (ui.editing == null) saved["draft"] = text
+        ui = ui.copy(draft = text)
+    }
     fun start() {
         if (session?.isActive == true) return
         val previous = session
@@ -47,7 +74,8 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
     fun stop() { session?.cancel(); ui = ui.copy(connected = false) }
     fun retry() { stop(); start() }
 
-    private suspend fun markRead() { repository.rpc("mark_conversation_read", buildJsonObject { put("p_conversation_id", id) }) }
+    /** Only members keep a read cursor; previewing an open group must not join it. */
+    private suspend fun markRead() { if (ui.isMember) repository.rpc("mark_conversation_read", buildJsonObject { put("p_conversation_id", id) }) }
     private suspend fun refreshTail() = mutation.withLock {
         val rows = repository.messages(id)
         val initial = !ui.initialized
@@ -55,6 +83,21 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
             hasOlder = if (initial) rows.size == 100 else ui.hasOlder,
             scrollRequest = ui.scrollRequest + if (initial) 1 else 0)
         markRead()
+        loadQuoted()
+    }
+    /** Replies to messages older than the loaded page: fetch just the quoted rows, once. */
+    private fun loadQuoted() {
+        val loaded = ui.messages.mapTo(hashSetOf()) { it.id }
+        val missing = ui.messages.mapNotNull { it.reply_to_id }.filter { it !in loaded && it !in requestedQuotes }.distinct()
+        if (missing.isEmpty()) return
+        requestedQuotes += missing
+        viewModelScope.launch {
+            try {
+                val rows = repository.messagesById(missing)
+                ui = ui.copy(quoted = ui.quoted + rows.associateBy { it.id })
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { requestedQuotes -= missing.toSet() }
+        }
     }
     private suspend fun refreshMetadata(): Boolean {
         val conversation = repository.conversation(id)
@@ -62,10 +105,14 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
             ui = ui.copy(messages = emptyList(), initialized = false, error = "Conversation not found or access is no longer available.")
             return false
         }
-        val counterpart = if (conversation.type == "private") repository.members(id).firstOrNull { it.user_id != userId }?.profile else null
-        ui = ui.copy(title = if (conversation.type == "community") conversation.title ?: "Community" else counterpart?.full_name ?: "Loan chat",
-            community = conversation.type == "community", counterpart = counterpart,
-            loan = conversation.loan_id?.let { repository.loan(it) })
+        val group = conversation.type == "community"
+        val counterpart = if (!group) repository.members(id).firstOrNull { it.user_id != userId }?.profile else null
+        val members = if (group) repository.groupMembers(id) else emptyList()
+        ui = ui.copy(title = if (group) conversation.title ?: "Group" else counterpart?.full_name ?: "Loan chat",
+            community = group, counterpart = counterpart,
+            loan = conversation.loan_id?.let { repository.loan(it) },
+            description = conversation.description, visibility = conversation.visibility, archived = conversation.archived_at != null,
+            isMember = !group || members.any { it.user_id == userId }, members = members)
         return true
     }
     private suspend fun runSession() {
@@ -117,6 +164,23 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                                     ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row.copy(sender = sender))),
                                         events = ui.events + 1)
                                     markRead()
+                                    loadQuoted()
+                                }
+                            }
+                        }
+                        // Edits, deletes and reactions all update the row.
+                        val updates = channel.postgresChangeFlow<PostgresAction.Update>("public") {
+                            table = "messages"; filter { eq("conversation_id", id) }
+                        }
+                        launch(start = CoroutineStart.UNDISPATCHED) {
+                            updates.collect { event ->
+                                val row = event.decodeRecord<Message>()
+                                if (row.conversation_id != id) return@collect
+                                mutation.withLock {
+                                    if (ui.messages.any { it.id == row.id }) {
+                                        ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), events = ui.events + 1)
+                                    }
+                                    if (ui.quoted.containsKey(row.id)) ui = ui.copy(quoted = ui.quoted + (row.id to row))
                                 }
                             }
                         }
@@ -152,18 +216,28 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
         finally { ui = ui.copy(loadingOlder = false) }
+        loadQuoted()
     }
     fun send() {
         val text = ui.draft.trim()
-        if (text.isBlank() || ui.sending || !ui.initialized) return
+        if (text.isBlank() || ui.sending || !ui.initialized || !ui.canPost) return
         val originalDraft = ui.draft
+        val editing = ui.editing
+        val replyTo = ui.replyTo
         ui = ui.copy(sending = true, error = null)
         viewModelScope.launch {
             try {
                 repository.initialize()
-                val row = repository.sendMessage(id, userId, text)
+                if (editing != null) {
+                    val row = repository.editMessage(editing.id, text)
+                    mutation.withLock {
+                        ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), editing = null, draft = saved["draft"] ?: "")
+                    }
+                    return@launch
+                }
+                val row = repository.sendMessage(id, userId, text, replyTo?.id)
                 mutation.withLock {
-                    ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), scrollRequest = ui.scrollRequest + 1)
+                    ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), scrollRequest = ui.scrollRequest + 1, replyTo = null)
                     if (ui.draft == originalDraft) updateDraft("")
                     if (session?.isActive == true) markRead()
                 }
@@ -172,4 +246,90 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
             finally { ui = ui.copy(sending = false) }
         }
     }
+
+    fun startReply(message: Message) {
+        val draft = if (ui.editing != null) saved["draft"] ?: "" else ui.draft
+        ui = ui.copy(replyTo = message, editing = null, draft = draft)
+    }
+    fun startEdit(message: Message) { ui = ui.copy(editing = message, replyTo = null, draft = message.body) }
+    fun cancelCompose() {
+        val draft = if (ui.editing != null) saved["draft"] ?: "" else ui.draft
+        ui = ui.copy(replyTo = null, editing = null, draft = draft)
+    }
+
+    fun react(message: Message, emoji: String) {
+        if (!ui.canPost || message.deleted_at != null) return
+        val before = ui.messages.firstOrNull { it.id == message.id }?.reactions ?: message.reactions
+        ui = ui.copy(messages = ui.messages.map { if (it.id == message.id) it.copy(reactions = toggledReactions(before, emoji, userId)) else it })
+        viewModelScope.launch {
+            val result = try { repository.toggleReaction(message.id, emoji) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)); before }
+            ui = ui.copy(messages = ui.messages.map { if (it.id == message.id) it.copy(reactions = result) else it })
+        }
+    }
+
+    /** Your own messages; admins can delete any message. */
+    fun delete(message: Message) {
+        viewModelScope.launch {
+            try {
+                repository.deleteMessage(message.id)
+                ui = ui.copy(messages = ui.messages.map {
+                    if (it.id == message.id) it.copy(body = "", image_path = null, reactions = emptyMap(), deleted_at = Instant.now().toString()) else it
+                }, editing = ui.editing?.takeIf { it.id != message.id }, replyTo = ui.replyTo?.takeIf { it.id != message.id })
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+        }
+    }
+
+    fun join() {
+        if (ui.joining) return
+        ui = ui.copy(joining = true, error = null)
+        viewModelScope.launch {
+            try {
+                repository.initialize(); repository.joinGroup(id)
+                ui = ui.copy(isMember = true, members = repository.groupMembers(id))
+                markRead()
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+            finally { ui = ui.copy(joining = false) }
+        }
+    }
+
+    fun leave(done: () -> Unit) {
+        if (ui.joining) return
+        ui = ui.copy(joining = true, error = null)
+        viewModelScope.launch {
+            try { repository.initialize(); repository.leaveGroup(id); ui = ui.copy(isMember = false); done() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+            finally { ui = ui.copy(joining = false) }
+        }
+    }
+
+    /** Server-side search across the whole chat, debounced. */
+    fun search(query: String) {
+        searchJob?.cancel()
+        val term = query.trim()
+        if (term.length < 2) { ui = ui.copy(searchHits = null, searching = false); return }
+        searchJob = viewModelScope.launch {
+            delay(280)
+            ui = ui.copy(searching = true)
+            try { ui = ui.copy(searchHits = repository.searchMessages(id, term)) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { ui = ui.copy(error = friendlyError(failure)) }
+            finally { ui = ui.copy(searching = false) }
+        }
+    }
+
+    /** Loads earlier pages (up to 1,000 messages back) until the message is in the thread, then asks the screen to show it. */
+    fun reveal(messageId: String) {
+        viewModelScope.launch {
+            var pages = 0
+            while (ui.messages.none { it.id == messageId } && ui.hasOlder && pages < 10) { loadOlder(); pages++ }
+            ui = if (ui.messages.any { it.id == messageId }) ui.copy(highlight = messageId, revealRequest = ui.revealRequest + 1)
+            else ui.copy(error = "That message is too far back to show here.")
+        }
+    }
+    fun clearHighlight() { ui = ui.copy(highlight = null) }
 }

@@ -129,7 +129,7 @@ internal enum class AdminActionStyle { Primary, Secondary, Danger }
     }
 }
 
-@Composable internal fun AdminContent(data: AdminData, repository: BorrowRepository, actions: ScreenActions, openLoan: (String) -> Unit) {
+@Composable internal fun AdminContent(data: AdminData, repository: BorrowRepository, actions: ScreenActions, openGroups: () -> Unit = {}, openLoan: (String) -> Unit) {
     val viewport = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
     var older by rememberSaveable { mutableStateOf(false) }
     // LazyColumn saves only currently visible item state across recreation. Keep
@@ -144,6 +144,8 @@ internal enum class AdminActionStyle { Primary, Secondary, Danger }
             item("header") {
                 Text("[ CONTROL ROOM — ADMIN ONLY ]", style = loanMono(10), color = Cargo.Accent)
                 Text("MODERATION DESK", Modifier.padding(top = 12.dp).testTag("admin-title"), style = sourceDisplayTitleStyle(), color = Cargo.Ink)
+                AdminAction("Group chats — create, edit, members →", openGroups, Modifier.padding(top = 20.dp).testTag("admin-groups-link"),
+                    AdminActionStyle.Secondary, fontSize = 11, start = true, rounded = false)
                 actions.error?.let { Text("[ ${adminText(it)} ]", Modifier.padding(top = 24.dp).testTag("admin-action-error")
                     .fillMaxWidth().border(1.dp, Cargo.Warn.copy(alpha = .5f)).background(Cargo.Warn.copy(alpha = .1f)).padding(horizontal = 17.dp, vertical = 13.dp),
                     style = loanMono(10).copy(lineHeight = 20.sp), color = Cargo.Warn) }

@@ -1,14 +1,51 @@
 "use client";
 
-import { Hash, Search } from "lucide-react";
+import { Archive, Hash, Lock, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { ConversationSummary } from "@/lib/data/chat";
 import { initials, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const filters = ["All", "Unread", "Public", "Private"] as const;
+const filters = ["All", "Unread", "Groups", "Private"] as const;
 type Filter = (typeof filters)[number];
+
+function GroupIcon({ row }: { row: ConversationSummary }) {
+  if (row.archived) return <Archive aria-hidden="true" size={15} />;
+  if (row.visibility === "invite") return <Lock aria-hidden="true" size={14} />;
+  return <Hash aria-hidden="true" size={16} />;
+}
+
+function Row({ row, selected }: { row: ConversationSummary; selected: boolean }) {
+  const community = row.type === "community";
+  const unread = row.unreadCount > 0 && !selected;
+  return (
+    <li>
+      <Link aria-current={selected ? "page" : undefined} className="chat-directory-row" href={`/chat/${row.id}`}>
+        <span className={cn("chat-channel-icon", community && "chat-channel-public")}>
+          {community ? <GroupIcon row={row} /> : initials(row.title)}
+        </span>
+        <span className="chat-directory-copy">
+          <span className="chat-directory-title">{row.title}</span>
+          <span className="chat-directory-preview">
+            {row.isMember
+              ? row.lastMessage || (community ? "Say hello to the group" : "Plan your pickup or return")
+              : row.subtitle}
+          </span>
+        </span>
+        <span className="chat-directory-meta">
+          <span>{row.isMember && row.lastMessageAt ? relativeTime(row.lastMessageAt) : ""}</span>
+          {unread && (
+            <span className="chat-unread-count" aria-label={`${row.unreadCount >= 100 ? "99+" : row.unreadCount} unread`}>
+              {row.unreadCount >= 100 ? "99+" : row.unreadCount}
+            </span>
+          )}
+          {!row.isMember && <span className="chat-join-hint">Join</span>}
+        </span>
+      </Link>
+    </li>
+  );
+}
 
 export function ChatDirectory({ conversations, activeId }: {
   conversations: ConversationSummary[];
@@ -20,17 +57,19 @@ export function ChatDirectory({ conversations, activeId }: {
   const unread = conversations.filter((row) => row.unread && row.id !== activeId).length;
   const matches = conversations.filter((row) => {
     if (filter === "Unread" && (!row.unread || row.id === activeId)) return false;
-    if (filter === "Public" && row.type !== "community") return false;
+    if (filter === "Groups" && row.type !== "community") return false;
     if (filter === "Private" && row.type !== "private") return false;
     return `${row.title} ${row.lastMessage ?? ""}`.toLowerCase().includes(term);
   });
+  const mine = matches.filter((row) => row.isMember);
+  const joinable = matches.filter((row) => !row.isMember);
 
   return (
     <section aria-label="Conversations" className="chat-directory">
       <header className="chat-directory-tools">
         <div className="chat-directory-heading">
           {activeId ? <h2>Messages</h2> : <h1>Messages</h1>}
-          {unread > 0 && <span>{unread} unread</span>}
+          {unread > 0 && <span>{unread} unread {unread === 1 ? "chat" : "chats"}</span>}
         </div>
         <label className="chat-search">
           <Search aria-hidden="true" size={17} />
@@ -43,29 +82,21 @@ export function ChatDirectory({ conversations, activeId }: {
         </div>
       </header>
       {matches.length ? (
-        <ol className="chat-directory-list">
-          {matches.map((row) => {
-            const community = row.type === "community";
-            const selected = row.id === activeId;
-            return (
-              <li key={row.id}>
-                <Link aria-current={selected ? "page" : undefined} className="chat-directory-row" href={`/chat/${row.id}`}>
-                  <span className={cn("chat-channel-icon", community && "chat-channel-public")}>
-                    {community ? <Hash aria-hidden="true" size={16} /> : initials(row.title)}
-                  </span>
-                  <span className="chat-directory-copy">
-                    <span className="chat-directory-title">{row.title}</span>
-                    <span className="chat-directory-preview">{row.lastMessage || (community ? "Start a campus conversation" : "Plan your pickup or return")}</span>
-                  </span>
-                  <span className="chat-directory-meta">
-                    <span>{row.lastMessageAt ? relativeTime(row.lastMessageAt) : ""}</span>
-                    {row.unread && !selected && <span className="chat-unread" aria-label="Unread" />}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ol>
+        <>
+          {mine.length > 0 && (
+            <ol className="chat-directory-list">
+              {mine.map((row) => <Row key={row.id} row={row} selected={row.id === activeId} />)}
+            </ol>
+          )}
+          {joinable.length > 0 && (
+            <>
+              <h3 className="chat-directory-section">Groups you can join</h3>
+              <ol className="chat-directory-list">
+                {joinable.map((row) => <Row key={row.id} row={row} selected={row.id === activeId} />)}
+              </ol>
+            </>
+          )}
+        </>
       ) : (
         <div className="chat-empty">
           <strong>{conversations.length ? (filter === "Unread" && !term ? "You’re caught up" : "No matching conversations") : "No conversations yet"}</strong>

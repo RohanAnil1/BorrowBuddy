@@ -281,28 +281,9 @@ class BorrowRepository(private val context: Context) {
     }.decodeList()
     suspend fun conversations(): List<Conversation> = client.from("conversations").select { order("created_at", Order.DESCENDING) }.decodeList()
     suspend fun conversation(id: String): Conversation? = client.from("conversations").select { filter { eq("id", id) } }.decodeSingleOrNull()
-    suspend fun conversationSummaries(userId: String): List<ConversationSummary> = coroutineScope {
-        val channels = conversations()
-        if (channels.isEmpty()) return@coroutineScope emptyList()
-        val ids = channels.map { it.id }
-        val members = async {
-            client.from("conversation_members").select(Columns.raw("*,profile:profiles(id,full_name,avatar_path,trust_score)")) {
-                filter { isIn("conversation_id", ids) }
-            }.decodeList<ConversationMember>()
-        }
-        val recent = async {
-            rpc("get_conversation_message_heads").decodeList<Message>()
-        }
-        val grouped = members.await().groupBy { it.conversation_id }
-        val latest = recent.await().groupBy { it.conversation_id }.mapValues { it.value.first() }
-        channels.map { channel ->
-            val membership = grouped[channel.id].orEmpty()
-            val message = latest[channel.id]
-            val read = membership.find { it.user_id == userId }?.last_read_at
-            ConversationSummary(channel, channel.title ?: membership.find { it.user_id != userId }?.profile?.full_name ?: "Loan chat",
-                message, message != null && (read == null || java.time.Instant.parse(message.created_at) > java.time.Instant.parse(read)))
-        }.sortedByDescending { it.latest?.created_at.orEmpty() }
-    }
+    /** Every chat you can see (loan chats, your groups, open groups to join) with unread counts. */
+    suspend fun conversationSummaries(userId: String): List<ConversationSummary> =
+        rpc("get_chat_inbox").decodeList<ChatInboxRow>().map { it.toSummary(userId) }
     suspend fun unreadNotifications(userId: String): Int = (client.from("notifications").select(Columns.raw("id")) {
         head = true; count(Count.EXACT); filter { eq("user_id", userId); exact("read_at", null) }
     }.countOrNull() ?: 0).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
@@ -317,11 +298,57 @@ class BorrowRepository(private val context: Context) {
         }
         order("created_at", Order.DESCENDING); order("id", Order.DESCENDING); limit(pageSize.toLong())
     }.decodeList<Message>().reversed()
-    suspend fun sendMessage(id: String, userId: String, text: String): Message {
+    suspend fun sendMessage(id: String, userId: String, text: String, replyTo: String? = null): Message {
         require(text.trim().length in 1..2000) { "Write a message of up to 2000 characters." }
-        return client.from("messages").insert(buildJsonObject { put("conversation_id", id); put("sender_id", userId); put("body", text.trim()) }) {
+        return client.from("messages").insert(buildJsonObject {
+            put("conversation_id", id); put("sender_id", userId); put("body", text.trim())
+            if (replyTo != null) put("reply_to_id", replyTo)
+        }) {
             select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)"))
         }.decodeSingle()
+    }
+    /** Quoted messages that aren't in the loaded page. */
+    suspend fun messagesById(ids: Collection<String>): List<Message> = if (ids.isEmpty()) emptyList() else
+        client.from("messages").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
+            filter { isIn("id", ids.take(50)) }
+        }.decodeList()
+    suspend fun editMessage(messageId: String, text: String): Message {
+        require(text.trim().length in 1..2000) { "Write a message of up to 2000 characters." }
+        return rpc("edit_message", buildJsonObject { put("p_message_id", messageId); put("p_body", text.trim()) }).decodeAs()
+    }
+    suspend fun deleteMessage(messageId: String) { rpc("delete_message", buildJsonObject { put("p_message_id", messageId) }) }
+    suspend fun toggleReaction(messageId: String, emoji: String): Map<String, List<String>> =
+        rpc("toggle_message_reaction", buildJsonObject { put("p_message_id", messageId); put("p_emoji", emoji) }).decodeAs()
+    suspend fun searchMessages(conversationId: String, query: String): List<MessageSearchHit> =
+        rpc("search_conversation_messages", buildJsonObject { put("p_conversation_id", conversationId); put("p_query", query.trim()); put("p_limit", 30) }).decodeList()
+
+    // Groups
+    suspend fun groupMembers(id: String): List<GroupMember> = rpc("get_group_members", buildJsonObject { put("p_group_id", id) }).decodeList()
+    suspend fun joinGroup(id: String) { rpc("join_group", buildJsonObject { put("p_group_id", id) }) }
+    suspend fun leaveGroup(id: String) { rpc("leave_group", buildJsonObject { put("p_group_id", id) }) }
+    /** Admin only; the database refuses everyone else. */
+    suspend fun adminGroups(): List<AdminGroup> = rpc("admin_list_groups").decodeList()
+    suspend fun createGroup(title: String, description: String, visibility: String): String =
+        rpc("admin_create_group", buildJsonObject {
+            put("p_title", title.trim()); put("p_description", description.trim().ifEmpty { null }); put("p_visibility", visibility)
+        }).decodeAs()
+    suspend fun updateGroup(id: String, title: String, description: String, visibility: String, archived: Boolean) {
+        rpc("admin_update_group", buildJsonObject {
+            put("p_group_id", id); put("p_title", title.trim()); put("p_description", description.trim().ifEmpty { null })
+            put("p_visibility", visibility); put("p_archived", archived)
+        })
+    }
+    suspend fun deleteGroup(id: String) { rpc("admin_delete_group", buildJsonObject { put("p_group_id", id) }) }
+    suspend fun addGroupMember(id: String, userId: String) { rpc("admin_add_group_member", buildJsonObject { put("p_group_id", id); put("p_user_id", userId) }) }
+    suspend fun removeGroupMember(id: String, userId: String) { rpc("admin_remove_group_member", buildJsonObject { put("p_group_id", id); put("p_user_id", userId) }) }
+    /** Verified students by name, public columns only. */
+    suspend fun searchStudents(query: String): List<Profile> {
+        val term = query.replace(Regex("[%_,()]"), " ").replace('\\', ' ').trim()
+        if (term.length < 2) return emptyList()
+        return client.from("profiles").select(Columns.raw("id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,created_at")) {
+            filter { eq("verification_status", "verified"); ilike("full_name", "%$term%") }
+            order("full_name", Order.ASCENDING); limit(12)
+        }.decodeList()
     }
     /** The verification queue with email and ID upload; the database refuses anyone who isn't an admin. */
     suspend fun pendingProfiles(): List<Profile> = rpc("admin_pending_profiles", buildJsonObject { put("p_limit", 50) }).decodeList()

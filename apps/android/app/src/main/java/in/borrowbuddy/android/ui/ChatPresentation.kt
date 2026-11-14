@@ -98,7 +98,7 @@ internal fun chatDay(message: Message) = chatDayFormat.format(Instant.parse(mess
     }
 }
 
-private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"), Public("Public"), Private("Private") }
+private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"), Groups("Groups"), Private("Private") }
 
 @Composable internal fun ChatsContent(chats: List<ConversationSummary>, open: (String) -> Unit) {
     val viewport = chatViewport()
@@ -109,7 +109,7 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
         val visible = when (filter) {
             ChatFilter.All -> true
             ChatFilter.Unread -> it.unread
-            ChatFilter.Public -> it.conversation.type == "community"
+            ChatFilter.Groups -> it.conversation.type == "community"
             ChatFilter.Private -> it.conversation.type == "private"
         }
         visible && "${it.title} ${it.latest?.body.orEmpty()}".contains(term, ignoreCase = true)
@@ -126,7 +126,7 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Messages", Modifier.weight(1f).testTag("chat-list-title").semantics { heading() },
                             style = loanBody(24).copy(fontFamily = Cargo.Strong), color = Cargo.Ink)
-                        if (unread > 0) Text("$unread unread", style = loanBody(11), color = ChatMuted)
+                        if (unread > 0) Text("$unread unread ${if (unread == 1) "chat" else "chats"}", style = loanBody(11), color = ChatMuted)
                     }
                     ChatSearchField("Search conversations", query, { query = it })
                     FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -140,7 +140,34 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
                 else Text(if (filter == ChatFilter.Unread && term.isEmpty()) "You’re caught up" else "No matching conversations",
                     Modifier.fillMaxWidth().background(ChatPanel).padding(24.dp), style = loanBody(13), color = ChatMuted, textAlign = TextAlign.Center)
             }
-            items(matches, key = { it.conversation.id }) { chat ->
+            val mine = matches.filter { it.isMember }
+            val joinable = matches.filter { !it.isMember }
+            items(mine, key = { it.conversation.id }) { chat -> ChatDirectoryRow(chat, open) }
+            if (joinable.isNotEmpty()) item("joinable-heading") {
+                Text("GROUPS YOU CAN JOIN", Modifier.fillMaxWidth().background(ChatPanel).padding(start = 13.dp, top = 14.dp, bottom = 6.dp)
+                    .semantics { heading() }, style = loanMono(9), color = ChatMuted)
+            }
+            items(joinable, key = { it.conversation.id }) { chat -> ChatDirectoryRow(chat, open) }
+        }
+    }
+}
+
+/** "Open group · 12 members", "Invite-only group", "Archived group". */
+internal fun groupKind(visibility: String, archived: Boolean, members: Int?): String {
+    val kind = if (archived) "Archived group" else if (visibility == "invite") "Invite-only group" else "Open group"
+    return if (members == null) kind else "$kind · $members ${if (members == 1) "member" else "members"}"
+}
+
+internal fun chatPreview(chat: ConversationSummary): String {
+    val community = chat.conversation.type == "community"
+    if (!chat.isMember) return groupKind(chat.conversation.visibility, chat.conversation.archived_at != null, chat.memberCount)
+    val latest = chat.latest ?: return if (community) "Say hello to the group" else "Plan your pickup or return"
+    val text = if (latest.deleted_at != null) "Message deleted" else latest.body.ifBlank { "Photo" }
+    return chat.latestSender?.let { "$it: $text" } ?: text
+}
+
+@Composable private fun ChatDirectoryRow(chat: ConversationSummary, open: (String) -> Unit) {
+            run {
                 val community = chat.conversation.type == "community"
                 val interactions = remember { MutableInteractionSource() }
                 val hovered by interactions.collectIsHoveredAsState()
@@ -153,22 +180,27 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
                     Box(Modifier.size(36.dp).background(if (community) Color(0xff233347) else Color(0xff2b333f), CircleShape),
                         contentAlignment = Alignment.Center) {
                         val initials = chat.title.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase()
-                        Text(if (community) "#" else initials, style = loanBody(if (community) 16 else 11), color = Color(0xffd4dbe7))
+                        val glyph = when { !community -> initials; chat.conversation.archived_at != null -> "▤"; chat.conversation.visibility == "invite" -> "\uD83D\uDD12"; else -> "#" }
+                        Text(glyph, style = loanBody(if (community) 15 else 11), color = Color(0xffd4dbe7))
                     }
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(chat.title, Modifier.weight(1f, fill = false), style = loanBody(14).copy(fontFamily = Cargo.Strong), color = Cargo.Ink,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (chat.unread) Box(Modifier.size(6.dp).background(ChatAmber, CircleShape).semantics { contentDescription = "Unread conversation" })
+                            if (chat.unreadCount > 0) {
+                                val count = if (chat.unreadCount >= 100) "99+" else chat.unreadCount.toString()
+                                Text(count, Modifier.background(ChatAmber, RoundedCornerShape(10.dp)).padding(horizontal = 6.dp, vertical = 1.dp)
+                                    .semantics { contentDescription = "$count unread" }.testTag("chat-unread-${chat.conversation.id}"),
+                                    style = loanBody(10).copy(fontFamily = Cargo.Strong), color = Cargo.Panel)
+                            }
                         }
-                        Text(chat.latest?.body ?: if (community) "Start a campus conversation" else "Plan your pickup or return",
+                        Text(chatPreview(chat),
                             Modifier.padding(top = 4.dp), style = loanBody(12), color = ChatMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    chat.latest?.let { Text(loanRelativeTime(it.created_at), style = loanMono(9), color = ChatMuted) }
+                    if (!chat.isMember) Text("JOIN", style = loanMono(9), color = ChatAmber)
+                    else chat.latest?.let { Text(loanRelativeTime(it.created_at), style = loanMono(9), color = ChatMuted) }
                 }
             }
-        }
-    }
 }
 
 @Composable private fun ChatEmptyList() {
@@ -202,7 +234,8 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
             Column(Modifier.weight(1f)) {
                 Text(state.title, Modifier.testTag("chat-thread-title").semantics { heading() },
                     style = loanBody(17).copy(fontFamily = Cargo.Strong), color = Cargo.Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(if (state.community) "Community channel" else "Private loan channel", style = loanBody(11), color = ChatMuted)
+                Text(if (state.community) groupKind(state.visibility, state.archived, state.members.size) else "Private loan channel",
+                    style = loanBody(11), color = ChatMuted)
             }
             state.counterpart?.let { user ->
                 Row(Modifier.heightIn(min = 44.dp).clickable(role = Role.Button) { openProfile(user.id) }
@@ -213,7 +246,7 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
                 }
             }
             ChatIconAction(if (searchOpen) R.drawable.ic_x else R.drawable.ic_search,
-                if (searchOpen) "Close search" else "Find messages", onClick = toggleSearch)
+                if (searchOpen) "Close search" else "Search this chat", onClick = toggleSearch)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(ChatBorder))
     }
@@ -237,11 +270,38 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
     }
 }
 
+/** What you can do with one message, and its reply preview. */
+internal data class MessageActions(
+    val userId: String, val canPost: Boolean, val canDelete: Boolean,
+    val quote: Pair<String, String>? = null, val highlighted: Boolean = false,
+    val react: (String) -> Unit = {}, val reply: () -> Unit = {}, val edit: () -> Unit = {},
+    val delete: () -> Unit = {}, val openQuote: () -> Unit = {},
+)
+
+/** Who a reply quotes and a one-line preview, or a placeholder when the message isn't loaded yet. */
+internal fun quotePreview(quoted: Message?, userId: String): Pair<String, String> {
+    if (quoted == null) return "Earlier message" to ""
+    val name = if (quoted.sender_id == userId) "You" else quoted.sender?.full_name ?: "Campus member"
+    val text = if (quoted.deleted_at != null) "Message deleted" else quoted.body.ifBlank { "Photo" }.replace(Regex("\\s+"), " ")
+    return name to text
+}
+
+internal fun chatDayOf(iso: String): String = runCatching { chatDayFormat.format(Instant.parse(iso)) }.getOrDefault("")
+
 @Composable internal fun ChatMessageRow(
     message: Message, mine: Boolean, day: String?, startsGroup: Boolean, endsGroup: Boolean, bubbleWidth: Dp,
+    actions: MessageActions = MessageActions("", canPost = false, canDelete = false),
 ) {
     val context = LocalContext.current
     var menuOpen by remember(message.id) { mutableStateOf(false) }
+    var confirmDelete by remember(message.id) { mutableStateOf(false) }
+    val deleted = message.deleted_at != null
+    if (confirmDelete) androidx.compose.material3.AlertDialog(onDismissRequest = { confirmDelete = false },
+        title = { Text(if (mine) "Delete this message?" else "Delete as admin?") },
+        text = { Text("It will show as “Message deleted” for everyone in this chat. This can’t be undone.") },
+        confirmButton = { androidx.compose.material3.TextButton({ confirmDelete = false; actions.delete() }) { Text("Delete", color = Cargo.Warn) } },
+        dismissButton = { androidx.compose.material3.TextButton({ confirmDelete = false }) { Text("Keep it") } },
+        containerColor = ChatRaised)
     Column(Modifier.fillMaxWidth().testTag("message-${message.id}"), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
         if (day != null) {
             Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically,
@@ -255,21 +315,68 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
             horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
             if (!mine && startsGroup) Text(message.sender?.full_name ?: "Campus member", Modifier.padding(start = 3.dp, bottom = 3.dp),
                 style = loanBody(11).copy(fontFamily = Cargo.Strong), color = ChatMuted)
+            actions.quote?.let { (name, text) ->
+                Row(Modifier.padding(bottom = 3.dp).background(Color(0x08ffffff), RoundedCornerShape(5.dp))
+                    .clickable(role = Role.Button, onClickLabel = "Show the quoted message", onClick = actions.openQuote)
+                    .drawBehind { drawLine(ChatAmber, Offset(0f, 0f), Offset(0f, size.height), 2.dp.toPx()) }
+                    .padding(horizontal = 9.dp, vertical = 5.dp).testTag("chat-quote-${message.id}"),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(name, style = loanBody(11).copy(fontFamily = Cargo.Strong), color = Color(0xffd4dbe7), maxLines = 1)
+                    Text(text, style = loanBody(11), color = ChatMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
             Box {
                 val shape = RoundedCornerShape(8.dp)
-                Text(message.body, Modifier.testTag("chat-bubble-${message.id}").semantics { this[ChatBubbleMine] = mine }
-                    .background(if (mine) Color(0xff333b48) else Color(0xff232832), shape)
-                    .combinedClickable(onClickLabel = "Message options", onClick = { menuOpen = true },
-                        onLongClickLabel = "Message options", onLongClick = { menuOpen = true })
+                val label = when {
+                    deleted -> "Message deleted"
+                    message.edited_at != null -> "${message.body.ifBlank { "Photo" }}  (edited)"
+                    else -> message.body.ifBlank { "Photo" }
+                }
+                Text(label, Modifier.testTag("chat-bubble-${message.id}").semantics { this[ChatBubbleMine] = mine }
+                    .then(if (deleted) Modifier.border(1.dp, ChatBorder, shape)
+                        else Modifier.background(if (mine) Color(0xff333b48) else Color(0xff232832), shape))
+                    .then(if (actions.highlighted) Modifier.border(2.dp, ChatAmber, shape) else Modifier)
+                    .then(if (deleted) Modifier else Modifier.combinedClickable(onClickLabel = "Message options", onClick = { menuOpen = true },
+                        onLongClickLabel = "Message options", onLongClick = { menuOpen = true }))
                     .padding(horizontal = 11.dp, vertical = 7.dp),
-                    style = loanBody(14).copy(lineHeight = 22.sp), color = Cargo.Ink)
+                    style = loanBody(14).copy(lineHeight = 22.sp, fontStyle = if (deleted) androidx.compose.ui.text.font.FontStyle.Italic else null),
+                    color = if (deleted) ChatMuted else Cargo.Ink)
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = ChatRaised) {
+                    if (actions.canPost) Row(Modifier.padding(horizontal = 6.dp).testTag("chat-reaction-picker"), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        MessageReactions.forEach { emoji ->
+                            val reacted = actions.userId in message.reactions[emoji].orEmpty()
+                            Box(Modifier.size(38.dp).background(if (reacted) Color(0x24efb35a) else Color.Transparent, RoundedCornerShape(7.dp))
+                                .clickable(role = Role.Button) { menuOpen = false; actions.react(emoji) }
+                                .semantics { contentDescription = "React $emoji" }, contentAlignment = Alignment.Center) {
+                                Text(emoji, fontSize = 18.sp)
+                            }
+                        }
+                    }
+                    if (actions.canPost) DropdownMenuItem(text = { Text("Reply") }, onClick = { menuOpen = false; actions.reply() })
                     DropdownMenuItem(text = { Text("Copy message") }, onClick = {
                         val clip = android.content.ClipData.newPlainText("BorrowBuddy message", message.body)
                         clip.description.extras = android.os.PersistableBundle().apply { putBoolean("android.content.extra.IS_SENSITIVE", true) }
                         context.getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(clip)
                         menuOpen = false
                     })
+                    if (mine && actions.canPost) DropdownMenuItem(text = { Text("Edit") }, onClick = { menuOpen = false; actions.edit() })
+                    if (actions.canDelete) DropdownMenuItem(text = { Text(if (mine) "Delete" else "Delete as admin", color = Cargo.Warn) },
+                        onClick = { menuOpen = false; confirmDelete = true })
+                }
+            }
+            val reactions = message.reactions.filterValues { it.isNotEmpty() }
+            if (reactions.isNotEmpty()) FlowRow(Modifier.padding(top = 3.dp).testTag("chat-reactions-${message.id}"), horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                reactions.forEach { (emoji, users) ->
+                    val reacted = actions.userId in users
+                    Row(Modifier.heightIn(min = 28.dp).background(if (reacted) Color(0x24efb35a) else ChatPanel, RoundedCornerShape(14.dp))
+                        .border(1.dp, if (reacted) ChatAmber else ChatBorder, RoundedCornerShape(14.dp))
+                        .clickable(enabled = actions.canPost, role = Role.Button) { actions.react(emoji) }
+                        .semantics { contentDescription = "$emoji ${users.size}${if (reacted) ", including you" else ""}"; selected = reacted }
+                        .padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(emoji, fontSize = 13.sp)
+                        Text(users.size.toString(), style = loanBody(11), color = if (reacted) Cargo.Ink else ChatMuted)
+                    }
                 }
             }
             if (endsGroup) Text(chatTimeFormat.format(Instant.parse(message.created_at)), Modifier.padding(horizontal = 3.dp, vertical = 2.dp),
@@ -277,20 +384,35 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
         }
     }
 }
-@Composable internal fun ChatComposer(state: ChatUiState, onDraft: (String) -> Unit, send: () -> Unit, showSuggestions: Boolean = true) {
+@Composable internal fun ChatComposer(state: ChatUiState, onDraft: (String) -> Unit, send: () -> Unit, showSuggestions: Boolean = true,
+    cancelContext: () -> Unit = {}) {
     val interactions = remember { MutableInteractionSource() }
     val focused by interactions.collectIsFocusedAsState()
     val focus = remember { FocusRequester() }
     Column(Modifier.fillMaxWidth().background(ChatPanel).testTag("chat-composer-panel")) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(ChatBorder))
         state.error?.let { Text(it, Modifier.padding(8.dp), style = loanBody(11), color = ChatAmber) }
+        val context = state.editing?.let { "Editing your message" to it.body }
+            ?: state.replyTo?.let { "Replying to ${it.sender?.full_name ?: "Campus member"}" to it.body.ifBlank { "Photo" } }
+        LaunchedEffect(state.editing?.id, state.replyTo?.id) { if (context != null) runCatching { focus.requestFocus() } }
+        context?.let { (label, text) ->
+            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = 6.dp).testTag("chat-compose-context"),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.width(2.dp).height(30.dp).background(ChatAmber))
+                Column(Modifier.weight(1f)) {
+                    Text(label, style = loanBody(11).copy(fontFamily = Cargo.Strong), color = Cargo.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text, style = loanBody(11), color = ChatMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                ChatIconAction(R.drawable.ic_x, if (state.editing != null) "Cancel editing" else "Cancel reply", onClick = cancelContext)
+            }
+        }
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BasicTextField(state.draft, onDraft, Modifier.weight(1f).heightIn(min = 47.dp)
                 .background(ChatHistory, RoundedCornerShape(7.dp)).border(1.dp, if (focused) ChatAmber else ChatBorder, RoundedCornerShape(7.dp))
                 .focusRequester(focus)
                 .testTag("chat-composer")
-                .semantics { contentDescription = "Write a message"; maxTextLength = 2000 }
+                .semantics { contentDescription = if (state.editing != null) "Edit your message" else "Write a message"; maxTextLength = 2000 }
                 .onPreviewKeyEvent {
                     if (it.type == KeyEventType.KeyDown && it.key == Key.Enter && !it.isShiftPressed) { send(); true } else false
                 }, interactionSource = interactions, maxLines = 5,
@@ -298,7 +420,7 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
                 cursorBrush = SolidColor(Cargo.Accent), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { send() }),
                 decorationBox = { inner -> Box(Modifier.padding(horizontal = 17.dp, vertical = 13.dp)) {
-                    if (state.draft.isEmpty()) Text("Write a message…", style = loanBody(14), color = ChatMuted)
+                    if (state.draft.isEmpty()) Text(if (state.editing != null) "Edit your message…" else "Write a message…", style = loanBody(14), color = ChatMuted)
                     inner()
                 } })
             val enabled = !state.sending && state.draft.isNotBlank() && state.initialized
@@ -307,11 +429,11 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
             val buttonColor = if (!enabled) ChatRaised else if (hovered) Color(0xffffd08c) else ChatAmber
             Box(Modifier.size(44.dp).background(buttonColor, RoundedCornerShape(7.dp)).hoverable(buttonInteraction)
                 .clickable(buttonInteraction, LocalIndication.current, enabled = enabled, role = Role.Button, onClick = send)
-                .semantics { contentDescription = "Send message" }.testTag("chat-send"), contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.ic_send), null, Modifier.size(18.dp), tint = if (enabled) Cargo.Panel else ChatMuted)
+                .semantics { contentDescription = if (state.editing != null) "Save edit" else "Send message" }.testTag("chat-send"), contentAlignment = Alignment.Center) {
+                Icon(painterResource(if (state.editing != null) R.drawable.ic_check else R.drawable.ic_send), null, Modifier.size(18.dp), tint = if (enabled) Cargo.Panel else ChatMuted)
             }
         }
-        if (showSuggestions && state.initialized && !state.community && state.draft.isEmpty()) {
+        if (showSuggestions && state.initialized && !state.community && state.draft.isEmpty() && context == null) {
             FlowRow(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 ChatTextAction("Plan pickup", { onDraft("When and where works for pickup?"); focus.requestFocus() })
                 ChatTextAction("Plan return", { onDraft("When and where works for the return?"); focus.requestFocus() })
@@ -319,5 +441,56 @@ private enum class ChatFilter(val label: String) { All("All"), Unread("Unread"),
         }
         if (state.draft.length >= 1800) Text("${state.draft.length} / 2000",
             Modifier.align(Alignment.End).padding(end = 8.dp, bottom = 4.dp), style = loanBody(10), color = ChatMuted)
+    }
+}
+
+/** Description, members and leave, under a group's header. */
+@Composable internal fun ChatGroupStrip(state: ChatUiState, membersOpen: Boolean, toggleMembers: () -> Unit,
+    openProfile: (String) -> Unit, leave: () -> Unit) {
+    var confirmLeave by remember { mutableStateOf(false) }
+    if (confirmLeave) androidx.compose.material3.AlertDialog(onDismissRequest = { confirmLeave = false },
+        title = { Text("Leave ${state.title}?") },
+        text = { Text(if (state.visibility == "invite") "It’s invite-only: an admin will have to add you back." else "You can join again any time.") },
+        confirmButton = { androidx.compose.material3.TextButton({ confirmLeave = false; leave() }) { Text("Leave", color = Cargo.Warn) } },
+        dismissButton = { androidx.compose.material3.TextButton({ confirmLeave = false }) { Text("Stay") } },
+        containerColor = ChatRaised)
+    Column(Modifier.fillMaxWidth().background(ChatPanel).testTag("chat-group-strip")) {
+        state.description?.let { Text(it, Modifier.padding(horizontal = 13.dp, vertical = 6.dp), style = loanBody(12), color = Color(0xffd4dbe7), maxLines = 3, overflow = TextOverflow.Ellipsis) }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            ChatTextAction("${if (membersOpen) "Hide" else "Show"} ${state.members.size} ${if (state.members.size == 1) "member" else "members"}", toggleMembers)
+            Spacer(Modifier.weight(1f))
+            if (state.isMember) ChatTextAction(if (state.joining) "Leaving…" else "Leave group", { if (!state.joining) confirmLeave = true })
+        }
+        if (membersOpen) Column(Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState()).testTag("chat-group-members")) {
+            state.members.forEach { member ->
+                Row(Modifier.fillMaxWidth().clickable(role = Role.Button) { openProfile(member.user_id) }.padding(horizontal = 13.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val initials = member.full_name.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase()
+                    Box(Modifier.size(26.dp).background(Color(0xff2b333f), CircleShape), contentAlignment = Alignment.Center) {
+                        Text(initials.ifEmpty { "?" }, style = loanBody(9), color = Color(0xffd4dbe7))
+                    }
+                    Text(member.full_name.ifBlank { "Campus member" } + if (member.is_admin) " · admin" else "", style = loanBody(12), color = Cargo.Ink)
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(ChatBorder))
+    }
+}
+
+/** Instead of the composer: join an open group, or why you can't post. */
+@Composable internal fun ChatClosedComposer(state: ChatUiState, join: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(ChatPanel).testTag("chat-closed-composer")) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(ChatBorder))
+        state.error?.let { Text(it, Modifier.padding(8.dp), style = loanBody(11), color = ChatAmber) }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(when {
+                state.archived -> "This group is archived. You can read the history, but nobody can post."
+                state.canJoin && state.visibility == "invite" -> "You can read this invite-only group as an admin. Join to post."
+                state.canJoin -> "You’re previewing this group. Join to post, react and get unread counts."
+                else -> "Only members can post here."
+            }, Modifier.weight(1f), style = loanBody(12), color = ChatMuted)
+            if (state.canJoin) CargoButton(if (state.joining) "Joining…" else "Join group", join, enabled = !state.joining)
+        }
     }
 }

@@ -11,5 +11,6 @@ export function notificationHref(notification: Pick<Notification, "payload">): s
 
   if (typeof loanId === "string") return `/loans/${encodeURIComponent(loanId)}`;
   if (typeof itemId === "string") return `/items/${encodeURIComponent(itemId)}`;
+  if (typeof payload.conversation_id === "string") return `/chat/${encodeURIComponent(payload.conversation_id)}`;
   return null;
 }

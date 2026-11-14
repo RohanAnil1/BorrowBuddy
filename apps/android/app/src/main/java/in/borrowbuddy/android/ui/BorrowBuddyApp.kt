@@ -154,7 +154,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
                 composable("campus/$section/{id}/edit") { backStack -> CampusPostEditor(repository, profile, kind, backStack.arguments!!.getString("id")!!, ::open) }
                 composable("campus/$section/{id}") { backStack -> CampusPostScreen(repository, profile, backStack.arguments!!.getString("id")!!, ::open) }
             }
-            composable("admin") { AdminScreen(repository, profile) { open("loans/$it") } }
+            composable("admin") { AdminScreen(repository, profile, { open("loans/$it") }) { open("admin/groups") } }
+            composable("admin/groups") { AdminGroupsScreen(repository, profile, ::open) }
+            composable("admin/groups/{id}") { backStack -> AdminGroupScreen(repository, profile, backStack.arguments!!.getString("id")!!, ::open) { nav.popBackStack() } }
             composable("buddy") { BuddyScreen(buddy, firstName, "buddy", ::open) }
         }
         }

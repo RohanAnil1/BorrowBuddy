@@ -189,12 +189,20 @@ export interface WaitlistEntry {
   created_at: Timestamp;
 }
 
+export type GroupVisibility = "open" | "invite";
+
 export interface Conversation {
   id: string;
   type: ConversationType;
   loan_id: string | null;
   title: string | null;
+  /** Groups only (type "community"). */
+  description: string | null;
+  visibility: GroupVisibility;
+  archived_at: Timestamp | null;
+  created_by: string | null;
   created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
 export interface ConversationMember {
@@ -210,6 +218,12 @@ export interface Message {
   sender_id: string;
   body: string;
   image_path: string | null;
+  reply_to_id: string | null;
+  edited_at: Timestamp | null;
+  /** Set when the sender or an admin deleted it; body and image are cleared. */
+  deleted_at: Timestamp | null;
+  /** Emoji -> ids of the students who reacted with it. */
+  reactions: Record<string, string[]>;
   created_at: Timestamp;
 }
 
