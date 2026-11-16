@@ -33,7 +33,20 @@ private enum class AuthMode { SignIn, SignUp, Forgot }
     ScreenColumn {
         CargoButton("← BorrowBuddy", back, secondary = true)
         CargoTitle(when (mode) { AuthMode.SignUp -> "Get your campus pass"; AuthMode.Forgot -> "Locked out?"; AuthMode.SignIn -> "Welcome back" })
-        if (mode == AuthMode.Forgot) CargoPanel {
+        val confirming = state.confirmEmail
+        if (confirming != null && mode != AuthMode.Forgot) CargoPanel {
+            CargoLabel("[ CHECK YOUR INBOX ]", Cargo.Accent)
+            CargoBody(if (state.confirmJustSent) "Your pass is almost ready. We sent a confirmation link to $confirming."
+                else "$confirming isn't confirmed yet. Open the confirmation link we emailed you.")
+            CargoBody("Open the link, then come back here and sign in. Nothing after a few minutes? Check spam, or send it again.")
+            if (state.confirmResent) CargoLabel("[ SENT AGAIN. ONLY THE NEWEST LINK WORKS. ]", Cargo.Accent)
+            state.error?.let { CargoLabel("[ $it ]", Cargo.Warn) }
+            CargoButton("I've confirmed: sign in", { email = confirming; mode = AuthMode.SignIn; model.dismissConfirmation() },
+                enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth-confirmed-sign-in"))
+            CargoButton("Send the link again", model::resendConfirmation, secondary = true, enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().testTag("auth-resend-confirmation"))
+            if (state.busy) CircularProgressIndicator(color = Cargo.Accent)
+        } else if (mode == AuthMode.Forgot) CargoPanel {
             CargoLabel("[ RESET PASS · LINKS WORK ONCE ]")
             val sent = sentTo
             if (sent != null) {

@@ -7,6 +7,7 @@ import `in`.borrowbuddy.android.domain.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.exception.AuthErrorCode
 import io.github.jan.supabase.auth.exception.AuthRestException
@@ -30,6 +31,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
+
+/** The account exists but its email isn't confirmed; [justSent]: sign-up just emailed the link. */
+class EmailNotConfirmed(val email: String, val justSent: Boolean) : Exception("Confirm your email first.")
 
 const val RESET_LINK_EXPIRED = "That reset link has expired or was already used. Ask for a new one."
 
@@ -80,14 +84,43 @@ class BorrowRepository(private val context: Context) {
     suspend fun signIn(email: String, password: String) {
         Rules.validateEmail(email)?.let { error(it) }
         require(password.isNotBlank()) { "Enter your password." }
-        client.auth.signInWith(Email) { this.email = email.trim().lowercase(); this.password = password }
+        val address = email.trim().lowercase()
+        try { client.auth.signInWith(Email) { this.email = address; this.password = password } }
+        catch (failure: AuthRestException) {
+            if (failure.errorCode == AuthErrorCode.EmailNotConfirmed) throw EmailNotConfirmed(address, justSent = false)
+            throw failure
+        }
     }
     suspend fun signUp(email: String, password: String, confirmation: String) {
         Rules.validateEmail(email)?.let { error(it) }
         Rules.validatePassword(password)?.let { error(it) }
         require(password == confirmation) { "Passwords don't match." }
-        client.auth.signUpWith(Email) { this.email = email.trim().lowercase(); this.password = password }
-        require(client.auth.currentUserOrNull() != null) { "Your Supabase project requires email confirmation. Confirm the email before signing in." }
+        val address = email.trim().lowercase()
+        val user = try {
+            client.auth.signUpWith(Email, redirectUrl = confirmRedirect()) { this.email = address; this.password = password }
+        } catch (failure: AuthRestException) {
+            when (failure.errorCode) {
+                AuthErrorCode.UserAlreadyExists, AuthErrorCode.EmailExists -> error("That email already has a pass. Sign in instead.")
+                AuthErrorCode.OverEmailSendRateLimit -> error("Too many emails sent. Wait a few minutes, then try again.")
+                else -> throw failure
+            }
+        }
+        if (client.auth.currentUserOrNull() != null) return
+        // With email confirmation on there's no session yet; an address that's
+        // already confirmed comes back with no identities.
+        if (user != null && user.identities.isNullOrEmpty()) error("That email already has a pass. Sign in instead.")
+        throw EmailNotConfirmed(address, justSent = true)
+    }
+    /** The confirmation link opens the website, which confirms the email; then sign in here. */
+    private fun confirmRedirect(): String? =
+        BuildConfig.BORROWBUDDY_WEB_URL.trim().trimEnd('/').takeIf { it.isNotBlank() }?.let { "$it/auth/callback?next=/onboarding" }
+    suspend fun resendConfirmation(email: String) {
+        try { client.auth.resendEmail(OtpType.Email.SIGNUP, email.trim().lowercase(), redirectUrl = confirmRedirect()) }
+        catch (failure: AuthRestException) {
+            if (failure.errorCode == AuthErrorCode.OverEmailSendRateLimit || failure.errorCode == AuthErrorCode.OverRequestRateLimit)
+                error("Too many emails sent. Wait a few minutes, then try again.")
+            throw failure
+        }
     }
     suspend fun signOut() { client.auth.signOut() }
     /** Emails a reset link that comes back into this app (through the website, which hands the code over). */
