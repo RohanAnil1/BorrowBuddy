@@ -1,13 +1,25 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { signInSchema, signUpSchema } from "@borrowbuddy/shared";
+import { bennettEmailSchema, signInSchema, signUpSchema } from "@borrowbuddy/shared";
+import { siteOrigin } from "@/lib/auth/site-origin";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * "confirm": the account exists but its email isn't confirmed yet; the form
+ * shows "check your inbox" for [email] with a way to send the link again.
+ */
 export type AuthState = {
-  status: "idle" | "error";
+  status: "idle" | "error" | "confirm";
   message?: string;
+  email?: string;
+  resent?: boolean;
 };
+
+/** Where the confirmation email brings the student back: signed in, onto onboarding. */
+async function confirmRedirect(): Promise<string> {
+  return `${await siteOrigin()}/auth/callback?next=/onboarding`;
+}
 
 function safeNext(value: FormDataEntryValue | null): string {
   const next = String(value ?? "").trim();
@@ -47,6 +59,9 @@ export async function signInWithCredentials(
   });
 
   if (error) {
+    if (error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message)) {
+      return { status: "confirm", email: parsed.data.email };
+    }
     return {
       status: "error",
       message: /invalid login credentials/i.test(error.message)
@@ -86,21 +101,58 @@ export async function signUpWithCredentials(
     };
   }
 
-  // Email confirmations are disabled, so a successful signup starts the
-  // session immediately and onboarding (name + student ID) can begin.
-  const { error } = await supabase.auth.signUp({
+  // With email confirmation on, sign-up sends a link and starts no session;
+  // with it off, the session starts now and onboarding can begin.
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
+    options: { emailRedirectTo: await confirmRedirect() },
   });
 
   if (error) {
     return {
       status: "error",
-      message: /already registered/i.test(error.message)
+      message: /already registered|already exists/i.test(error.message)
         ? "That email already has a pass — sign in instead."
-        : error.message,
+        : /rate limit/i.test(error.message)
+          ? "Too many emails sent. Wait a few minutes, then try again."
+          : error.message,
     };
   }
 
-  redirect("/onboarding");
+  if (data.session) redirect("/onboarding");
+  // An address that already has a confirmed account comes back with no identities.
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    return { status: "error", message: "That email already has a pass — sign in instead." };
+  }
+  return { status: "confirm", email: parsed.data.email };
+}
+
+/** Sends the sign-up confirmation link again. */
+export async function resendConfirmation(
+  _previous: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const parsed = bennettEmailSchema.safeParse(formData.get("email"));
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "Check your email." };
+  }
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: parsed.data,
+      options: { emailRedirectTo: await confirmRedirect() },
+    });
+    if (error && (error.status === 429 || /rate limit|security purposes/i.test(error.message))) {
+      return {
+        status: "confirm",
+        email: parsed.data,
+        message: "Too many emails sent. Wait a few minutes, then try again.",
+      };
+    }
+  } catch {
+    // Same answer either way, so the form can't be used to check who's registered.
+  }
+  return { status: "confirm", email: parsed.data, resent: true };
 }

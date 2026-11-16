@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
+  resendConfirmation,
   signInWithCredentials,
   signUpWithCredentials,
   type AuthState,
@@ -24,6 +25,10 @@ export function AuthCredentialsForm({
     initialState,
   );
   const [showPassword, setShowPassword] = useState(false);
+
+  if (state.status === "confirm" && state.email) {
+    return <ConfirmEmail email={state.email} afterSignUp={isSignup} />;
+  }
 
   const inputClass =
     "w-full rounded-lg border border-line bg-black px-4 py-3 pr-11 text-[14px] text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-accent";
@@ -137,5 +142,49 @@ export function AuthCredentialsForm({
           : "VERIFIED BENNETT STUDENTS ONLY. EVERY ID IS REVIEWED BEFORE YOU CAN BORROW OR LEND."}
       </p>
     </form>
+  );
+}
+
+/** Sign-up sent a confirmation link (or sign-in found the email unconfirmed). */
+function ConfirmEmail({ email, afterSignUp }: { email: string; afterSignUp: boolean }) {
+  const [state, formAction, pending] = useActionState(resendConfirmation, {
+    status: "confirm",
+    email,
+  } as AuthState);
+
+  return (
+    <div className="flex flex-col gap-4" role="status">
+      <p className="status-bracket text-[11px] text-accent">[ CHECK YOUR INBOX ]</p>
+      <p className="font-secondary text-[11px] leading-5 text-ink/70">
+        {afterSignUp
+          ? `YOUR PASS IS ALMOST READY. WE SENT A CONFIRMATION LINK TO ${email.toUpperCase()}.`
+          : `${email.toUpperCase()} ISN'T CONFIRMED YET. OPEN THE CONFIRMATION LINK WE EMAILED YOU.`}
+      </p>
+      <p className="font-secondary text-[10px] leading-5 text-ink/50">
+        OPEN IT IN THIS BROWSER TO GO STRAIGHT TO ONBOARDING, OR CONFIRM ANYWHERE AND SIGN IN AFTER. NOTHING AFTER A
+        FEW MINUTES? CHECK SPAM, OR SEND IT AGAIN.
+      </p>
+      {state.message ? (
+        <p className="border border-warn/50 bg-warn/10 px-4 py-3 font-secondary text-[10px] leading-5 text-warn">
+          [ {state.message} ]
+        </p>
+      ) : state.resent ? (
+        <p className="font-secondary text-[10px] leading-5 text-accent">[ SENT AGAIN. ONLY THE NEWEST LINK WORKS. ]</p>
+      ) : null}
+      <div aria-hidden className="mt-2 border-t border-dashed border-line" />
+      <form action={formAction}>
+        <input name="email" type="hidden" value={email} />
+        <button
+          className="font-label w-full py-2 text-[10px] tracking-[0.14em] text-ink/60 transition-colors hover:text-accent disabled:opacity-50"
+          disabled={pending}
+          type="submit"
+        >
+          {pending ? "[ SENDING… ]" : "[ SEND THE LINK AGAIN ]"}
+        </button>
+      </form>
+      <Link className="font-label text-center text-[10px] tracking-[0.14em] text-accent" href="/login">
+        I&apos;VE CONFIRMED — SIGN IN →
+      </Link>
+    </div>
   );
 }

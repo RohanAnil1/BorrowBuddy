@@ -48,5 +48,14 @@ export async function GET(request: Request) {
   if (signedIn) return NextResponse.redirect(`${origin}${next}`);
 
   const isReset = next === "/reset-password" || type === "recovery";
-  return NextResponse.redirect(isReset ? `${origin}/forgot-password?error=link` : `${origin}/login?error=auth`);
+  if (isReset) return NextResponse.redirect(`${origin}/forgot-password?error=link`);
+  // A sign-up confirmation opened in another browser or on another device:
+  // Supabase has already confirmed the email (only the sign-in needs the
+  // browser that signed up), unless it sent an error such as an expired link.
+  if (next === "/onboarding" || type === "signup") {
+    return NextResponse.redirect(
+      searchParams.get("error") ? `${origin}/login?error=confirm` : `${origin}/login?confirmed=1`,
+    );
+  }
+  return NextResponse.redirect(`${origin}/login?error=auth`);
 }

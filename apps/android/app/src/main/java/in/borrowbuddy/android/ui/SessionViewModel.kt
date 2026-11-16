@@ -3,6 +3,7 @@ package `in`.borrowbuddy.android.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.borrowbuddy.android.data.BorrowRepository
+import `in`.borrowbuddy.android.data.EmailNotConfirmed
 import `in`.borrowbuddy.android.data.RESET_LINK_EXPIRED
 import `in`.borrowbuddy.android.domain.Profile
 import io.github.jan.supabase.auth.auth
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
  * [resetNotice]: a reset link that didn't work; the sign-in screen opens on "Forgot password" with it.
  */
 data class SessionState(val initializing: Boolean = true, val profile: Profile? = null, val busy: Boolean = false, val error: String? = null,
-    val resetting: Boolean = false, val resetNotice: String? = null)
+    val resetting: Boolean = false, val resetNotice: String? = null,
+    val confirmEmail: String? = null, val confirmJustSent: Boolean = false, val confirmResent: Boolean = false)
 class SessionViewModel(val repository: BorrowRepository) : ViewModel() {
     private val mutable = MutableStateFlow(SessionState())
     val state = mutable.asStateFlow()
@@ -57,9 +59,25 @@ class SessionViewModel(val repository: BorrowRepository) : ViewModel() {
             mutable.value = mutable.value.copy(busy = true, error = null)
             try { action(); mutable.value = SessionState(initializing = false, profile = repository.profile(), resetting = mutable.value.resetting) }
             catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: EmailNotConfirmed) {
+                mutable.value = mutable.value.copy(busy = false, error = null, confirmEmail = failure.email,
+                    confirmJustSent = failure.justSent, confirmResent = false)
+            }
             catch (failure: Exception) { mutable.value = mutable.value.copy(busy = false, error = friendlyError(failure)) }
         }
     }
+    /** Sign-up's confirmation email: send it again, or leave the "check your inbox" panel. */
+    fun resendConfirmation() {
+        val email = mutable.value.confirmEmail ?: return
+        if (mutable.value.busy) return
+        viewModelScope.launch {
+            mutable.value = mutable.value.copy(busy = true, error = null)
+            try { repository.resendConfirmation(email); mutable.value = mutable.value.copy(busy = false, confirmResent = true) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { mutable.value = mutable.value.copy(busy = false, error = friendlyError(failure)) }
+        }
+    }
+    fun dismissConfirmation() { mutable.value = mutable.value.copy(confirmEmail = null, confirmResent = false, error = null) }
     fun signOut() { perform { repository.signOut() } }
 
     /** True once the email is on its way; errors land in [SessionState.error]. */
