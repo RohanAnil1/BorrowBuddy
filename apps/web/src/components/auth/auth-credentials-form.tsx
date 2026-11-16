@@ -161,8 +161,8 @@ function ConfirmEmail({ email, afterSignUp }: { email: string; afterSignUp: bool
           : `${email.toUpperCase()} ISN'T CONFIRMED YET. OPEN THE CONFIRMATION LINK WE EMAILED YOU.`}
       </p>
       <p className="font-secondary text-[10px] leading-5 text-ink/50">
-        OPEN IT IN THIS BROWSER TO GO STRAIGHT TO ONBOARDING, OR CONFIRM ANYWHERE AND SIGN IN AFTER. NOTHING AFTER A
-        FEW MINUTES? CHECK SPAM, OR SEND IT AGAIN.
+        THE LINK CONFIRMS YOUR EMAIL AND OPENS ONBOARDING, ON ANY DEVICE. NOTHING AFTER A FEW MINUTES? CHECK SPAM, OR
+        SEND IT AGAIN.
       </p>
       {state.message ? (
         <p className="border border-warn/50 bg-warn/10 px-4 py-3 font-secondary text-[10px] leading-5 text-warn">
