@@ -83,6 +83,46 @@ export const verificationDecisionSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
+/** Admin student directory: move a student to another status. */
+export const studentStatusChangeSchema = z.object({
+  profile_id: z.uuid(),
+  status: z.enum(["verified", "rejected", "suspended"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+/** Admin student directory: grant or revoke admin access. */
+export const studentAdminChangeSchema = z.object({
+  profile_id: z.uuid(),
+  is_admin: z.enum(["true", "false"]).transform((value) => value === "true"),
+});
+
+/** Admin student page: correct a student's details. */
+export const studentDetailsSchema = z.object({
+  profile_id: z.uuid(),
+  full_name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  department: z.string().trim().max(80),
+  year_of_study: z.number().int().min(1, "Year must be 1 to 6").max(6, "Year must be 1 to 6").nullable(),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number")
+    .or(z.literal("")),
+});
+
+/** Admin student page: override the trust score, with a reason for the audit log. */
+export const studentTrustSchema = z.object({
+  profile_id: z.uuid(),
+  trust_score: z.number({ error: "Enter a score" }).min(0, "Score must be 0 to 100").max(100, "Score must be 0 to 100"),
+  reason: z.string().trim().min(3, "Give a reason for the change").max(300),
+});
+
+/** Admin student page: a notification from the admins. */
+export const studentNoticeSchema = z.object({
+  profile_id: z.uuid(),
+  title: z.string().trim().min(3, "Title must be at least 3 characters").max(100),
+  body: z.string().trim().min(1, "Write a message").max(1000),
+});
+
 /* --------------------------------- items --------------------------------- */
 
 export const itemSchema = z.object({

@@ -45,6 +45,7 @@ export type ReportTarget = "item" | "user" | "message";
 export type ReportStatus = "open" | "resolved" | "dismissed";
 
 export type NotificationType =
+  | "admin_notice"
   | "campus_update"
   | "campus_message"
   | "verification_approved"
