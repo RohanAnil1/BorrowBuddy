@@ -134,7 +134,7 @@ export function AuthPanel({
 
         <motion.div className="mt-10 flex items-center gap-4" variants={fadeUp}>
           <MicroBars className="h-6 w-28 opacity-80" />
-          <p className="font-label text-[9px] text-ink/50">NO. 0427 · BATCH 2025</p>
+          <p className="font-label text-[9px] text-ink/50">EST. 2026</p>
         </motion.div>
       </div>
 
@@ -177,7 +177,7 @@ export function AuthPanel({
               <CargoMark className="size-6" />
             </div>
             <span className="font-label text-[8px] text-ink/40">
-              SERIAL 0427 · BATCH 2025
+              EST. 2026
             </span>
           </div>
         </motion.div>
