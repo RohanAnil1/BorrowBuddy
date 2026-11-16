@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Profile } from "@borrowbuddy/shared";
+import type { Profile, VerificationStatus } from "@borrowbuddy/shared";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -67,4 +67,93 @@ export async function getPendingVerifications(limit = 50): Promise<Profile[]> {
   const { data, error } = await supabase.rpc("admin_pending_profiles", { p_limit: limit });
   if (error) return [];
   return (data as Profile[] | null) ?? [];
+}
+
+/** A row of the admin student directory: the full profile plus activity counts. */
+export type AdminStudentRow = Omit<Profile, "updated_at" | "email_notifications"> & {
+  items_count: number;
+  active_loans_count: number;
+  pending_fines_total: number;
+};
+
+export type StudentDirectory = {
+  students: AdminStudentRow[];
+  total: number;
+  counts: Record<VerificationStatus, number>;
+  error: string | null;
+};
+
+const EMPTY_COUNTS: Record<VerificationStatus, number> = {
+  pending: 0,
+  verified: 0,
+  rejected: 0,
+  suspended: 0,
+};
+
+/** Every student for the admin directory, newest first. Admins only. */
+export async function getStudentDirectory({
+  search,
+  status,
+  limit = 50,
+  offset = 0,
+}: {
+  search?: string;
+  status?: VerificationStatus;
+  limit?: number;
+  offset?: number;
+}): Promise<StudentDirectory> {
+  const supabase = await createClient();
+  const [list, totals] = await Promise.all([
+    supabase.rpc("admin_list_profiles", {
+      p_search: search || null,
+      p_status: status ?? null,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+    supabase.rpc("admin_profile_status_counts"),
+  ]);
+
+  const counts = { ...EMPTY_COUNTS };
+  for (const row of (totals.data ?? []) as { verification_status: VerificationStatus; total: number }[]) {
+    counts[row.verification_status] = Number(row.total);
+  }
+
+  const rows = (list.data ?? []) as (AdminStudentRow & { total_count: number })[];
+  return {
+    students: rows.map((row) => {
+      const { total_count, ...student } = row;
+      void total_count;
+      return { ...student, trust_score: Number(student.trust_score) };
+    }),
+    total: rows[0] ? Number(rows[0].total_count) : 0,
+    counts,
+    error: list.error?.message ?? totals.error?.message ?? null,
+  };
+}
+
+/** Everything the admin manage page shows about one student. */
+export type AdminStudentDetail = {
+  profile: Profile;
+  items: { id: string; title: string; status: string; created_at: string }[];
+  loans: {
+    id: string;
+    status: string;
+    start_date: string;
+    due_date: string;
+    created_at: string;
+    item_title: string;
+    role: "borrower" | "owner";
+    other_name: string;
+  }[];
+  fines: { id: string; amount: number; status: string; source: string; reason: string; created_at: string }[];
+  audit: { id: number; action: string; metadata: Record<string, unknown>; created_at: string; actor_name: string | null }[];
+};
+
+/** One student for the admin manage page. Admins only; null when not found. */
+export async function getStudentDetail(id: string): Promise<AdminStudentDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_get_student", { p_profile_id: id });
+  if (error || !data) return null;
+  const detail = data as AdminStudentDetail;
+  return { ...detail, profile: { ...detail.profile, trust_score: Number(detail.profile.trust_score) } };
 }
