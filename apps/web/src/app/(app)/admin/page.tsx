@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   BadgeCheck,
   Flag,
+  Mail,
   MapPin,
   MessageSquarePlus,
   PackageSearch,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { TrendCard } from "@/components/admin/trend-card";
+import { SubmitButton } from "@/components/app/submit-button";
 import {
   Avatar,
   Notice,
@@ -27,6 +29,7 @@ import { getAdminOverview, getAuditLog, isStale } from "@/lib/data/admin";
 import { getOpenIncidents } from "@/lib/data/incidents";
 import { getPendingVerifications } from "@/lib/data/profiles";
 import { formatMoney, relativeTime } from "@/lib/format";
+import { sendTestEmail } from "./actions";
 
 export const metadata = { title: "Overview · Admin" };
 
@@ -46,6 +49,11 @@ export default async function AdminOverviewPage() {
       <PageHeader
         actions={
           <>
+            <form action={sendTestEmail}>
+              <SubmitButton pendingLabel="Sending…" variant="secondary">
+                <Mail aria-hidden className="size-4" /> Test email
+              </SubmitButton>
+            </form>
             <Link className={buttonClass.secondary} href="/admin/groups?new=1">
               <MessageSquarePlus aria-hidden className="size-4" /> New group
             </Link>

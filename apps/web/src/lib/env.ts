@@ -13,6 +13,11 @@ const serverEnvSchema = clientEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
   RESEND_API_KEY: z.string().optional(),
   NOTIFICATIONS_FROM_EMAIL: z.string().optional(),
+  /** SMTP (e.g. a Gmail account with an app password). Used instead of Resend when set. */
+  SMTP_HOST: z.string().default("smtp.gmail.com"),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
   /** Shared secret the database scheduler sends to /api/cron/* routes. */
   CRON_SECRET: z.string().optional(),
   /** This account is bootstrapped as admin + verified on first sign-in. */
@@ -30,6 +35,11 @@ export function getServerEnv(): ServerEnv {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY || undefined,
     NOTIFICATIONS_FROM_EMAIL: process.env.NOTIFICATIONS_FROM_EMAIL || undefined,
+    SMTP_HOST: process.env.SMTP_HOST || undefined,
+    SMTP_PORT: process.env.SMTP_PORT || undefined,
+    SMTP_USER: process.env.SMTP_USER?.trim() || undefined,
+    // Gmail shows app passwords in groups of four; the spaces aren't part of it.
+    SMTP_PASS: process.env.SMTP_PASS?.replace(/\s+/g, "") || undefined,
     CRON_SECRET: process.env.CRON_SECRET || undefined,
     ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   });
