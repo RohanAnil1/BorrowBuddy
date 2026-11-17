@@ -15,6 +15,8 @@ const PUBLIC_ROUTES = [
   "/offline.html",
   "/offline-assets",
   "/manifest.webmanifest",
+  // Share card for links (WhatsApp, Google, X): crawlers never sign in.
+  "/opengraph-image",
 ];
 
 function isPublicRoute(pathname: string) {
