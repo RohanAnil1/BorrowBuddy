@@ -3,99 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark light" />
-    <title>Confirm your BorrowBuddy pass</title>
+    <title>Confirm your email</title>
   </head>
-  <body style="margin:0; padding:0; background-color:#0a1f4d;">
-    <!-- Preview line shown in the inbox list -->
-    <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
-      One tap and your campus pass is ready. Borrow cameras, projectors, books and more from fellow Bennett students.
-    </div>
-
-    <!-- Night-blue backdrop with the batik pattern; plain deep blue where images are off -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0a1f4d"
-           background="https://borrowbuddy.online/email/backdrop.jpg"
-           style="background-color:#0a1f4d; background-image:url('https://borrowbuddy.online/email/backdrop.jpg'); background-size:cover; background-position:right top; background-repeat:no-repeat;">
+  <body style="margin:0; padding:0; background-color:#f4f5f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f5f7;">
       <tr>
-        <td align="center" style="padding:40px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
-
-            <!-- Logo and name -->
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px; background-color:#ffffff; border:1px solid #e3e5ea; border-radius:8px;">
             <tr>
-              <td align="center" style="padding-bottom:24px;">
-                <img src="https://borrowbuddy.online/icons/icon-192.png" width="64" height="64" alt="BorrowBuddy" style="display:block; border:0; border-radius:14px;" />
-                <div style="margin-top:12px; font-family:Arial, Helvetica, sans-serif; font-size:13px; font-weight:bold; letter-spacing:3px; color:#ffffff;">
-                  BORROWBUDDY
-                </div>
-                <div style="margin-top:4px; font-family:'Courier New', Courier, monospace; font-size:11px; letter-spacing:2px; color:#cb840e;">
-                  [ BENNETT UNIVERSITY · CAMPUS LENDING ]
-                </div>
+              <td style="padding:28px 28px 8px;">
+                <img src="https://borrowbuddy.online/icons/icon-192.png" width="40" height="40" alt="BorrowBuddy" style="display:block; border:0; border-radius:8px;" />
               </td>
             </tr>
-
-            <!-- Pass card -->
             <tr>
-              <td style="background:#000000; border:1px solid #1e1e1e; border-top:4px solid #cb840e; border-radius:12px; padding:32px 28px;">
-                <div style="font-family:'Courier New', Courier, monospace; font-size:11px; letter-spacing:2px; color:#cb840e;">
-                  NEW PASS · ONE STEP LEFT
-                </div>
-                <h1 style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:28px; line-height:34px; font-weight:bold; color:#ffffff;">
-                  You're one tap away from your campus pass
-                </h1>
-                <p style="margin:16px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:24px; color:#d6d6d6;">
-                  Welcome to BorrowBuddy, where Bennett students lend and borrow cameras, projectors, books, sports gear and
-                  more, right here on campus. Confirm your email and we'll take you straight to setting up your pass.
+              <td style="padding:8px 28px 0; font-family:Arial, Helvetica, sans-serif; color:#1d1f23;">
+                <h1 style="margin:0; font-size:22px; line-height:30px; font-weight:bold;">Confirm your email address</h1>
+                <p style="margin:16px 0 0; font-size:15px; line-height:24px;">
+                  Hi, thanks for signing up for BorrowBuddy, the lending app for Bennett University students.
+                  Please confirm that this is your email address to finish creating your account.
                 </p>
-
-                <!-- Button -->
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 8px;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 28px 8px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                   <tr>
-                    <td align="center" bgcolor="#cb840e" style="border-radius:8px;">
+                    <td bgcolor="#003993" style="border-radius:6px;">
                       <a href="https://borrowbuddy.online/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/onboarding"
-                         style="display:inline-block; padding:14px 28px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; letter-spacing:1px; color:#ffffff; text-decoration:none; border-radius:8px;">
-                        CONFIRM MY EMAIL →
-                      </a>
+                         style="display:inline-block; padding:12px 22px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:6px;">Confirm email address</a>
                     </td>
                   </tr>
                 </table>
-
-                <!-- What happens next -->
-                <div style="margin-top:28px; border-top:1px dashed #333333; padding-top:20px;">
-                  <div style="font-family:'Courier New', Courier, monospace; font-size:11px; letter-spacing:2px; color:#8a8a8a;">
-                    WHAT HAPPENS NEXT
-                  </div>
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
-                    <tr>
-                      <td valign="top" style="padding:4px 12px 4px 0; font-family:'Courier New', Courier, monospace; font-size:13px; color:#cb840e;">01</td>
-                      <td style="padding:4px 0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:21px; color:#d6d6d6;">Add your name, department and year.</td>
-                    </tr>
-                    <tr>
-                      <td valign="top" style="padding:4px 12px 4px 0; font-family:'Courier New', Courier, monospace; font-size:13px; color:#cb840e;">02</td>
-                      <td style="padding:4px 0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:21px; color:#d6d6d6;">Upload a photo of your Bennett student ID.</td>
-                    </tr>
-                    <tr>
-                      <td valign="top" style="padding:4px 12px 4px 0; font-family:'Courier New', Courier, monospace; font-size:13px; color:#cb840e;">03</td>
-                      <td style="padding:4px 0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:21px; color:#d6d6d6;">A campus admin approves it, and you're in.</td>
-                    </tr>
-                  </table>
-                </div>
-
-                <p style="margin:24px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:19px; color:#8a8a8a;">
-                  The link works once and opens on any device. Didn't sign up for BorrowBuddy? You can safely ignore this
-                  email; no account is activated without it.
-                </p>
               </td>
             </tr>
-
-            <!-- Footer -->
             <tr>
-              <td align="center" style="padding-top:24px; font-family:'Courier New', Courier, monospace; font-size:10px; line-height:16px; letter-spacing:2px; color:#9fb4e6;">
-                BORROWBUDDY · EST. 2026<br />
-                VERIFIED BENNETT STUDENTS ONLY · QR HANDOVERS · TRUST SCORES
+              <td style="padding:16px 28px 28px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:20px; color:#5b6070;">
+                After confirming, you'll add your name, department and year, and upload your student ID for a campus admin to approve.
+                <br /><br />
+                If you didn't sign up for BorrowBuddy, you can ignore this email.
               </td>
             </tr>
-
           </table>
+          <p style="margin:16px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#8a8f9c;">
+            BorrowBuddy · borrowbuddy.online
+          </p>
         </td>
       </tr>
     </table>
