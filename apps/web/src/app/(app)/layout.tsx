@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 import "@/components/assistant/assistant.css";
 import { requireProfile } from "@/lib/auth/guards";
+import { getAdminOverview } from "@/lib/data/admin";
 import { getUnreadCount } from "@/lib/data/notifications";
 import { readFlash } from "@/lib/flash";
 import { getPendingRequestCount } from "@/lib/data/requests";
@@ -24,15 +25,18 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     redirect("/pending");
   }
 
-  const [unreadCount, pendingCount, flash] = await Promise.all([
+  const [unreadCount, pendingCount, flash, adminQueue] = await Promise.all([
     getUnreadCount(profile.id),
     profile.verification_status === "verified" ? getPendingRequestCount(profile.id) : 0,
     readFlash(),
+    profile.is_admin
+      ? getAdminOverview().then(({ queues }) => queues.verifications + queues.incidents + queues.reports + queues.claims)
+      : 0,
   ]);
 
   return (
     <>
-      <AppShell pendingCount={pendingCount} profile={profile} unreadCount={unreadCount}>
+      <AppShell adminQueue={adminQueue} pendingCount={pendingCount} profile={profile} unreadCount={unreadCount}>
         {children}
       </AppShell>
       <ActionToaster flash={flash} />

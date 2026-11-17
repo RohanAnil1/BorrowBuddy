@@ -221,7 +221,7 @@ export default async function CampusPostPage({
               </div>
             )}
           {profile.is_admin && (
-            <Link className={secondaryClass} href="/campus/admin">
+            <Link className={secondaryClass} href="/admin/claims">
               ADMIN CLAIM REVIEW →
             </Link>
           )}

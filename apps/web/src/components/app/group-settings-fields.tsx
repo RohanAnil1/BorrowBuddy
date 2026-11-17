@@ -2,8 +2,8 @@ import { Globe, Lock, Megaphone, MessagesSquare } from "lucide-react";
 import { GROUP_DESCRIPTION_MAX, GROUP_TITLE_MAX, type GroupPosting, type GroupVisibility } from "@borrowbuddy/shared";
 
 const inputClass =
-  "rounded-lg border border-line bg-black px-3 py-2 text-[13px] normal-case text-ink outline-none transition-colors focus:border-accent";
-const labelClass = "flex flex-col gap-1.5 font-secondary text-[9px] text-ink/60";
+  "rounded-lg border border-line bg-black px-3 py-2.5 text-[14px] normal-case text-ink outline-none transition-colors focus:border-accent";
+const labelClass = "flex flex-col gap-1.5 font-secondary text-[11px] text-ink/70";
 const choiceClass =
   "flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-black p-3 text-[13px] normal-case transition-colors hover:border-accent/60 has-[:checked]:border-accent has-[:checked]:bg-accent/10";
 
@@ -37,14 +37,14 @@ export function GroupSettingsFields({ group }: {
         <textarea className={`${inputClass} min-h-20`} defaultValue={group?.description ?? ""} maxLength={GROUP_DESCRIPTION_MAX} name="description" placeholder="What the group is for" />
       </label>
       <fieldset className="grid gap-2 dt:grid-cols-2">
-        <legend className="mb-2 font-secondary text-[9px] text-ink/60">PUBLIC OR PRIVATE</legend>
+        <legend className="mb-2 font-secondary text-[11px] text-ink/70">PUBLIC OR PRIVATE</legend>
         <Choice name="visibility" value="open" checked={group?.visibility !== "invite"} icon={<Globe className="size-4" />}
           title="Public" body="Any verified student can find it, read it and join." />
         <Choice name="visibility" value="invite" checked={group?.visibility === "invite"} icon={<Lock className="size-4" />}
           title="Private" body="Hidden. Only members you add can see, read and post." />
       </fieldset>
       <fieldset className="grid gap-2 dt:grid-cols-2">
-        <legend className="mb-2 font-secondary text-[9px] text-ink/60">WHO CAN POST</legend>
+        <legend className="mb-2 font-secondary text-[11px] text-ink/70">WHO CAN POST</legend>
         <Choice name="posting" value="everyone" checked={group?.posting !== "admins"} icon={<MessagesSquare className="size-4" />}
           title="Every member" body="A normal group chat." />
         <Choice name="posting" value="admins" checked={group?.posting === "admins"} icon={<Megaphone className="size-4" />}

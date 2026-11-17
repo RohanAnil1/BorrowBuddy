@@ -6,7 +6,7 @@ export function notificationHref(notification: Pick<Notification, "payload">): s
   const loanId = payload.loan_id;
   const itemId = payload.item_id;
   if (typeof payload.campus_transfer_id === "string") return `/campus/collections/${encodeURIComponent(payload.campus_transfer_id)}`;
-  if (typeof payload.campus_claim_id === "string") return "/campus/admin";
+  if (typeof payload.campus_claim_id === "string") return "/admin/claims";
   if (typeof payload.campus_post_id === "string") return `/campus/activity`;
 
   if (typeof loanId === "string") return `/loans/${encodeURIComponent(loanId)}`;

@@ -1,5 +1,5 @@
-import { ListSkeleton } from "@/components/app/skeletons";
+import { AdminSkeleton } from "@/components/admin/skeletons";
 
 export default function Loading() {
-  return <ListSkeleton />;
+  return <AdminSkeleton variant="overview" />;
 }

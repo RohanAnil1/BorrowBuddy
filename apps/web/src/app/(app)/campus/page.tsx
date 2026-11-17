@@ -67,7 +67,7 @@ export default async function CampusPage() {
           VERIFIED MEMBERS · PRIVATE COLLECTIONS · ONE-TIME CONFIRMATION
         </p>
         {profile.is_admin && (
-          <Link className={secondaryClass} href="/campus/admin">
+          <Link className={secondaryClass} href="/admin/claims">
             REVIEW OWNERSHIP CLAIMS →
           </Link>
         )}

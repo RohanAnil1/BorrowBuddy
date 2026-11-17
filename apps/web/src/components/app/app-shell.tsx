@@ -1,3 +1,4 @@
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import type { Profile } from "@borrowbuddy/shared";
 import { CargoMark } from "@/components/landing/hero";
@@ -19,11 +20,14 @@ export function AppShell({
   profile,
   unreadCount,
   pendingCount,
+  adminQueue = 0,
   children,
 }: {
   profile: Profile;
   unreadCount: number;
   pendingCount: number;
+  /** Items waiting in the admin console's queues (admins only). */
+  adminQueue?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -62,12 +66,20 @@ export function AppShell({
 
           <div className="flex items-center gap-2">
             {profile.is_admin && (
-              <Link
-                className="font-secondary text-[10px] uppercase text-ink/50 transition-colors hover:text-accent"
+              <NavLink
+                className="font-secondary flex min-h-9 items-center gap-1.5 rounded-lg border border-accent/50 px-2.5 text-[11px] text-accent transition-colors hover:border-accent hover:bg-accent/10"
                 href="/admin"
               >
-                [ ADMIN ]
-              </Link>
+                <ShieldCheck aria-hidden className="size-4" />
+                <span className="hidden sm:inline">Admin</span>
+                <span className="sr-only sm:hidden">Admin console</span>
+                {adminQueue > 0 && (
+                  <span className="min-w-5 rounded-full bg-accent px-1.5 text-center text-[11px] tabular-nums text-white">
+                    <span className="sr-only">, waiting: </span>
+                    {adminQueue}
+                  </span>
+                )}
+              </NavLink>
             )}
             <NotificationBell unreadCount={unreadCount} userId={profile.id} />
             <Link

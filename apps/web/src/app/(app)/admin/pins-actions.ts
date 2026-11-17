@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { pickupLocationSchema } from "@borrowbuddy/shared";
+import { UUID, finishAdminAction } from "@/lib/admin-actions";
 import { requireAdmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+
+const BACK = "/admin/pins";
 
 function readPin(formData: FormData) {
   return {
@@ -23,9 +24,7 @@ export async function savePin(formData: FormData): Promise<void> {
 
   const parsed = pickupLocationSchema.safeParse(readPin(formData));
   if (!parsed.success) {
-    redirect(
-      `/admin?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid pin")}`,
-    );
+    return finishAdminAction({ message: parsed.error.issues[0]?.message ?? "Check the pin details." }, "", BACK);
   }
 
   const supabase = await createClient();
@@ -39,29 +38,22 @@ export async function savePin(formData: FormData): Promise<void> {
     p_is_active: parsed.data.is_active,
   });
 
-  if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/");
+  return finishAdminAction(
+    error,
+    parsed.data.id ? `Saved ${parsed.data.name}.` : `Added ${parsed.data.name} to the map.`,
+    BACK,
+    ["/", "/map"],
+  );
 }
 
 export async function removePin(formData: FormData): Promise<void> {
   await requireAdmin();
 
-  const id = formData.get("id");
-  if (typeof id !== "string" || id.length === 0) {
-    redirect("/admin?error=Missing%20pin");
-  }
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) return finishAdminAction({ message: "Missing pickup spot." }, "", BACK);
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_delete_pickup_location", { p_id: id });
 
-  if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/");
+  return finishAdminAction(error, "Pickup spot removed.", BACK, ["/", "/map"]);
 }
