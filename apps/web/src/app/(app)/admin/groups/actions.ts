@@ -27,7 +27,7 @@ function readSettings(formData: FormData) {
 
 async function finish(error: { message: string } | null, success: string, path: string) {
   await flash(error ? error.message : success, error ? "error" : "success");
-  revalidatePath("/admin/groups", "layout");
+  revalidatePath("/admin", "layout");
   revalidatePath("/chat", "layout");
   redirect(path);
 }

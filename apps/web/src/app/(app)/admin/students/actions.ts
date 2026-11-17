@@ -31,8 +31,7 @@ function readProfileId(formData: FormData): string | null {
 
 async function finish(error: { message: string } | null, success: string, path: string) {
   await flash(error ? error.message : success, error ? "error" : "success");
-  revalidatePath(BASE, "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   redirect(path);
 }
 
@@ -226,7 +225,7 @@ export async function deleteStudent(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = readProfileId(formData);
   if (!id) return finish({ message: "Missing student." }, "", BASE);
-  const back = `${BASE}/${id}`;
+  const back = `${BASE}/${id}?tab=danger`;
   const confirmEmail = String(formData.get("confirm_email") ?? "").trim().slice(0, 320);
 
   const supabase = await createClient();
