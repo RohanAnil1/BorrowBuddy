@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { renderDigest, digestSubject, type DigestEntry } from "@/lib/email/notification-digest";
+import { emailTransport, sendEmail } from "@/lib/email/send";
 import { getServerEnv } from "@/lib/env";
 import { notificationHref } from "@/lib/notification-links";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,6 +28,9 @@ const MAX_ROWS = 300;
 const MAX_STUDENTS = 50;
 const MAX_ENTRIES = 6;
 
+/** Sending one by one over SMTP takes a few seconds per batch. */
+export const maxDuration = 60;
+
 type QueueRow = {
   id: string;
   user_id: string;
@@ -48,7 +52,7 @@ function authorized(request: Request, secret: string | undefined) {
 /**
  * POST /api/cron/notification-emails: called every 5 minutes by pg_cron (via
  * pg_net) with `Authorization: Bearer $CRON_SECRET`. Sends each student one
- * digest of important unread notifications through Resend and stamps
+ * digest of important unread notifications (Gmail SMTP or Resend) and stamps
  * notifications.emailed_at so nothing is sent twice.
  */
 export async function POST(request: Request) {
@@ -56,8 +60,8 @@ export async function POST(request: Request) {
   if (!authorized(request, env.CRON_SECRET)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!env.RESEND_API_KEY || !env.NOTIFICATIONS_FROM_EMAIL) {
-    return Response.json({ error: "Email is not configured (RESEND_API_KEY, NOTIFICATIONS_FROM_EMAIL)." }, { status: 503 });
+  if (!emailTransport()) {
+    return Response.json({ error: "Email is not configured (SMTP_USER/SMTP_PASS or RESEND_API_KEY)." }, { status: 503 });
   }
 
   const db = createAdminClient();
@@ -98,25 +102,18 @@ export async function POST(request: Request) {
         .map((row) => ({ title: row.title, body: row.body, href: notificationHref(row) }));
       const { html, text } = renderDigest({ firstName: profile.full_name.split(" ")[0] || "there", entries, appUrl });
 
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-          // Same batch, same key: a retried run can't send a duplicate.
-          "Idempotency-Key": `bb-digest-${createHash("sha256").update([...ids].sort().join(",")).digest("hex")}`,
-        },
-        body: JSON.stringify({
-          from: env.NOTIFICATIONS_FROM_EMAIL,
-          to: [profile.email],
-          subject: digestSubject(entries),
-          html,
-          text,
-          headers: { "List-Unsubscribe": `<${appUrl}/me#email>` },
-        }),
-      }).catch(() => null);
+      const result = await sendEmail({
+        to: profile.email,
+        subject: digestSubject(entries),
+        html,
+        text,
+        headers: { "List-Unsubscribe": `<${appUrl}/me#email>` },
+        // Same batch, same key: a retried run can't send a duplicate (Resend).
+        idempotencyKey: `bb-digest-${createHash("sha256").update([...ids].sort().join(",")).digest("hex")}`,
+      });
 
-      if (!response?.ok) {
+      if (!result.ok) {
+        console.error("[notification-emails] send failed:", result.error);
         failed += 1;
         continue; // leave unstamped; the next run retries
       }

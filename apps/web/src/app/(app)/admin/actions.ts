@@ -2,6 +2,7 @@
 
 import { verificationDecisionSchema } from "@borrowbuddy/shared";
 import { adminReturnPath, finishAdminAction } from "@/lib/admin-actions";
+import { sendEmail } from "@/lib/email/send";
 import { requireAdmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,5 +33,21 @@ export async function reviewVerification(formData: FormData): Promise<void> {
     approve ? `${name} is verified and can start borrowing.` : `${name}'s ID was rejected. They've been told why.`,
     back,
     ["/home"],
+  );
+}
+
+/** Sends the signed-in admin a test email, to check that email delivery works. */
+export async function sendTestEmail(): Promise<void> {
+  const me = await requireAdmin();
+  const result = await sendEmail({
+    to: me.email,
+    subject: "BorrowBuddy test email",
+    text: "This is a test from the BorrowBuddy admin console. If you can read it, notification emails are working.",
+    html: '<p style="font-family:Arial,sans-serif;font-size:15px">This is a test from the <b>BorrowBuddy</b> admin console.</p><p style="font-family:Arial,sans-serif;font-size:15px">If you can read it, notification emails are working.</p>',
+  });
+  return finishAdminAction(
+    result.ok ? null : { message: `Test email failed: ${result.error}` },
+    `Test email sent to ${me.email} via ${result.ok ? (result.via === "smtp" ? "Gmail SMTP" : "Resend") : ""}. Check the inbox and spam folder.`,
+    "/admin",
   );
 }
