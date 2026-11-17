@@ -8,6 +8,7 @@ import { StatusTicker } from "@/components/landing/status-ticker";
 import { TagWall } from "@/components/landing/tag-wall";
 import { WhySection } from "@/components/landing/why-section";
 import { isSupabaseConfigured } from "@/lib/env";
+import { SITE_URL } from "@/lib/site";
 import { createPublicClient } from "@/lib/supabase/public";
 
 // Pins are admin-managed in the database; a minute of cache keeps the landing
@@ -54,11 +55,48 @@ async function getPins(): Promise<MapSpot[]> {
   }
 }
 
+/** Structured data so search engines know what BorrowBuddy is and who it's for. */
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "BorrowBuddy",
+      inLanguage: "en-IN",
+      publisher: { "@id": `${SITE_URL}/#org` },
+    },
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#org`,
+      name: "BorrowBuddy",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icons/icon-512.png`,
+    },
+    {
+      "@type": "WebApplication",
+      name: "BorrowBuddy",
+      url: SITE_URL,
+      applicationCategory: "LifestyleApplication",
+      operatingSystem: "Web, Android",
+      description:
+        "Campus lending app for Bennett University students: borrow and lend cameras, projectors, books and sports gear with QR handovers.",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
+      audience: { "@type": "EducationalAudience", educationalRole: "student" },
+    },
+  ],
+};
+
 export default async function LandingPage() {
   const pins = await getPins();
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }}
+      />
       <Preloader />
       <StatusTicker />
       <main className="flex flex-1 flex-col">
