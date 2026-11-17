@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { SubmitButton } from "@/components/app/submit-button";
 
 const inputClass =
-  "rounded-lg border border-line bg-black px-3 py-2 text-[13px] text-ink outline-none transition-colors focus:border-accent";
+  "rounded-lg border border-line bg-black px-3 py-2.5 text-[14px] normal-case text-ink outline-none transition-colors focus:border-accent";
 
 export type PinDraft = {
   id?: string;
@@ -73,14 +73,14 @@ export function PinForm({
             style={{ left: `${xp}%`, top: `${yp}%` }}
           />
         </div>
-        <p className="font-secondary mt-2 text-[9px] text-ink/40">
+        <p className="font-secondary mt-2 text-[11px] text-ink/55">
           DRAG THE DOT TO PLACE THE PIN — {xp.toFixed(1)}% / {yp.toFixed(1)}%
         </p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex w-full min-w-0 flex-1 flex-col gap-1.5 sm:w-auto sm:min-w-56">
-          <span className="font-secondary text-[9px] text-ink/50">NAME</span>
+          <span className="font-secondary text-[11px] text-ink/70">NAME</span>
           <input
             className={inputClass}
             defaultValue={pin?.name ?? ""}
@@ -92,7 +92,7 @@ export function PinForm({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="font-secondary text-[9px] text-ink/50">X %</span>
+          <span className="font-secondary text-[11px] text-ink/70">X %</span>
           <input
             className={`${inputClass} w-24`}
             max={100}
@@ -105,7 +105,7 @@ export function PinForm({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="font-secondary text-[9px] text-ink/50">Y %</span>
+          <span className="font-secondary text-[11px] text-ink/70">Y %</span>
           <input
             className={`${inputClass} w-24`}
             max={100}
@@ -121,7 +121,7 @@ export function PinForm({
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex w-full min-w-0 flex-1 flex-col gap-1.5 sm:w-auto sm:min-w-56">
-          <span className="font-secondary text-[9px] text-ink/50">DESCRIPTION</span>
+          <span className="font-secondary text-[11px] text-ink/70">DESCRIPTION</span>
           <input
             className={inputClass}
             defaultValue={pin?.description ?? ""}
@@ -131,7 +131,7 @@ export function PinForm({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="font-secondary text-[9px] text-ink/50">LABEL SIDE</span>
+          <span className="font-secondary text-[11px] text-ink/70">LABEL SIDE</span>
           <select className={inputClass} defaultValue={pin?.map_label ?? "right"} name="map_label">
             <option value="left">Left of the pin</option>
             <option value="right">Right of the pin</option>
@@ -144,7 +144,7 @@ export function PinForm({
             name="is_active"
             type="checkbox"
           />
-          <span className="font-secondary text-[9px] text-ink/50">ON THE BOARD</span>
+          <span className="font-secondary text-[11px] text-ink/70">ON THE BOARD</span>
         </label>
       </div>
 
