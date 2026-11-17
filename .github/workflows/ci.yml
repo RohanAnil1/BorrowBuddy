@@ -105,3 +105,5 @@ jobs:
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/group_chats.sql
       - name: Validate announcement groups, mentions, pins, polls, photos and typing authorization
         run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/chat_features.sql
+      - name: Validate the admin console overview and audit log
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/admin_console.sql
