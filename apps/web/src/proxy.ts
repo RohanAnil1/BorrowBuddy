@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
+import { LEGACY_HOST, SITE_URL } from "@/lib/site";
 
 const PUBLIC_ROUTES = [
   "/",
@@ -21,6 +22,22 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // One address for everyone: www goes to the bare domain.
+  if (request.headers.get("host") === `www.${new URL(SITE_URL).host}`) {
+    return NextResponse.redirect(`${SITE_URL}${request.nextUrl.pathname}${request.nextUrl.search}`, 308);
+  }
+  // The old vercel.app address sends people (and search engines) to the real domain.
+  // API calls are left alone: installed Android builds still use that address.
+  if (
+    request.headers.get("host") === LEGACY_HOST &&
+    (request.method === "GET" || request.method === "HEAD") &&
+    !request.nextUrl.pathname.startsWith("/api/") &&
+    // Sign-in links already started here finish here (their cookies live on this host).
+    !request.nextUrl.pathname.startsWith("/auth/")
+  ) {
+    return NextResponse.redirect(`${SITE_URL}${request.nextUrl.pathname}${request.nextUrl.search}`, 308);
+  }
+
   // Connection probes must answer without a session refresh round-trip to Supabase.
   if (
     request.nextUrl.pathname === "/offline.html" ||

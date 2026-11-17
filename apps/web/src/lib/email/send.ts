@@ -15,11 +15,18 @@ export type OutgoingEmail = {
 
 export type SendResult = { ok: true; via: "smtp" | "resend" } | { ok: false; error: string };
 
-/** Which sender is configured, if any. SMTP wins when both are. */
+/**
+ * Which sender to use: EMAIL_TRANSPORT when it names a configured one,
+ * otherwise SMTP when its login is set, otherwise Resend.
+ */
 export function emailTransport(): "smtp" | "resend" | null {
   const env = getServerEnv();
-  if (env.SMTP_USER && env.SMTP_PASS) return "smtp";
-  if (env.RESEND_API_KEY && env.NOTIFICATIONS_FROM_EMAIL) return "resend";
+  const smtp = Boolean(env.SMTP_USER && env.SMTP_PASS);
+  const resend = Boolean(env.RESEND_API_KEY && env.NOTIFICATIONS_FROM_EMAIL);
+  if (env.EMAIL_TRANSPORT === "resend" && resend) return "resend";
+  if (env.EMAIL_TRANSPORT === "smtp" && smtp) return "smtp";
+  if (smtp) return "smtp";
+  if (resend) return "resend";
   return null;
 }
 
