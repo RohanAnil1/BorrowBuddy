@@ -11,6 +11,7 @@ import {
   RotateCcw,
   ShieldCheck,
   ShieldOff,
+  Trash2,
   UserCheck,
   UserX,
   Users,
@@ -37,9 +38,12 @@ import {
   setStudentTrust,
   updateStudentDetails,
   waiveStudentFines,
+  deleteStudent,
 } from "../actions";
 
 export const metadata = { title: "Student · Admin" };
+
+const OPEN_LOAN_STATUSES = new Set(["awaiting_pickup", "active", "return_pending", "overdue", "disputed"]);
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -99,6 +103,7 @@ export default async function AdminStudentPage({ params }: { params: Promise<{ i
   const liveListings = items.filter((item) => item.status === "available").length;
   const pendingFines = fines.filter((fine) => fine.status === "pending");
   const pendingTotal = pendingFines.reduce((sum, fine) => sum + fine.amount, 0);
+  const openLoans = loans.filter((loan) => OPEN_LOAN_STATUSES.has(loan.status)).length;
 
   let idUrl: string | null = null;
   if (profile.student_id_path) {
@@ -374,6 +379,50 @@ export default async function AdminStudentPage({ params }: { params: Promise<{ i
               </form>
             </div>
           </Section>
+
+          <section className="border border-warn/50 bg-panel p-5" aria-labelledby="delete-heading">
+            <h2 id="delete-heading" className="flex items-center gap-2 font-secondary text-[10px] uppercase text-warn">
+              <Trash2 className="size-3.5" /> [ DELETE PROFILE ]
+            </h2>
+            {openLoans > 0 ? (
+              <p className="type-body mt-3 text-[12px] uppercase text-warn">
+                {name} has {openLoans} loan{openLoans === 1 ? "" : "s"} in progress. Finish or cancel
+                {openLoans === 1 ? " it" : " them"} before deleting the profile.
+              </p>
+            ) : (
+              <form action={deleteStudent} className="mt-3 flex flex-col gap-3">
+                <input name="profile_id" type="hidden" value={profile.id} />
+                <p className="type-body text-[12px] normal-case leading-5 text-ink/70">
+                  Permanently removes {name}’s profile, their {items.length} listing{items.length === 1 ? "" : "s"},
+                  {" "}{loans.length} past loan{loans.length === 1 ? "" : "s"} (with those loans’ fines, reviews and
+                  incidents, including on the other student’s side), their photo and student ID. They’re signed out
+                  everywhere. This can’t be undone. They can still sign up again with the same email; to keep them
+                  out, suspend instead.
+                </p>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelClass}>TYPE {profile.email.toUpperCase()} TO CONFIRM</span>
+                  <input
+                    autoComplete="off"
+                    className={inputClass}
+                    name="confirm_email"
+                    placeholder={profile.email}
+                    required
+                    spellCheck={false}
+                  />
+                </label>
+                <div>
+                  <ConfirmSubmit
+                    confirmLabel="Delete forever"
+                    message={`${name}'s profile, listings and past loans are deleted. This can't be undone.`}
+                    pendingLabel="Deleting…"
+                    title={`Delete ${name}'s profile?`}
+                  >
+                    <Trash2 className="size-4" /> Delete profile
+                  </ConfirmSubmit>
+                </div>
+              </form>
+            )}
+          </section>
         </div>
       )}
 

@@ -213,3 +213,46 @@ export async function removeStudentAvatar(formData: FormData): Promise<void> {
   }
   return finish(error, path ? "Profile photo removed." : "They have no profile photo.", back);
 }
+
+type DeletedStudent = {
+  loans_removed: number;
+  items_removed: number;
+  avatar_path: string | null;
+  student_id_path: string | null;
+  item_images: string[];
+};
+
+export async function deleteStudent(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = readProfileId(formData);
+  if (!id) return finish({ message: "Missing student." }, "", BASE);
+  const back = `${BASE}/${id}`;
+  const confirmEmail = String(formData.get("confirm_email") ?? "").trim().slice(0, 320);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_delete_student", {
+    p_profile_id: id,
+    p_confirm_email: confirmEmail,
+  });
+  if (error) return finish(error, "", back);
+
+  // Best effort: the profile no longer points at these files either way.
+  const removed = data as DeletedStudent;
+  try {
+    const storage = createAdminClient().storage;
+    await Promise.all([
+      removed.avatar_path ? storage.from(BUCKETS.avatars).remove([removed.avatar_path]) : null,
+      removed.student_id_path ? storage.from(BUCKETS.studentIds).remove([removed.student_id_path]) : null,
+      removed.item_images.length ? storage.from(BUCKETS.itemImages).remove(removed.item_images) : null,
+    ]);
+  } catch (storageError) {
+    console.error("[admin] file removal after deleting a student failed:", storageError);
+  }
+
+  revalidatePath("/home");
+  return finish(
+    null,
+    `Profile deleted, with ${removed.items_removed} listing${removed.items_removed === 1 ? "" : "s"} and ${removed.loans_removed} past loan${removed.loans_removed === 1 ? "" : "s"}.`,
+    BASE,
+  );
+}
