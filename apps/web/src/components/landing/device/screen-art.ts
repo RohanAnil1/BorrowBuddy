@@ -1,5 +1,5 @@
 ﻿/**
- * Screen art for the 3D cargo device â€” painted onto a 512Ã—720 canvas and used
+ * Screen art for the 3D cargo device — painted onto a 512×720 canvas and used
  * both as the WebGL CanvasTexture and by the no-WebGL fallback panel.
  * Palette-only colors, dot-matrix globe with a camera silhouette rising
  * through it (the reference's NZ-map-globe, tailored for BorrowBuddy).
@@ -34,7 +34,7 @@ export function loadBuLogo(): Promise<void> {
   return buShieldPromise;
 }
 
-/** Deterministic PRNG (no Math.random â€” same art every paint). */
+/** Deterministic PRNG (no Math.random — same art every paint). */
 function mulberry32(seed: number) {
   let a = seed;
   return () => {
@@ -125,9 +125,9 @@ export function paintCargoScreen(canvas: HTMLCanvasElement): void {
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.font = `15px ${monoFamily()}`;
   ctx.textAlign = "center";
-  ctx.fillText("UNIT 0427 Â· ONLINE", SCREEN_W / 2, 92);
+  ctx.fillText("UNIT 0427 · ONLINE", SCREEN_W / 2, 92);
 
-  // ---- particle globe (orthographic front hemisphere, rotated 24Â°) ----
+  // ---- particle globe (orthographic front hemisphere, rotated 24°) ----
   const gcx = SCREEN_W / 2;
   const gcy = 300;
   const R = 168;
@@ -204,12 +204,17 @@ export function paintCargoScreen(canvas: HTMLCanvasElement): void {
     3, 1, 2, 1, 4, 1, 1, 2, 3, 2, 1, 1, 4, 2, 1, 3, 1, 2, 2, 1, 3, 1, 1, 4, 2, 1, 2, 3, 1, 1,
     2, 1, 4, 1, 3, 2, 1, 2, 1, 1, 2, 4, 1, 1, 3, 1, 2, 2,
   ];
-  let bx = 96;
+  // Same width and centre as the CTA bar below it (96px in from each side).
+  const barLeft = 96;
+  const barWidth = SCREEN_W - barLeft * 2;
+  const gap = 3;
+  const unit = (barWidth - gap * (bars.length - 1)) / bars.reduce((sum, w) => sum + w, 0);
+  let bx = barLeft;
   ctx.fillStyle = INK;
+  ctx.globalAlpha = 0.9;
   for (const w of bars) {
-    ctx.globalAlpha = 0.9;
-    ctx.fillRect(bx, 604, w * 2.1, 34);
-    bx += w * 2.1 + 4;
+    ctx.fillRect(bx, 604, w * unit, 34);
+    bx += w * unit + gap;
   }
   ctx.globalAlpha = 1;
 
