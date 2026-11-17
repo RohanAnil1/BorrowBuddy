@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/site";
 import type { Metadata, Viewport } from "next";
 import { IosInputZoomGuard } from "@/components/ios-input-zoom";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
@@ -37,6 +38,16 @@ const STARTUP_IMAGES = (
 }));
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "BorrowBuddy",
+    url: SITE_URL,
+    title: "BorrowBuddy — Campus lending, delivered",
+    description: "Borrow what you need and lend what you don't, from verified Bennett University students.",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "BorrowBuddy" }],
+  },
   title: {
     default: "BorrowBuddy — Campus lending, delivered",
     template: "%s · BorrowBuddy",
