@@ -44,16 +44,16 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "BorrowBuddy",
     url: SITE_URL,
-    title: "BorrowBuddy — Campus lending, delivered",
+    title: "BorrowBuddy — Borrow and lend on campus at Bennett University",
     description: "Borrow what you need and lend what you don't, from verified Bennett University students.",
-    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "BorrowBuddy" }],
   },
   title: {
-    default: "BorrowBuddy — Campus lending, delivered",
+    default: "BorrowBuddy — Borrow and lend on campus at Bennett University",
     template: "%s · BorrowBuddy",
   },
   description:
-    "Bennett University's campus lending network. Verified students only — borrow what you need, lend what you don't, hand over by QR.",
+    "BorrowBuddy is Bennett University's campus lending app. Borrow cameras, projectors, books, calculators and sports gear from verified students, and lend what you don't use. Free, with QR handovers at campus pickup spots.",
+  keywords: ["BorrowBuddy", "Bennett University", "campus lending", "borrow", "lend", "student rental", "Greater Noida"],
   applicationName: "BorrowBuddy",
   appleWebApp: {
     capable: true,
