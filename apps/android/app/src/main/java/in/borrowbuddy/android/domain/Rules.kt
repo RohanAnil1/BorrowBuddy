@@ -15,7 +15,6 @@ object Rules {
         "overdue" to setOf("return_pending", "returned", "disputed", "lost"),
         "disputed" to setOf("returned", "lost", "cancelled"),
     )
-    val departments = listOf("Computer Science", "Electronics & Communication", "Mechanical Engineering", "Civil Engineering", "Biotechnology", "Business & Management", "Law", "Design", "Other")
     val conditions = linkedMapOf("new" to "Like new", "good" to "Good", "fair" to "Fair", "worn" to "Worn")
     val loanLabels = mapOf("awaiting_pickup" to "Awaiting pickup", "active" to "Borrowed", "return_pending" to "Return in progress", "returned" to "Returned", "overdue" to "Overdue", "disputed" to "Under dispute", "lost" to "Reported lost", "cancelled" to "Cancelled")
     fun today(): LocalDate = LocalDate.now(campusZone)

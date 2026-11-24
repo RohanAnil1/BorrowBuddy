@@ -18,6 +18,8 @@ import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
 class CampusRepository(private val context: Context, val base: BorrowRepository) {
+    /** A post's own columns. Photos come from campus_post_photos through photo_paths, read as `images`. */
+    private val postColumns = Columns.raw("id,owner_id,kind,title,description,category_id,location,pickup_location_id,found_on,condition,hold_hours,status,created_at,updated_at,images:photo_paths")
     private val client get() = base.client
     suspend fun action(action: String, data: JsonObject): JsonObject {
         val result = base.rpc("campus_api", buildJsonObject { put("p_action", action); put("p_data", data) }).decodeAs<JsonObject>()
@@ -28,7 +30,7 @@ class CampusRepository(private val context: Context, val base: BorrowRepository)
         owner: String? = null, page: Int = 0): List<CampusPost> = postPage(kind, query, status, category, owner, page).posts
     suspend fun postPage(kind: String? = null, query: String = "", status: String = "", category: String = "",
         owner: String? = null, page: Int = 0, location: String = "", found: String = ""): CampusPostPage {
-      val result = client.from("campus_posts").select {
+      val result = client.from("campus_posts").select(postColumns) {
         count(Count.EXACT)
         filter {
             kind?.let { eq("kind", it) }; owner?.let { eq("owner_id", it) }
@@ -44,7 +46,7 @@ class CampusRepository(private val context: Context, val base: BorrowRepository)
       }
       return CampusPostPage(result.decodeList(), (result.countOrNull() ?: 0).toInt())
     }
-    suspend fun post(id: String): CampusPost? = client.from("campus_posts").select { filter { eq("id", id) } }.decodeSingleOrNull()
+    suspend fun post(id: String): CampusPost? = client.from("campus_posts").select(postColumns) { filter { eq("id", id) } }.decodeSingleOrNull()
     suspend fun notes(id: String): String? = client.from("campus_post_notes").select { filter { eq("post_id", id) } }
         .decodeSingleOrNull<JsonObject>()?.get("identifying_notes")?.jsonPrimitive?.contentOrNull
     suspend fun claims(post: String? = null, claimant: String? = null, pending: Boolean = false): List<CampusClaim> = client.from("campus_claims").select {
@@ -66,7 +68,7 @@ class CampusRepository(private val context: Context, val base: BorrowRepository)
         }
         order("created_at", Order.DESCENDING); order("id", Order.DESCENDING); limit(50)
     }.decodeList<CampusMessage>().reversed()
-    suspend fun schedule(host: String): CampusSchedule? = client.from("campus_schedules").select { filter { eq("host_id", host) } }.decodeSingleOrNull()
+    suspend fun schedule(host: String): CampusSchedule? = client.from("campus_schedule_view").select { filter { eq("host_id", host) } }.decodeSingleOrNull()
     suspend fun slots(host: String, date: String): List<CampusSlot> = base.rpc("campus_slots", buildJsonObject { put("p_host", host); put("p_date", date) }).decodeList()
     suspend fun appointments(loan: String? = null, transfer: String? = null): List<CampusAppointment> = client.from("campus_appointments").select {
         filter { loan?.let { eq("loan_id", it) }; transfer?.let { eq("transfer_id", it) } }

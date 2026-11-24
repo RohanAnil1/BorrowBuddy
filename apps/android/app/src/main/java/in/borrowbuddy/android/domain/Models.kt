@@ -8,6 +8,8 @@ data class Profile(
     val full_name: String = "",
     val email: String = "",
     val phone: String? = null,
+    /** The departments row; `department` is its name, pulled in with the profile. */
+    val department_id: String? = null,
     val department: String? = null,
     val year_of_study: Int? = null,
     val avatar_path: String? = null,
@@ -69,12 +71,23 @@ data class Loan(
     val id: String, val request_id: String, val item_id: String, val owner_id: String,
     val borrower_id: String, val start_date: String, val due_date: String,
     val status: String = "awaiting_pickup", val returned_at: String? = null,
-    val pickup_confirmed_at: String? = null, val return_confirmed_at: String? = null,
-    val handover_token_expires_at: String? = null, val return_token_expires_at: String? = null,
-    val handover_attempts: Int = 0, val return_attempts: Int = 0,
     val created_at: String = "", val updated_at: String = "",
     val item: Item? = null, val owner: Profile? = null, val borrower: Profile? = null,
-)
+    /** One row per handover (pickup, return) from loan_handovers. */
+    val handovers: List<LoanHandover> = emptyList(),
+) {
+    fun handover(kind: String): LoanHandover? = handovers.firstOrNull { it.kind == kind }
+    val pickup_confirmed_at: String? get() = handover("pickup")?.confirmed_at
+    val return_confirmed_at: String? get() = handover("return")?.confirmed_at
+}
+
+/** A loan's pickup or return handover: when the current code expires, wrong tries, when it was confirmed. */
+@Serializable
+data class LoanHandover(val kind: String, val expires_at: String? = null, val attempts: Int = 0, val confirmed_at: String? = null)
+
+/** A row of the departments lookup table. */
+@Serializable
+data class Department(val id: String, val name: String)
 
 @Serializable
 data class AvailabilityWindow(val start_date: String, val end_date: String, val kind: String = "loan")

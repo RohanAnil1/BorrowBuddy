@@ -200,7 +200,7 @@ private data class LoanData(val loan: Loan, val reviews: List<Review>, val incid
             HandoverPassCard(kind, code, expires, now, actions.busy) { actions.run(refresh = false) {
                 code = repository.rpc("generate_handover_token", buildJsonObject { put("p_loan_id", loan.id); put("p_kind", kind) }).decodeAs<String>()
                 val refreshed = repository.loan(loan.id) ?: error("Loan is no longer available.")
-                val serverExpiry = if (kind == "pickup") refreshed.handover_token_expires_at else refreshed.return_token_expires_at
+                val serverExpiry = refreshed.handover(kind)?.expires_at
                 expiresAt = Instant.parse(serverExpiry ?: error("The code expiry could not be loaded. Generate a fresh code.")).toEpochMilli()
                 now = Instant.now()
             } }
