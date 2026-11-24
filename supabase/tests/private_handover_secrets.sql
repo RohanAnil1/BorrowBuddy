@@ -41,15 +41,14 @@ do $$
 declare v_context private_handover_context;
 begin
   select * into v_context from private_handover_context;
-  if (select pickup_hash from borrowbuddy_private.handover_secrets where loan_id = v_context.loan_id)
+  if (select hash from borrowbuddy_private.handover_codes where loan_id = v_context.loan_id and kind = 'pickup')
       is distinct from encode(extensions.digest(v_context.code, 'sha256'), 'hex') then
     raise exception 'FAIL: active pickup code was not preserved privately';
   end if;
-  begin
-    update public.loans set handover_token_hash = 'forbidden' where id = v_context.loan_id;
-    raise exception 'FAIL: public code hashes can be reintroduced';
-  exception when check_violation then null;
-  end;
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'loans' and column_name like '%token_hash') then
+    raise exception 'FAIL: loans still has public code hash columns';
+  end if;
 end;
 $$;
 select set_config('request.jwt.claims', json_build_object('sub', owner_id)::text, true) from private_handover_context;
@@ -59,21 +58,21 @@ declare v_context private_handover_context; v_loan public.loans; v_result jsonb;
 begin
   select * into v_context from private_handover_context;
   select * into strict v_loan from public.loans where id = v_context.loan_id;
-  if v_loan.handover_token_hash is not null or v_loan.return_token_hash is not null then
+  if to_jsonb(v_loan) ?| array['handover_token_hash', 'return_token_hash'] then
     raise exception 'FAIL: a full public loan row exposes code hashes';
   end if;
   if not has_schema_privilege(current_user, 'borrowbuddy_private', 'USAGE') then
     null;
   else raise exception 'FAIL: client has private handover privileges'; end if;
   begin
-    perform * from borrowbuddy_private.handover_secrets;
+    perform * from borrowbuddy_private.handover_codes;
     raise exception 'FAIL: authenticated client can read private secrets';
   exception when insufficient_privilege then null;
   end;
   v_result := public.confirm_handover_v2(v_context.loan_id, v_context.code, 'pickup');
   if v_result ->> 'ok' <> 'true' then raise exception 'FAIL: existing code no longer confirms pickup'; end if;
   v_loan := public.cancel_loan(v_context.cancelled_loan_id, 'Synthetic privacy regression');
-  if v_loan.status <> 'cancelled' or v_loan.handover_token_hash is not null or v_loan.return_token_hash is not null then
+  if v_loan.status <> 'cancelled' or to_jsonb(v_loan) ?| array['handover_token_hash', 'return_token_hash'] then
     raise exception 'FAIL: cancellation RPC leaks a code hash or fails';
   end if;
 end;
@@ -81,7 +80,7 @@ $$;
 reset role;
 do $$
 begin
-  if exists(select 1 from borrowbuddy_private.handover_secrets where loan_id = (select loan_id from private_handover_context)) then
+  if exists(select 1 from borrowbuddy_private.handover_codes where loan_id = (select loan_id from private_handover_context)) then
     raise exception 'FAIL: confirmed pickup retains a private code';
   end if;
 end;
@@ -95,7 +94,7 @@ declare v_context private_handover_context; v_loan public.loans; v_result jsonb;
 begin
   select * into v_context from private_handover_context;
   select * into strict v_loan from public.loans where id = v_context.loan_id;
-  if v_loan.return_token_hash is not null then raise exception 'FAIL: return code hash exposed'; end if;
+  if to_jsonb(v_loan) ? 'return_token_hash' then raise exception 'FAIL: return code hash exposed'; end if;
   v_result := public.confirm_handover_v2(v_context.loan_id, v_context.code, 'return');
   if v_result ->> 'status' <> 'returned' then raise exception 'FAIL: private return code no longer works'; end if;
 end;
@@ -121,7 +120,7 @@ set local role anon;
 do $$
 begin
   begin
-    perform * from borrowbuddy_private.handover_secrets;
+    perform * from borrowbuddy_private.handover_codes;
     raise exception 'FAIL: anonymous client can read private secrets';
   exception when insufficient_privilege then null;
   end;
@@ -136,7 +135,7 @@ reset role;
 delete from public.loans where id in (select cancelled_loan_id from private_handover_context);
 do $$
 begin
-  if exists(select 1 from borrowbuddy_private.handover_secrets where loan_id = (select cancelled_loan_id from private_handover_context)) then
+  if exists(select 1 from borrowbuddy_private.handover_codes where loan_id = (select cancelled_loan_id from private_handover_context)) then
     raise exception 'FAIL: deleted fixture leaves a private secret';
   end if;
 end;

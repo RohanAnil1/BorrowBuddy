@@ -40,7 +40,7 @@ begin
     if v_result ->> 'ok' <> 'false' or v_result ->> 'error' <> 'Incorrect code' then
       raise exception 'FAIL: invalid pickup did not return a failure result';
     end if;
-    if (select handover_attempts from public.loans where id = v_context.loan_id) <> v_count then
+    if (select attempts from public.loan_handovers where loan_id = v_context.loan_id and kind = 'pickup') <> v_count then
       raise exception 'FAIL: pickup attempt counter rolled back';
     end if;
   end loop;
@@ -82,13 +82,13 @@ do $$
 declare v_context handover_test_context; v_result jsonb;
 begin
   select * into v_context from handover_test_context;
-  if (select handover_attempts from public.loans where id = v_context.loan_id) <> 0 then
+  if (select attempts from public.loan_handovers where loan_id = v_context.loan_id and kind = 'pickup') <> 0 then
     raise exception 'FAIL: regeneration did not reset attempts';
   end if;
-  update public.loans set handover_token_expires_at = now() - interval '1 second' where id = v_context.loan_id;
+  update public.loan_handovers set expires_at = now() - interval '1 second' where loan_id = v_context.loan_id and kind = 'pickup';
   v_result := public.confirm_handover_v2(v_context.loan_id, v_context.code, 'pickup');
   if v_result ->> 'error' <> 'That code has expired — ask for a new one' then raise exception 'FAIL: expired pickup code accepted'; end if;
-  update public.loans set handover_token_expires_at = now() + interval '15 minutes' where id = v_context.loan_id;
+  update public.loan_handovers set expires_at = now() + interval '15 minutes' where loan_id = v_context.loan_id and kind = 'pickup';
   v_result := public.confirm_handover_v2(v_context.loan_id, v_context.code, 'pickup');
   if v_result ->> 'ok' <> 'true' or v_result ->> 'status' <> 'active' then raise exception 'FAIL: regenerated pickup did not activate loan'; end if;
   if v_result ? 'handover_token_hash' or v_result ? 'return_token_hash' then raise exception 'FAIL: token hashes leaked in RPC result'; end if;
@@ -106,7 +106,7 @@ begin
   v_wrong := case when v_context.code = '000000' then '111111' else '000000' end;
   for v_count in 1..5 loop
     v_result := public.confirm_handover_v2(v_context.loan_id, v_wrong, 'return');
-    if v_result ->> 'ok' <> 'false' or (select return_attempts from public.loans where id = v_context.loan_id) <> v_count then
+    if v_result ->> 'ok' <> 'false' or (select attempts from public.loan_handovers where loan_id = v_context.loan_id and kind = 'return') <> v_count then
       raise exception 'FAIL: return attempt counter rolled back';
     end if;
   end loop;
@@ -124,7 +124,7 @@ begin
   select * into v_context from handover_test_context;
   v_result := public.confirm_handover_v2(v_context.loan_id, v_context.code, 'return');
   if v_result ->> 'ok' <> 'true' or v_result ->> 'status' <> 'returned' then raise exception 'FAIL: return did not complete loan'; end if;
-  if (select return_token_hash from public.loans where id = v_context.loan_id) is not null then raise exception 'FAIL: return token not consumed'; end if;
+  if exists (select 1 from borrowbuddy_private.handover_codes where loan_id = v_context.loan_id and kind = 'return') then raise exception 'FAIL: return token not consumed'; end if;
 end;
 $$;
 select 'PASS: persistent pickup/return attempts, five-attempt lockout, regeneration, expiry, single use and caller authorization' as result;

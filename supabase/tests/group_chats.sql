@@ -149,7 +149,7 @@ where (conversation_id, user_id) = (select invite_id, member_id from group_test_
 select pg_temp.as_user(member_id) from group_test_context;
 set local role authenticated;
 do $$
-declare v_ctx group_test_context; v_reply uuid; v_edited public.messages; v_reactions jsonb; v_row record;
+declare v_ctx group_test_context; v_reply uuid; v_edited public.message_feed; v_reactions jsonb; v_row record;
 begin
   select * into v_ctx from group_test_context;
   if (select count(*) from public.notifications where user_id = v_ctx.member_id and payload ->> 'conversation_id' = v_ctx.invite_id::text) <> 1 then
