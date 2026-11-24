@@ -80,7 +80,8 @@ if (process.argv.includes('--prepare')) {
   const owner = await api(`/auth/v1/admin/users/${receipt.ownerId}`);
   assert(owner.email === email && owner.app_metadata?.demo_catalog === true, 'Receipt does not identify this dedicated demo lender');
   await api(`/rest/v1/profiles?id=eq.${receipt.ownerId}`, 'PATCH', { full_name: 'BorrowBuddy Demo Library',
-    department: 'Demo Campus Collection', year_of_study: 3, verification_status: 'verified',
+    department_id: (await api('/rest/v1/departments?name=eq.Demo%20Campus%20Collection&select=id'))[0].id,
+    year_of_study: 3, verification_status: 'verified',
     verification_note: 'User-authorized synthetic demo lender; sample inventory, no real student ID submitted.', is_admin: false });
   const session = await api('/auth/v1/token?grant_type=password', 'POST', { email, password }, anon);
   const token = session.access_token;
@@ -89,6 +90,7 @@ if (process.argv.includes('--prepare')) {
     const categories = await api('/rest/v1/categories?select=id,slug', 'GET', undefined, token);
     const locations = await api('/rest/v1/pickup_locations?select=id,name&is_active=eq.true', 'GET', undefined, token);
     const rows = [];
+    const photos = new Map();
     for (const product of plan.products) {
       const images = [];
       for (const image of product.images) {
@@ -113,14 +115,17 @@ if (process.argv.includes('--prepare')) {
       const pickup = locations.find(entry => entry.name === product.pickup);
       assert(category && pickup, 'Existing category/pickup missing; no schema changes permitted');
       rows.push({ id: product.id, owner_id: receipt.ownerId, category_id: category.id, title: product.title,
-        description: product.description, condition: product.condition, images, deposit_amount: product.deposit,
+        description: product.description, condition: product.condition, deposit_amount: product.deposit,
         max_loan_days: product.days, pickup_location_id: pickup.id, status: 'available' });
+      photos.set(product.id, images);
     }
     const filter = `/rest/v1/items?id=in.(${rows.map(row => row.id).join(',')})`;
     const before = await api(filter, 'GET', undefined, token);
     assert(before.every(row => row.owner_id === receipt.ownerId && row.description.startsWith('DEMO INVENTORY')), 'Refusing to modify another inventory');
     const missing = rows.filter(row => !before.some(entry => entry.id === row.id));
     if (missing.length) await api('/rest/v1/items', 'POST', missing, token);
+    // Photos are rows in item_photos, set in display order (first = cover).
+    for (const row of missing) await api('/rest/v1/rpc/set_item_photos', 'POST', { p_item_id: row.id, p_paths: photos.get(row.id) }, token);
     const actual = await api(filter, 'GET', undefined, token);
     assert.equal(actual.length, 20);
     for (const expected of rows) {

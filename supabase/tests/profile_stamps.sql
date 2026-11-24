@@ -84,14 +84,14 @@ begin
   end loop;
 
   -- Campus exchange: the veteran completed a giveaway as host (rookie received it).
-  insert into public.campus_posts(owner_id, kind, title, description, category_id, location, condition, images, status)
-    values (v_vet, 'giveaway', 'Stamps QA lamp', 'A working desk lamp for anyone.', v_category, 'Block A', 'good', array['qa/lamp.jpg'], 'completed')
+  insert into public.campus_posts(owner_id, kind, title, description, category_id, location, condition, status)
+    values (v_vet, 'giveaway', 'Stamps QA lamp', 'A working desk lamp for anyone.', v_category, 'Block A', 'good', 'completed')
     returning id into v_post;
   insert into public.campus_transfers(post_id, host_id, recipient_id, status, completed_at)
     values (v_post, v_vet, v_rookie, 'completed', now());
   -- The borrower's found-item handovers were cancelled or are still active.
-  insert into public.campus_posts(owner_id, kind, title, description, category_id, location, found_on, images, status)
-    values (v_borrower, 'found', 'Stamps QA bottle', 'Blue bottle found near the library.', v_category, 'Library', current_date, array['qa/bottle.jpg'], 'reserved')
+  insert into public.campus_posts(owner_id, kind, title, description, category_id, location, found_on, status)
+    values (v_borrower, 'found', 'Stamps QA bottle', 'Blue bottle found near the library.', v_category, 'Library', current_date, 'reserved')
     returning id into v_post;
   insert into public.campus_transfers(post_id, host_id, recipient_id, status) values
     (v_post, v_borrower, v_viewer, 'cancelled'),

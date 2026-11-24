@@ -30,11 +30,11 @@ async function api(token, path, method = 'GET', body) {
   assert(data?.ok !== false, data?.error); return data;
 }
 const rpc = (actor, action, data) => api(actor.token, '/rest/v1/rpc/campus_api', 'POST', { p_action: action, p_data: data });
-const snapshot = () => Promise.all(['profiles?select=id', 'items?select=id,images,status', 'pickup_locations?select=id,name,is_active'].map(path => api(server, `/rest/v1/${path}&order=id`)));
+const snapshot = () => Promise.all(['profiles?select=id', 'items?select=id,images:photo_paths,status', 'pickup_locations?select=id,name,is_active'].map(path => api(server, `/rest/v1/${path}&order=id`)));
 async function actor(role, admin = false) {
   const email = `android-qa-native-campus-${role}-${run}@bennett.edu.in`;
   const user = await api(server, '/auth/v1/admin/users', 'POST', { email, password, email_confirm: true }); users.push(user.id);
-  await api(server, `/rest/v1/profiles?id=eq.${user.id}`, 'PATCH', { full_name: `Native Campus QA ${role}`, verification_status: 'verified', is_admin: admin, department: 'Computer Science', year_of_study: 2 });
+  await api(server, `/rest/v1/profiles?id=eq.${user.id}`, 'PATCH', { full_name: `Native Campus QA ${role}`, verification_status: 'verified', is_admin: admin, department_id: (await api(server, '/rest/v1/departments?name=eq.Computer%20Science&select=id'))[0].id, year_of_study: 2 });
   const session = await api(anon, '/auth/v1/token?grant_type=password', 'POST', { email, password });
   return { id: user.id, email, token: session.access_token };
 }

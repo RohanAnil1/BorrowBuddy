@@ -46,18 +46,18 @@ try {
   const email = `buddy-qa-${run}@bennett.edu.in`;
   const user = await api(server, '/auth/v1/admin/users', 'POST', { email, password, email_confirm: true });
   actors.push(user.id);
-  await api(server, `/rest/v1/profiles?id=eq.${user.id}`, 'PATCH', { full_name: 'Buddy Tester', department: 'Computer Science', year_of_study: 2, verification_status: 'verified' });
+  await api(server, `/rest/v1/profiles?id=eq.${user.id}`, 'PATCH', { full_name: 'Buddy Tester', department_id: (await api(server, '/rest/v1/departments?name=eq.Computer%20Science&select=id'))[0].id, year_of_study: 2, verification_status: 'verified' });
 
   // A second student lends a uniquely named item so search has a known answer.
   const lenderEmail = `buddy-qa-lender-${run}@bennett.edu.in`;
   const lender = await api(server, '/auth/v1/admin/users', 'POST', { email: lenderEmail, password, email_confirm: true });
   actors.push(lender.id);
-  await api(server, `/rest/v1/profiles?id=eq.${lender.id}`, 'PATCH', { full_name: 'Buddy Lender', department: 'Design', year_of_study: 3, verification_status: 'verified' });
+  await api(server, `/rest/v1/profiles?id=eq.${lender.id}`, 'PATCH', { full_name: 'Buddy Lender', department_id: (await api(server, '/rest/v1/departments?name=eq.Design&select=id'))[0].id, year_of_study: 3, verification_status: 'verified' });
   const [category] = await api(server, '/rest/v1/categories?select=id&limit=1');
   const keyword = `zorbcalc${run}`;
   const [item] = await api(server, '/rest/v1/items', 'POST', {
     owner_id: lender.id, category_id: category.id, title: `Buddy QA ${keyword}`, description: 'Fixture for the assistant test.',
-    condition: 'good', images: [], deposit_amount: 200, max_loan_days: 7, status: 'available',
+    condition: 'good', deposit_amount: 200, max_loan_days: 7, status: 'available',
   });
   items.push(item.id);
 

@@ -168,7 +168,7 @@ begin
   exception when others then if sqlerrm <> 'You can only reply to a message in the same chat' then raise; end if; end;
 
   -- Students can't set moderation columns, backdate, or write directly.
-  begin insert into public.messages(conversation_id, sender_id, body, reactions) values (v_ctx.invite_id, v_ctx.member_id, 'x', '{"👍":["x"]}');
+  begin insert into public.message_reactions(message_id, user_id, emoji) values (v_reply, v_ctx.member_id, '👍');
     raise exception 'FAIL: inserted reactions';
   exception when insufficient_privilege then null; end;
   begin insert into public.messages(conversation_id, sender_id, body, created_at) values (v_ctx.invite_id, v_ctx.member_id, 'x', now() - interval '1 year');
@@ -211,7 +211,8 @@ begin
     raise exception 'FAIL: student deleted someone else';
   exception when others then if sqlerrm <> 'You can only delete your own messages' then raise; end if; end;
   perform public.delete_message(v_reply);
-  if exists (select 1 from public.messages where id = v_reply and (deleted_at is null or body <> '' or reactions <> '{}'::jsonb)) then
+  if exists (select 1 from public.messages where id = v_reply and (deleted_at is null or body <> ''))
+     or exists (select 1 from public.message_reactions where message_id = v_reply) then
     raise exception 'FAIL: soft delete'; end if;
   begin perform public.edit_message(v_reply, 'zombie'); raise exception 'FAIL: edited a deleted message';
   exception when others then if sqlerrm <> 'Message not found' then raise; end if; end;

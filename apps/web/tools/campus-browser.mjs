@@ -115,7 +115,7 @@ export async function campusBrowser({ browser, web, recipient, host, admin, pass
     await finder.getByRole('button', { name: 'PUBLISH TO CAMPUS' }).click();
     await finder.waitForURL(/\/campus\/lost-found\/[a-f0-9-]{36}$/);
     const postId = new URL(finder.url()).pathname.split('/').at(-1);
-    const post = (await api(server, `/rest/v1/campus_posts?id=eq.${postId}`))[0];
+    const post = (await api(server, `/rest/v1/campus_posts?select=*,images:photo_paths&id=eq.${postId}`))[0];
     objects.push(...post.images);
     assert(post.images[0].endsWith('.webp'));
     await page.goto(finder.url());
@@ -188,7 +188,7 @@ export async function campusBrowser({ browser, web, recipient, host, admin, pass
     await finder.getByRole('button', { name: 'PUBLISH TO CAMPUS' }).click();
     await finder.waitForURL(/\/campus\/giveaways\/[a-f0-9-]{36}$/);
     const giftId = new URL(finder.url()).pathname.split('/').at(-1);
-    const gift = (await api(server, `/rest/v1/campus_posts?id=eq.${giftId}`))[0]; objects.push(...gift.images);
+    const gift = (await api(server, `/rest/v1/campus_posts?select=*,images:photo_paths&id=eq.${giftId}`))[0]; objects.push(...gift.images);
     assert.equal(gift.hold_hours, 72); assert.equal(gift.images.length, 2);
     await page.goto(web + '/campus/giveaways');
     await page.getByRole('textbox', { name: 'Search campus titles' }).fill(giftTitle);

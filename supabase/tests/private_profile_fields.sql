@@ -64,13 +64,14 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true) from private_profile_context;
 set local role authenticated;
 do $$
-declare v_context private_profile_context; v_row public.profiles;
+declare v_context private_profile_context; v_row jsonb;
 begin
   select * into v_context from private_profile_context;
-  select * into v_row from public.admin_pending_profiles() where id = v_context.pending_id;
-  if v_row.id is null then raise exception 'FAIL: pending student missing from the admin queue'; end if;
-  if v_row.email is null or v_row.student_id_path is null then raise exception 'FAIL: admin queue lacks email or ID path'; end if;
-  if exists(select 1 from public.admin_pending_profiles() where verification_status <> 'pending') then
+  select r into v_row from public.admin_pending_profiles() as r where r->>'id' = v_context.pending_id::text;
+  if v_row is null then raise exception 'FAIL: pending student missing from the admin queue'; end if;
+  if v_row->>'email' is null or v_row->>'student_id_path' is null then raise exception 'FAIL: admin queue lacks email or ID path'; end if;
+  if not (v_row ? 'department') then raise exception 'FAIL: admin queue lacks the department name'; end if;
+  if exists(select 1 from public.admin_pending_profiles() as r where r->>'verification_status' <> 'pending') then
     raise exception 'FAIL: admin queue includes non-pending profiles';
   end if;
 end;

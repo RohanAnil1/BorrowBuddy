@@ -23,7 +23,7 @@ async function actor(role) {
   const email = `android-qa-member-${role}-${run}@bennett.edu.in`;
   const user = await api('/auth/v1/admin/users', 'POST', { email, password, email_confirm: true });
   const current = { id: user.id, email }; actors.push(current);
-  await api(`/rest/v1/profiles?id=eq.${user.id}`, 'PATCH', { full_name: role === 'admin' ? 'Aditi Rao' : 'Mira Sharma', department: 'Computer Science', year_of_study: 3, trust_score: 87.6, is_admin: role === 'admin', verification_status: 'verified' });
+  await api(`/rest/v1/profiles?id=eq.${user.id}`, 'PATCH', { full_name: role === 'admin' ? 'Aditi Rao' : 'Mira Sharma', department_id: (await api('/rest/v1/departments?name=eq.Computer%20Science&select=id'))[0].id, year_of_study: 3, trust_score: 87.6, is_admin: role === 'admin', verification_status: 'verified' });
   const session = await api('/auth/v1/token?grant_type=password', 'POST', { email, password }, anon);
   current.token = session.access_token; return current;
 }

@@ -66,6 +66,17 @@ async function removeFixtureItems(itemIds) {
   }
 }
 const pass = name => { steps.push(name); console.log(`PASS ${name}`); };
+// Profiles store a department id from the departments lookup table.
+const departmentIds = new Map();
+async function departmentId(name) {
+  if (name == null) return null;
+  if (!departmentIds.has(name)) {
+    const row = (await api('service', `/rest/v1/departments?name=eq.${encodeURIComponent(name)}&select=id`))[0];
+    assert(row, `Unknown department ${name}`);
+    departmentIds.set(name, row.id);
+  }
+  return departmentIds.get(name);
+}
 const assertNoPublicSecrets = row => {
   assert(row, 'Public loan response required');
   assert(row.handover_token_hash == null && row.return_token_hash == null,
@@ -102,12 +113,12 @@ try {
   const borrower = await createActor('borrower');
   const outsider = await createActor('outsider');
   pass('confirmed isolated accounts and real password authentication');
-  await api('service', `/rest/v1/profiles?id=eq.${admin.id}`, 'PATCH', { is_admin: true, verification_status: 'verified', full_name: 'Android QA admin', department: 'Computer Science', year_of_study: 2 });
+  await api('service', `/rest/v1/profiles?id=eq.${admin.id}`, 'PATCH', { is_admin: true, verification_status: 'verified', full_name: 'Android QA admin', department_id: await departmentId('Computer Science'), year_of_study: 2 });
   const categories = await api(owner, '/rest/v1/categories?order=sort_order');
   assert(categories.length);
   await api(owner, '/rest/v1/items', 'POST', { owner_id: owner.id, category_id: categories[0].id, title: 'Android QA forbidden listing' }, false);
   await api(owner, `/rest/v1/profiles?id=eq.${owner.id}`, 'PATCH', { is_admin: true }, false);
-  await api(owner, `/rest/v1/profiles?id=eq.${owner.id}`, 'PATCH', { full_name: 'Android QA owner', department: 'Computer Science', year_of_study: 2 });
+  await api(owner, `/rest/v1/profiles?id=eq.${owner.id}`, 'PATCH', { full_name: 'Android QA owner', department_id: await departmentId('Computer Science'), year_of_study: 2 });
   // Synthetic PNG fixture; no student document or personal image is used.
   const png = syntheticPng;
   const uploadPath = `${owner.id}/${randomUUID()}.png`;
@@ -145,7 +156,8 @@ try {
     assert(response.ok, `Item fixture upload failed (${response.status})`);
     objects.push({ bucket: 'item-images', path }); imagePaths.push(path);
   }
-  await api(owner, `/rest/v1/items?id=eq.${itemId}`, 'PATCH', { images: imagePaths, deposit_amount: 100000 });
+  await api(owner, `/rest/v1/items?id=eq.${itemId}`, 'PATCH', { deposit_amount: 100000 });
+  await rpc(owner, 'set_item_photos', { p_item_id: itemId, p_paths: imagePaths });
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const due = new Date(`${today}T12:00:00Z`); due.setUTCDate(due.getUTCDate() + 2);
   const end = due.toISOString().slice(0, 10);
@@ -173,7 +185,7 @@ try {
   const wrong = code === '000000' ? '111111' : '000000';
   for (let attempt = 1; attempt <= 5; attempt++) {
     assert.equal((await rpc(owner, 'confirm_handover_v2', { p_loan_id: loanId, p_token: wrong, p_kind: 'pickup' })).ok, false);
-    assert.equal((await api(owner, `/rest/v1/loans?id=eq.${loanId}&select=handover_attempts`))[0].handover_attempts, attempt);
+    assert.equal((await api(owner, `/rest/v1/loan_handovers?loan_id=eq.${loanId}&kind=eq.pickup&select=attempts`))[0].attempts, attempt);
   }
   assert.equal((await rpc(owner, 'confirm_handover_v2', { p_loan_id: loanId, p_token: code, p_kind: 'pickup' })).ok, false);
   code = await rpc(borrower, 'generate_handover_token', { p_loan_id: loanId, p_kind: 'pickup' });
@@ -437,7 +449,7 @@ try {
     }
     if (!focus || focus === 'logbook') {
       const emptyActor = await createActor('logbook-empty');
-      await api('service', `/rest/v1/profiles?id=eq.${emptyActor.id}`, 'PATCH', { verification_status: 'verified', full_name: 'Android QA empty logbook', department: 'Computer Science', year_of_study: 2 });
+      await api('service', `/rest/v1/profiles?id=eq.${emptyActor.id}`, 'PATCH', { verification_status: 'verified', full_name: 'Android QA empty logbook', department_id: await departmentId('Computer Science'), year_of_study: 2 });
       const fixtures = [];
       for (const [index, actor] of [owner, borrower, owner, owner, owner].entries()) {
         const item = (await api(actor, '/rest/v1/items', 'POST', { owner_id: actor.id, category_id: categories[0].id,
@@ -475,11 +487,14 @@ try {
       const historyLoans = historyRequests.map(request => ({
         id: randomUUID(), request_id: request.id, item_id: request.item_id, owner_id: owner.id, borrower_id: borrower.id,
         start_date: request.start_date, due_date: request.end_date, status: 'returned', created_at: request.created_at,
-        pickup_confirmed_at: new Date(Date.parse(request.created_at) + 3_600_000).toISOString(),
         returned_at: new Date(Date.parse(request.created_at) + 7_200_000).toISOString(),
-        return_confirmed_at: new Date(Date.parse(request.created_at) + 7_200_000).toISOString(),
       }));
       await api('service', '/rest/v1/loans', 'POST', historyLoans);
+      // Confirmed handovers are rows in loan_handovers, one per loan and kind.
+      await api('service', '/rest/v1/loan_handovers', 'POST', historyLoans.flatMap(loan => [
+        { loan_id: loan.id, kind: 'pickup', confirmed_at: new Date(Date.parse(loan.created_at) + 3_600_000).toISOString() },
+        { loan_id: loan.id, kind: 'return', confirmed_at: loan.returned_at },
+      ]));
       const freedLoan = await approve(fixtures[3], outsider, owner);
       const notified = await rpc(borrower, 'join_waitlist', { p_item_id: fixtures[3].id, p_start: today, p_end: end });
       await rpc(owner, 'cancel_loan', { p_loan_id: freedLoan.id, p_reason: 'Synthetic logbook notification fixture' });
@@ -663,7 +678,7 @@ try {
     const handoverReport = handover.output.replaceAll(password, '[QA PASSWORD REDACTED]').replaceAll(service, '[SERVER KEY REDACTED]').replaceAll(anon, '[PUBLIC KEY REDACTED]').replace(/android-qa-[a-z0-9-]+@bennett\.edu\.in/gi, '[QA EMAIL REDACTED]');
     await writeFile(new URL('../verification/hosted-native-handover.txt', import.meta.url), handoverReport);
     console.log(handoverReport.split('\n').filter(line => /INSTRUMENTATION_STATUS: (class|test|stack)=|INSTRUMENTATION_STATUS_CODE:|^OK \(|^Tests run:|^FAILURES/.test(line)).join('\n'));
-    const handoverState = await api('service', `/rest/v1/loans?item_id=eq.${nativeItemId}&select=status,handover_attempts,return_attempts,pickup_confirmed_at,returned_at`);
+    const handoverState = await api('service', `/rest/v1/loans?item_id=eq.${nativeItemId}&select=status,returned_at,handovers:loan_handovers(kind,attempts,confirmed_at)`);
     await writeFile(new URL('../verification/hosted-native-handover-state.json', import.meta.url), JSON.stringify(handoverState, null, 2));
     console.log(`Native handover database state: ${JSON.stringify(handoverState)}`);
     if (!/OK \(1 test\)/.test(handoverReport) || /INSTRUMENTATION_STATUS_CODE: -[1234]/.test(handoverReport)) {
@@ -712,7 +727,7 @@ try {
       printSummary(report);
       assert.equal(verification.code, 0, 'Native verification instrumentation command failed');
       assert(/OK \(1 test\)/.test(report) && !/INSTRUMENTATION_STATUS_CODE: -[1234]/.test(report), 'Native verification must complete one passing test');
-      const state = (await api('service', `/rest/v1/profiles?id=eq.${student.id}&select=verification_status,is_admin,department,year_of_study,student_id_path`))[0];
+      const state = (await api('service', `/rest/v1/profiles?id=eq.${student.id}&select=verification_status,is_admin,...departments(department:name),year_of_study,student_id_path`))[0];
       assert.equal(state.verification_status, 'verified'); assert.equal(state.is_admin, false);
       assert(state.student_id_path, 'Native ID submission must persist its private path');
       await api(outsider, `/storage/v1/object/sign/student-ids/${state.student_id_path}`, 'POST', { expiresIn: 60 }, false);
@@ -810,7 +825,7 @@ try {
       const student = await createActor('inbox', 'Android QA Inbox Student');
       const empty = await createActor('inbox-empty', 'Android QA Empty Inbox');
       for (const actor of [student, empty]) await api('service', `/rest/v1/profiles?id=eq.${actor.id}`, 'PATCH', {
-        verification_status: 'verified', full_name: actor === student ? 'Android QA Inbox Student' : 'Android QA Empty Inbox', department: 'Design', year_of_study: 2,
+        verification_status: 'verified', full_name: actor === student ? 'Android QA Inbox Student' : 'Android QA Empty Inbox', department_id: await departmentId('Design'), year_of_study: 2,
       });
       const listings = await api(owner, '/rest/v1/items', 'POST', ['loan', 'available'].map(kind => ({ owner_id: owner.id, category_id: categories[0].id, title: `Android QA inbox ${kind} ${runId}` })));
       nativeOwnerItems.push(...listings.map(row => row.id));
@@ -868,7 +883,7 @@ try {
       const empty = await createActor('ledger-empty', 'Android QA Empty Ledger');
       for (const actor of [student, empty]) await api('service', `/rest/v1/profiles?id=eq.${actor.id}`, 'PATCH', {
         verification_status: 'verified', full_name: actor === student ? 'Android QA Ledger Student' : 'Android QA Empty Ledger',
-        department: 'Computer Science', year_of_study: actor === student ? 6 : 2,
+        department_id: await departmentId('Computer Science'), year_of_study: actor === student ? 6 : 2,
       });
       const ledgerItem = (await api(owner, '/rest/v1/items', 'POST', {
         owner_id: owner.id, category_id: categories[0].id, title: `Android QA ledger loan ${runId}`,
@@ -924,8 +939,8 @@ try {
         const captureChecks = await runAdb(['exec-out', 'run-as', 'in.borrowbuddy.android', 'cat', 'files/native-account-ledger-capture-checks.json']); assert.equal(captureChecks.code, 0);
         await writeFile(new URL('../verification/native-account-ledger-capture-checks.json', import.meta.url), captureChecks.output);
       }
-      const saved = (await api('service', `/rest/v1/profiles?id=eq.${student.id}&select=full_name,phone,department,year_of_study`))[0];
-      assert.deepEqual(saved, { full_name: 'Android QA Ledger Updated', phone: '9876543210', department: 'Design', year_of_study: 6 });
+      const saved = (await api('service', `/rest/v1/profiles?id=eq.${student.id}&select=full_name,phone,...departments(department:name),year_of_study`))[0];
+      assert.deepEqual(saved, { full_name: 'Android QA Ledger Updated', phone: '9876543210', department_id: await departmentId('Design'), year_of_study: 6 });
       assert.equal((await api('service', `/rest/v1/fines?id=eq.${pending[0].id}&select=status`))[0].status, 'settled');
       pass('native account draft/save/error/navigation, personal ledger states, private rows and oldest-fifty admin queue replenishment');
       await removeFixtureItem(ledgerItem.id);
@@ -936,8 +951,8 @@ try {
       const reviewer = await createActor('profile-reviewer', 'Arjun Mehta');
       const empty = await createActor('profile-empty', '');
       nativeProfileSessions.push(student, reviewer, empty);
-      for (const actor of [student, reviewer]) await api('service', `/rest/v1/profiles?id=eq.${actor.id}`, 'PATCH', { verification_status: 'verified', department: 'Computer Science', year_of_study: 3 });
-      await api('service', `/rest/v1/profiles?id=eq.${empty.id}`, 'PATCH', { full_name: '', department: null, year_of_study: null, verification_status: 'rejected', created_at: new Date(Date.now() - 3 * 86_400_000).toISOString() });
+      for (const actor of [student, reviewer]) await api('service', `/rest/v1/profiles?id=eq.${actor.id}`, 'PATCH', { verification_status: 'verified', department_id: await departmentId('Computer Science'), year_of_study: 3 });
+      await api('service', `/rest/v1/profiles?id=eq.${empty.id}`, 'PATCH', { full_name: '', department_id: await departmentId(null), year_of_study: null, verification_status: 'rejected', created_at: new Date(Date.now() - 3 * 86_400_000).toISOString() });
       const clock = Date.now();
       // Synthetic completed history exercises the source's public aggregate and
       // twenty-review window. Normal student sessions perform every read/review.
@@ -954,9 +969,12 @@ try {
       await api('service', `/rest/v1/borrow_requests?id=in.(${requests.map(row => row.id).join(',')})`, 'PATCH', { status: 'approved' });
       const loans = requests.map((request, index) => ({ id: randomUUID(), request_id: request.id, item_id: request.item_id,
         owner_id: index === 20 ? reviewer.id : student.id, borrower_id: request.borrower_id, start_date: request.start_date, due_date: request.end_date,
-        status: 'returned', created_at: request.created_at, pickup_confirmed_at: request.created_at,
-        returned_at: request.created_at, return_confirmed_at: request.created_at }));
+        status: 'returned', created_at: request.created_at, returned_at: request.created_at }));
       await api('service', '/rest/v1/loans', 'POST', loans);
+      await api('service', '/rest/v1/loan_handovers', 'POST', loans.flatMap(loan => [
+        { loan_id: loan.id, kind: 'pickup', confirmed_at: loan.created_at },
+        { loan_id: loan.id, kind: 'return', confirmed_at: loan.created_at },
+      ]));
       await api('service', `/rest/v1/items?id=in.(${historyItems.map(row => row.id).join(',')})`, 'PATCH', { status: 'paused' });
       const reviews = loans.map((loan, index) => ({ id: randomUUID(), loan_id: loan.id, reviewer_id: reviewer.id, reviewee_id: student.id,
         role: index === 20 ? 'as_owner' : 'as_borrower', rating: index === 0 ? 1 : 4,
@@ -1032,7 +1050,7 @@ try {
     if (!focus || focus === 'admin' || focus === 'admin-source') {
       const pendingStudent = await createActor('admin-layout-student', 'Mira Sharma');
       const missingStudent = await createActor('admin-layout-missing', 'Aditi Rao');
-      await api('service', `/rest/v1/profiles?id=eq.${pendingStudent.id}`, 'PATCH', { email: `qa-${pendingStudent.id.slice(0,8)}@bennett.edu.in`, department: 'Computer Science', year_of_study: 3 });
+      await api('service', `/rest/v1/profiles?id=eq.${pendingStudent.id}`, 'PATCH', { email: `qa-${pendingStudent.id.slice(0,8)}@bennett.edu.in`, department_id: await departmentId('Computer Science'), year_of_study: 3 });
       await api('service', `/rest/v1/profiles?id=eq.${missingStudent.id}`, 'PATCH', { email: `qa-${missingStudent.id.slice(0,8)}@bennett.edu.in` });
       const idPath = `${pendingStudent.id}/${randomUUID()}.png`;
       let upload = await fetch(`${base}/storage/v1/object/student-ids/${idPath}`, { method: 'POST', headers: { apikey: anon, Authorization: `Bearer ${pendingStudent.token}`, 'Content-Type': 'image/png' }, body: png, signal: AbortSignal.timeout(30_000) });
@@ -1120,7 +1138,7 @@ try {
       const deskBorrower = await createActor('desk-borrower', 'Android QA desk borrower');
       const emptyOwner = await createActor('desk-empty', 'Android QA empty owner');
       for (const actor of [deskOwner, deskBorrower, emptyOwner]) await api('service', `/rest/v1/profiles?id=eq.${actor.id}`, 'PATCH', {
-        verification_status: 'verified', department: 'Computer Science', year_of_study: 2,
+        verification_status: 'verified', department_id: await departmentId('Computer Science'), year_of_study: 2,
       });
       // Verification recomputes reputation; set only this isolated fractional-score
       // fixture afterwards so source/native rounding is actually exercised.

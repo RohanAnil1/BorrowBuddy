@@ -26,10 +26,10 @@ const rpc = (user, action, data, reject = false) => api(user.token, '/rest/v1/rp
 async function actor(label, status = 'verified', admin = false) {
   const email = `android-qa-campus-${label}-${run}@bennett.edu.in`;
   const u = await api(server, '/auth/v1/admin/users', 'POST', { email, password, email_confirm: true }); actors.push(u.id);
-  await api(server, `/rest/v1/profiles?id=eq.${u.id}`, 'PATCH', { full_name: `Campus QA ${label}`, department: 'Computer Science', year_of_study: 2, verification_status: status, is_admin: admin });
+  await api(server, `/rest/v1/profiles?id=eq.${u.id}`, 'PATCH', { full_name: `Campus QA ${label}`, department_id: (await api(server, '/rest/v1/departments?name=eq.Computer%20Science&select=id'))[0].id, year_of_study: 2, verification_status: status, is_admin: admin });
   const session = await api(anon, '/auth/v1/token?grant_type=password', 'POST', { email, password }); return { id: u.id, email, token: session.access_token };
 }
-async function snapshot() { return Promise.all(['profiles?select=id', 'items?select=id,images,status', 'pickup_locations?select=id,name,is_active'].map(path => api(server, `/rest/v1/${path}&order=id`))); }
+async function snapshot() { return Promise.all(['profiles?select=id', 'items?select=id,images:photo_paths,status', 'pickup_locations?select=id,name,is_active'].map(path => api(server, `/rest/v1/${path}&order=id`))); }
 async function post(host, kind, category, location, hours = 48) {
   const id = randomUUID(), path = `${host.id}/${id}/test.png`;
   const response = await fetch(`${base}/storage/v1/object/campus-photos/${path}`, { method: 'POST', headers: { apikey: anon, Authorization: `Bearer ${host.token}`, 'Content-Type': 'image/png' }, body: syntheticPng });

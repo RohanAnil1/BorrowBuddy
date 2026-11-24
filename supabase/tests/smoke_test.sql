@@ -90,16 +90,18 @@ $$;
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-4111-8111-111111111111"}', true);
 
-insert into public.items (owner_id, category_id, title, description, images, max_loan_days)
+insert into public.items (owner_id, category_id, title, description, max_loan_days)
 select
   '11111111-1111-4111-8111-111111111111',
   c.id,
   'Sony Projector',
   'Portable projector with HDMI cable and remote.',
-  array['11111111-1111-4111-8111-111111111111/projector.jpg'],
   14
 from public.categories c
 where c.slug = 'electronics';
+
+select public.set_item_photos(i.id, array['11111111-1111-4111-8111-111111111111/projector.jpg'])
+from public.items i where i.title = 'Sony Projector';
 
 -- ---------------------------------------------------------------------------
 -- 4. Borrower requests; self-borrowing is rejected
@@ -277,7 +279,7 @@ begin
   select value into v_code from bb_test_kv where key = 'pickup_code';
   v_loan := public.confirm_handover(v_id, v_code, 'pickup');
   perform pg_temp.assert(v_loan.status = 'active', 'correct pickup code activates the loan');
-  perform pg_temp.assert(v_loan.pickup_confirmed_at is not null, 'pickup timestamp recorded');
+  perform pg_temp.assert(exists (select 1 from public.loan_handovers h where h.loan_id = v_loan.id and h.kind = 'pickup' and h.confirmed_at is not null), 'pickup timestamp recorded');
   perform pg_temp.assert(not exists (select 1 from borrowbuddy_private.handover_codes c where c.loan_id = v_loan.id and c.kind = 'pickup'), 'pickup token is single-use');
 end;
 $$;
@@ -461,8 +463,8 @@ begin
   );
 
   begin
-    insert into public.items (owner_id, category_id, title, description, images)
-    select '11111111-1111-4111-8111-111111111111', c.id, 'Sneaky item', 'not mine', array['x.jpg']
+    insert into public.items (owner_id, category_id, title, description)
+    select '11111111-1111-4111-8111-111111111111', c.id, 'Sneaky item', 'not mine'
     from public.categories c
     where c.slug = 'other';
     raise exception 'FAIL: RLS allowed inserting an item for another user';
