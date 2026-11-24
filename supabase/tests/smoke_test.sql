@@ -278,7 +278,7 @@ begin
   v_loan := public.confirm_handover(v_id, v_code, 'pickup');
   perform pg_temp.assert(v_loan.status = 'active', 'correct pickup code activates the loan');
   perform pg_temp.assert(v_loan.pickup_confirmed_at is not null, 'pickup timestamp recorded');
-  perform pg_temp.assert(v_loan.handover_token_hash is null, 'pickup token is single-use');
+  perform pg_temp.assert(not exists (select 1 from borrowbuddy_private.handover_codes c where c.loan_id = v_loan.id and c.kind = 'pickup'), 'pickup token is single-use');
 end;
 $$;
 
@@ -412,9 +412,16 @@ begin
 end;
 $$;
 
--- backdate the loan and activate it, then run the overdue job
+-- backdate the loan and activate it, then run the overdue job. The start
+-- date belongs to the request; the loan's copy follows it.
+update public.borrow_requests r
+set start_date = current_date - 5
+from public.loans l
+where l.request_id = r.id
+  and l.borrower_id = '33333333-3333-4333-8333-333333333333' and l.status = 'awaiting_pickup';
+
 update public.loans
-set start_date = current_date - 5, due_date = current_date - 3
+set due_date = current_date - 3
 where borrower_id = '33333333-3333-4333-8333-333333333333' and status = 'awaiting_pickup';
 
 update public.loans
