@@ -9,7 +9,7 @@ export async function getWaitlistForUser(userId: string): Promise<WaitlistWithIt
   const supabase = await createClient();
   const { data } = await supabase
     .from("waitlist_entries")
-    .select("*, item:items!waitlist_entries_item_id_fkey(id, title, images)")
+    .select("*, item:items!waitlist_entries_item_id_fkey(id, title, images:photo_paths)")
     .eq("user_id", userId)
     .in("status", ["waiting", "notified"])
     .order("created_at", { ascending: false });

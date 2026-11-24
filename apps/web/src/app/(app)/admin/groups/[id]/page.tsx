@@ -23,7 +23,7 @@ async function findStudents(query: string, exclude: Set<string>): Promise<Candid
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, department, year_of_study")
+    .select("id, full_name, ...departments(department:name), year_of_study")
     .eq("verification_status", "verified")
     .ilike("full_name", `%${term}%`)
     .order("full_name")

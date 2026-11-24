@@ -73,7 +73,7 @@ export const profileSetupSchema = z.object({
     .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number")
     .optional()
     .or(z.literal("")),
-  department: z.string().trim().min(2, "Select your department").max(80),
+  department_id: z.uuid("Select your department"),
   year_of_study: z.number().int().min(1).max(6),
 });
 

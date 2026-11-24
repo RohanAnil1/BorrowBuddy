@@ -58,14 +58,15 @@ export default async function LoanPage({ params }: { params: Promise<{ id: strin
   const showReturnCode = ["active", "return_pending", "overdue"].includes(loan.status) && isOwner;
   const confirmReturn = ["active", "return_pending", "overdue"].includes(loan.status) && !isOwner;
 
+  const pickedUpAt = loan.handovers.find((handover) => handover.kind === "pickup")?.confirmed_at ?? null;
   const timeline = [
     { label: "REQUESTED", at: loan.created_at, done: true },
     {
       label: "APPROVED",
-      at: loan.pickup_confirmed_at ?? loan.updated_at,
+      at: pickedUpAt ?? loan.updated_at,
       done: loan.status !== "awaiting_pickup",
     },
-    { label: "PICKED UP", at: loan.pickup_confirmed_at, done: Boolean(loan.pickup_confirmed_at) },
+    { label: "PICKED UP", at: pickedUpAt, done: Boolean(pickedUpAt) },
     { label: "RETURNED", at: loan.returned_at, done: Boolean(loan.returned_at) },
   ];
 

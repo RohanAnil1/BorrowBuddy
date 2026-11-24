@@ -10,6 +10,7 @@ import type {
   OwnershipClaim,
   Profile,
 } from "@borrowbuddy/shared";
+import { CAMPUS_POST_COLUMNS } from "@/lib/data/campus";
 import { BUCKETS } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 
@@ -300,11 +301,17 @@ export type AdminReport = {
 
 export async function getAdminReports(status: ReportStatus, limit = 50) {
   const supabase = await createClient();
+  // Each report points at exactly one item, student or message through its
+  // own foreign key, so the target comes back in the same query.
   const [list, ...counts] = await Promise.all([
     supabase
       .from("reports")
       .select(
-        "*, reporter:profiles!reports_reporter_id_fkey(id, full_name), resolver:profiles!reports_resolved_by_fkey(id, full_name)",
+        "id, reporter_id, target, reason, status, resolved_at, created_at, " +
+          "reporter:profiles!reports_reporter_id_fkey(id, full_name), resolver:profiles!reports_resolved_by_fkey(id, full_name), " +
+          "item:items!reports_reported_item_id_fkey(id, title), " +
+          "person:profiles!reports_reported_user_id_fkey(id, full_name), " +
+          "message:messages!reports_reported_message_id_fkey(id, body, conversation_id)",
       )
       .eq("status", status)
       .order("created_at", { ascending: status === "open" })
@@ -314,36 +321,20 @@ export async function getAdminReports(status: ReportStatus, limit = 50) {
     ),
   ]);
 
-  const rows = (list.data as unknown as Omit<AdminReport, "target_label" | "target_href">[] | null) ?? [];
-  const ids = (target: AdminReport["target"]) =>
-    [...new Set(rows.filter((row) => row.target === target).map((row) => row.target_id))];
+  type ReportRow = Omit<AdminReport, "target_id" | "target_label" | "target_href"> & {
+    item: { id: string; title: string } | null;
+    person: { id: string; full_name: string } | null;
+    message: { id: string; body: string | null; conversation_id: string } | null;
+  };
+  const rows = (list.data as unknown as ReportRow[] | null) ?? [];
 
-  const [items, people, messages] = await Promise.all([
-    ids("item").length
-      ? supabase.from("items").select("id, title").in("id", ids("item"))
-      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
-    ids("user").length
-      ? supabase.from("profiles").select("id, full_name").in("id", ids("user"))
-      : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
-    ids("message").length
-      ? supabase.from("messages").select("id, body, conversation_id").in("id", ids("message"))
-      : Promise.resolve({ data: [] as { id: string; body: string | null; conversation_id: string }[] }),
-  ]);
-  const itemTitles = new Map((items.data ?? []).map((row) => [row.id, row.title]));
-  const names = new Map((people.data ?? []).map((row) => [row.id, row.full_name]));
-  const bodies = new Map((messages.data ?? []).map((row) => [row.id, row]));
-
-  const reports: AdminReport[] = rows.map((row) => {
-    if (row.target === "item") {
-      return { ...row, target_label: itemTitles.get(row.target_id) ?? null, target_href: `/items/${row.target_id}` };
-    }
-    if (row.target === "user") {
-      return { ...row, target_label: names.get(row.target_id) ?? null, target_href: `/admin/students/${row.target_id}` };
-    }
-    const message = bodies.get(row.target_id);
+  const reports: AdminReport[] = rows.map(({ item, person, message, ...row }) => {
+    if (item) return { ...row, target_id: item.id, target_label: item.title, target_href: `/items/${item.id}` };
+    if (person) return { ...row, target_id: person.id, target_label: person.full_name, target_href: `/admin/students/${person.id}` };
     return {
       ...row,
-      target_label: message ? (message.body ?? "Photo") : null,
+      target_id: message?.id ?? "",
+      target_label: message ? (message.body || "Photo") : null,
       target_href: message ? `/chat/${message.conversation_id}` : null,
     };
   });
@@ -389,7 +380,7 @@ export async function getClaimReviews(limit = 100) {
   const claimantIds = [...new Set(claims.map((claim) => claim.claimant_id))];
 
   const [posts, notes, people] = await Promise.all([
-    postIds.length ? db.from("campus_posts").select("*").in("id", postIds) : Promise.resolve({ data: [] }),
+    postIds.length ? db.from("campus_posts").select(CAMPUS_POST_COLUMNS).in("id", postIds) : Promise.resolve({ data: [] }),
     postIds.length
       ? db.from("campus_post_notes").select("post_id, identifying_notes").in("post_id", postIds)
       : Promise.resolve({ data: [] }),

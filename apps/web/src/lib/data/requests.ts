@@ -13,7 +13,7 @@ export type OutgoingRequest = BorrowRequest & {
 
 const REQUEST_SELECT = `
   *,
-  item:items!borrow_requests_item_id_fkey (id, title, images, deposit_amount),
+  item:items!borrow_requests_item_id_fkey (id, title, images:photo_paths, deposit_amount),
   borrower:profiles!borrow_requests_borrower_id_fkey (id, full_name, avatar_path, trust_score)
 `;
 

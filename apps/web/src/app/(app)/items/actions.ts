@@ -44,7 +44,7 @@ export async function createItem(
 
   const { data, error } = await supabase
     .from("items")
-    .insert({ owner_id: profile.id, ...rest, images: image_paths, status: "available" })
+    .insert({ owner_id: profile.id, ...rest, status: "available" })
     .select("id")
     .single();
 
@@ -52,9 +52,17 @@ export async function createItem(
     return { status: "error", message: error.message };
   }
 
+  // Photos are rows in item_photos, set in display order (first = cover).
+  const itemId = (data as { id: string }).id;
+  const { error: photoError } = await supabase.rpc("set_item_photos", { p_item_id: itemId, p_paths: image_paths });
+  if (photoError) {
+    await supabase.from("items").delete().eq("id", itemId).eq("owner_id", profile.id);
+    return { status: "error", message: photoError.message };
+  }
+
   revalidatePath("/home");
   revalidatePath("/my/items");
-  redirect(`/items/${(data as { id: string }).id}`);
+  redirect(`/items/${itemId}`);
 }
 
 export async function updateItem(
@@ -75,12 +83,17 @@ export async function updateItem(
 
   const { error } = await supabase
     .from("items")
-    .update({ ...rest, images: image_paths })
+    .update(rest)
     .eq("id", itemId)
     .eq("owner_id", profile.id);
 
   if (error) {
     return { status: "error", message: error.message };
+  }
+
+  const { error: photoError } = await supabase.rpc("set_item_photos", { p_item_id: itemId, p_paths: image_paths });
+  if (photoError) {
+    return { status: "error", message: photoError.message };
   }
 
   revalidatePath("/home");

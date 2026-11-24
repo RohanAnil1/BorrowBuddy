@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/app/status-badge";
 import { SubmitButton } from "@/components/app/submit-button";
 import { VERIFICATION_STATUS_LABELS } from "@borrowbuddy/shared";
 import { requireProfile } from "@/lib/auth/guards";
+import { getDepartments } from "@/lib/data/departments";
 import { getOutstandingTotal } from "@/lib/data/fines";
 import { getProfileStamps } from "@/lib/data/stamps";
 import { signOut } from "../actions";
@@ -16,6 +17,7 @@ export const metadata = { title: "You" };
 
 export default async function MePage() {
   const profile = await requireProfile();
+  const departments = await getDepartments({ id: profile.department_id, name: profile.department });
   // Stamps need a verified viewer; pending students see the card without them.
   const [outstanding, stamps] = await Promise.all([
     getOutstandingTotal(profile.id),
@@ -132,7 +134,7 @@ export default async function MePage() {
       )}
 
       <div className="mt-8 flex flex-col gap-6">
-        <ProfileForm profile={profile} />
+        <ProfileForm profile={profile} departments={departments} />
         {profile.verification_status !== "verified" && <StudentIdForm profile={profile} />}
       </div>
 
