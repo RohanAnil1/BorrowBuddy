@@ -52,3 +52,8 @@ supabase/demo-catalog/*.local.*
 /apps/web/verification/
 __pycache__/
 *.py[cod]
+
+# Local AI-assistant tooling (kept on this machine, not published)
+.agents/
+.claude/
+skills-lock.json
