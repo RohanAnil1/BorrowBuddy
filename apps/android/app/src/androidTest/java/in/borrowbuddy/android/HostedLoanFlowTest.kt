@@ -204,7 +204,7 @@ class HostedLoanFlowTest {
             openLoan(loanId, false)
             generateWithRealtimePrivacyCheck(loanId)
             val pickup = code(); assertQr("bb:pickup:$pickup")
-            val expiry = runBlocking { repository.loan(loanId)!!.handover_token_expires_at }
+            val expiry = runBlocking { repository.loan(loanId)!!.handover("pickup")?.expires_at }
             assertNotNull(expiry)
             compose.activityRule.scenario.recreate()
             assertEquals("Rotation must retain the existing single-use ticket", pickup, code())
@@ -213,14 +213,14 @@ class HostedLoanFlowTest {
             val wrong = if (pickup == "000000") "111111" else "000000"
             for (attempt in 1..5) {
                 confirm("pickup", wrong, "INCORRECT CODE")
-                assertEquals(attempt, runBlocking { repository.loan(loanId)!!.handover_attempts })
+                assertEquals(attempt, runBlocking { (repository.loan(loanId)!!.handover("pickup")?.attempts ?: 0) })
                 android.util.Log.i("BorrowBuddyQa", "Native loan: incorrect attempt $attempt persisted")
             }
             confirm("pickup", pickup, "TOO MANY INCORRECT ATTEMPTS")
             assertEquals("awaiting_pickup", runBlocking { repository.loan(loanId)!!.status })
             logout(); login(borrower, password); openLoan(loanId, false); tap("GENERATE CODE")
             val regenerated = code()
-            assertEquals(0, runBlocking { repository.loan(loanId)!!.handover_attempts })
+            assertEquals(0, runBlocking { (repository.loan(loanId)!!.handover("pickup")?.attempts ?: 0) })
             android.util.Log.i("BorrowBuddyQa", "Native loan: regeneration reset attempts")
             logout(); login(owner, password); openLoan(loanId, true)
             confirm("pickup", regenerated)

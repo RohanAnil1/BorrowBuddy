@@ -208,9 +208,10 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                         }
                         launch(start = CoroutineStart.UNDISPATCHED) {
                             inserts.collect { event ->
-                                val row = event.decodeRecord<Message>()
-                                if (row.conversation_id != id) return@collect
-                                val sender = senderCache[row.sender_id] ?: try { repository.publicProfile(row.sender_id) }
+                                val raw = event.decodeRecord<Message>()
+                                if (raw.conversation_id != id) return@collect
+                                val row = feedRow(raw)
+                                val sender = row.sender ?: senderCache[row.sender_id] ?: try { repository.publicProfile(row.sender_id) }
                                 catch (cancelled: CancellationException) { throw cancelled }
                                 catch (_: Exception) { null }
                                 sender?.let { senderCache[row.sender_id] = it; if (senderCache.size > 64) senderCache.remove(senderCache.keys.first()) }
@@ -222,14 +223,16 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
                                 }
                             }
                         }
-                        // Edits, deletes and reactions all update the row.
+                        // Edits, deletes, reactions, pins and poll votes all update the row
+                        // (reactions and votes bump activity_at); the feed has the current ones.
                         val updates = channel.postgresChangeFlow<PostgresAction.Update>("public") {
                             table = "messages"; filter { eq("conversation_id", id) }
                         }
                         launch(start = CoroutineStart.UNDISPATCHED) {
                             updates.collect { event ->
-                                val row = event.decodeRecord<Message>()
-                                if (row.conversation_id != id) return@collect
+                                val raw = event.decodeRecord<Message>()
+                                if (raw.conversation_id != id) return@collect
+                                val row = feedRow(raw)
                                 mutation.withLock {
                                     if (ui.messages.any { it.id == row.id }) {
                                         ui = ui.copy(messages = mergeThreadMessages(ui.messages, listOf(row)), events = ui.events + 1)
@@ -312,6 +315,11 @@ class ChatViewModel(private val repository: BorrowRepository, private val userId
         val draft = if (ui.editing != null) saved["draft"] ?: "" else ui.draft
         ui = ui.copy(replyTo = null, editing = null, draft = draft)
     }
+
+    /** A message as message_feed has it now: reactions, mentions and poll live in their own tables. */
+    private suspend fun feedRow(raw: Message): Message = try {
+        repository.messagesById(listOf(raw.id)).firstOrNull() ?: raw
+    } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { raw }
 
     fun react(message: Message, emoji: String) {
         if (!ui.canPost || message.deleted_at != null) return

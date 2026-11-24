@@ -58,9 +58,13 @@ class BorrowRepository(private val context: Context) {
         }
     }
     /** Profile columns any signed-in student may read. Keep in step with the grant in the private-profile migration. */
-    private val publicProfileColumns = Columns.raw("id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,email_notifications,created_at,updated_at")
-    private val itemColumns =Columns.raw("*,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*)")
-    private val loanColumns = Columns.raw("id,request_id,item_id,owner_id,borrower_id,start_date,due_date,returned_at,status,handover_token_expires_at,return_token_expires_at,handover_attempts,return_attempts,pickup_confirmed_at,return_confirmed_at,created_at,updated_at,item:items(*),owner:profiles!loans_owner_id_fkey(id,full_name,avatar_path,trust_score),borrower:profiles!loans_borrower_id_fkey(id,full_name,avatar_path,trust_score)")
+    /** An item's own columns. Photos come from item_photos through photo_paths, read as `images` (first = cover). */
+    private val itemFields = "id,owner_id,category_id,title,description,condition,deposit_amount,max_loan_days,pickup_location_id,status,created_at,updated_at,images:photo_paths"
+    /** The department name comes from the departments table. */
+    private val departmentField = "department_id,...departments(department:name)"
+    private val publicProfileColumns = Columns.raw("id,full_name,$departmentField,year_of_study,avatar_path,verification_status,trust_score,is_admin,email_notifications,created_at,updated_at")
+    private val itemColumns =Columns.raw("$itemFields,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*)")
+    private val loanColumns = Columns.raw("id,request_id,item_id,owner_id,borrower_id,start_date,due_date,returned_at,status,created_at,updated_at,handovers:loan_handovers(kind,expires_at,attempts,confirmed_at),item:items($itemFields),owner:profiles!loans_owner_id_fkey(id,full_name,avatar_path,trust_score),borrower:profiles!loans_borrower_id_fkey(id,full_name,avatar_path,trust_score)")
     suspend fun initialize() { if (configured) client.auth.awaitInitialization() }
     suspend fun profile(): Profile? {
         if (!configured) return null
@@ -157,11 +161,19 @@ class BorrowRepository(private val context: Context) {
     }
     suspend fun updateProfile(profile: Profile, name: String, phone: String, department: String, year: Int) {
         Rules.validateProfile(name, phone, department, year)?.let { error(it) }
+        val departmentId = departments().firstOrNull { it.name.equals(department.trim(), ignoreCase = true) }?.id
+            ?: profile.department_id.takeIf { department == profile.department }
+            ?: error("Select your department.")
         client.from("profiles").update(buildJsonObject {
             put("full_name", name.trim()); put("phone", phone.trim().takeIf { it.isNotBlank() }?.let(::JsonPrimitive) ?: JsonNull)
-            put("department", department); put("year_of_study", year)
+            put("department_id", departmentId); put("year_of_study", year)
         }) { filter { eq("id", profile.id) } }
     }
+    private var departmentCache: List<Department>? = null
+    /** The departments students pick from, in display order (cached for the session). */
+    suspend fun departments(): List<Department> = departmentCache ?: client.from("departments")
+        .select(Columns.raw("id,name")) { filter { eq("is_active", true) }; order("sort_order", Order.ASCENDING); order("name", Order.ASCENDING) }
+        .decodeList<Department>().also { departmentCache = it }
     suspend fun submitStudentId(path: String) { rpc("submit_student_id", buildJsonObject { put("p_path", path) }) }
     suspend fun confirmHandover(loanId: String, token: String, kind: String) {
         require(Regex("^\\d{6}$").matches(token)) { "Enter the six-digit code." }
@@ -223,7 +235,7 @@ class BorrowRepository(private val context: Context) {
         } else client.from("wishlist_items").delete { filter { eq("user_id", userId); eq("item_id", itemId) } }
     }
     suspend fun savedItems(userId: String): List<Item> = client.from("wishlist_items")
-        .select(Columns.raw("created_at,item:items(*,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*))")) {
+        .select(Columns.raw("created_at,item:items($itemFields,owner:profiles!items_owner_id_fkey(id,full_name,avatar_path,trust_score,verification_status),category:categories(*),pickup_location:pickup_locations(*))")) {
             filter { eq("user_id", userId) }; order("created_at", Order.DESCENDING); limit(100)
         }.decodeList<SavedRow>().mapNotNull { it.item }
 
@@ -275,11 +287,11 @@ class BorrowRepository(private val context: Context) {
             .sortedByDescending { java.time.Instant.parse(it.created_at) }
     }
     suspend fun loan(id: String): Loan? = client.from("loans").select(loanColumns) { filter { eq("id", id) } }.decodeSingleOrNull()
-    suspend fun outgoingRequests(id: String): List<BorrowRequest> = client.from("borrow_requests").select(Columns.raw("*,item:items(*)")) { filter { eq("borrower_id", id) }; order("created_at", Order.DESCENDING); limit(60) }.decodeList()
+    suspend fun outgoingRequests(id: String): List<BorrowRequest> = client.from("borrow_requests").select(Columns.raw("*,item:items($itemFields)")) { filter { eq("borrower_id", id) }; order("created_at", Order.DESCENDING); limit(60) }.decodeList()
     suspend fun incomingRequests(id: String): List<BorrowRequest> {
         val owned = myItems(id).map { it.id }
         if (owned.isEmpty()) return emptyList()
-        return client.from("borrow_requests").select(Columns.raw("*,item:items(*),borrower:profiles!borrow_requests_borrower_id_fkey(id,full_name,trust_score,avatar_path)")) {
+        return client.from("borrow_requests").select(Columns.raw("*,item:items($itemFields),borrower:profiles!borrow_requests_borrower_id_fkey(id,full_name,trust_score,avatar_path)")) {
             filter { isIn("item_id", owned) }; order("created_at", Order.DESCENDING); limit(60)
         }.decodeList()
     }
@@ -291,10 +303,10 @@ class BorrowRepository(private val context: Context) {
             head = true; count(Count.EXACT); filter { isIn("item_id", owned); eq("status", "pending") }
         }.countOrNull() ?: 0).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
-    suspend fun waitlist(id: String): List<WaitlistEntry> = client.from("waitlist_entries").select(Columns.raw("*,item:items(*)")) { filter { eq("user_id", id); isIn("status", listOf("waiting", "notified")) }; order("created_at", Order.DESCENDING) }.decodeList()
+    suspend fun waitlist(id: String): List<WaitlistEntry> = client.from("waitlist_entries").select(Columns.raw("*,item:items($itemFields)")) { filter { eq("user_id", id); isIn("status", listOf("waiting", "notified")) }; order("created_at", Order.DESCENDING) }.decodeList()
     suspend fun notifications(id: String): List<Notification> = client.from("notifications").select { filter { eq("user_id", id) }; order("created_at", Order.DESCENDING); limit(40) }.decodeList()
     suspend fun markNotificationsRead(id: String) = client.from("notifications").update(buildJsonObject { put("read_at", java.time.Instant.now().toString()) }) { filter { eq("user_id", id); exact("read_at", null) } }
-    suspend fun fines(id: String? = null): List<Fine> = client.from("fines").select(Columns.raw("*,user:profiles!fines_user_id_fkey(id,full_name),loan:loans(*,item:items(*))")) {
+    suspend fun fines(id: String? = null): List<Fine> = client.from("fines").select(Columns.raw("*,user:profiles!fines_user_id_fkey(id,full_name),loan:loans(*,item:items($itemFields))")) {
         filter { if (id != null) eq("user_id", id) else eq("status", "pending") }
         order("created_at", if (id == null) Order.ASCENDING else Order.DESCENDING)
         if (id == null) limit(50)
@@ -303,7 +315,7 @@ class BorrowRepository(private val context: Context) {
         filter { userId?.let { eq("reviewee_id", it) }; loanId?.let { eq("loan_id", it) } }; order("created_at", Order.DESCENDING)
         if (userId != null) limit(20)
     }.decodeList()
-    suspend fun publicProfile(id: String): Profile? = client.from("profiles").select(Columns.raw("id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,created_at")) { filter { eq("id", id) } }.decodeSingleOrNull()
+    suspend fun publicProfile(id: String): Profile? = client.from("profiles").select(Columns.raw("id,full_name,$departmentField,year_of_study,avatar_path,verification_status,trust_score,is_admin,created_at")) { filter { eq("id", id) } }.decodeSingleOrNull()
     suspend fun profileStats(id: String): ProfileStats = rpc("get_public_profile_stats", buildJsonObject { put("p_profile_id", id) }).decodeSingle()
     /** Member card stamps are decorative: any failure hides them instead of failing the screen. */
     suspend fun profileStamps(id: String): List<ProfileStamp>? = try {
@@ -321,7 +333,7 @@ class BorrowRepository(private val context: Context) {
         head = true; count(Count.EXACT); filter { eq("user_id", userId); exact("read_at", null) }
     }.countOrNull() ?: 0).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     suspend fun members(id: String): List<ConversationMember> = client.from("conversation_members").select(Columns.raw("*,profile:profiles(id,full_name,avatar_path,trust_score)")) { filter { eq("conversation_id", id) } }.decodeList()
-    suspend fun messages(id: String, before: Message? = null, pageSize: Int = 100): List<Message> = client.from("messages").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
+    suspend fun messages(id: String, before: Message? = null, pageSize: Int = 100): List<Message> = client.from("message_feed").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
         filter {
             eq("conversation_id", id)
             before?.let { cursor -> or {
@@ -334,18 +346,18 @@ class BorrowRepository(private val context: Context) {
     suspend fun sendMessage(id: String, userId: String, text: String, replyTo: String? = null,
         mentions: List<String> = emptyList(), imagePath: String? = null): Message {
         require(text.trim().length <= 2000 && (text.isNotBlank() || imagePath != null)) { "Write a message of up to 2000 characters." }
-        return client.from("messages").insert(buildJsonObject {
-            put("conversation_id", id); put("sender_id", userId); put("body", text.trim())
-            if (replyTo != null) put("reply_to_id", replyTo)
-            if (mentions.isNotEmpty()) put("mentions", JsonArray(mentions.distinct().take(20).map(::JsonPrimitive)))
-            if (imagePath != null) put("image_path", imagePath)
-        }) {
-            select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)"))
-        }.decodeSingle()
+        // post_message records the mentions in message_mentions; the row is read back from message_feed.
+        val messageId = rpc("post_message", buildJsonObject {
+            put("p_conversation_id", id); put("p_body", text.trim())
+            put("p_image_path", imagePath?.let(::JsonPrimitive) ?: JsonNull)
+            put("p_reply_to_id", replyTo?.let(::JsonPrimitive) ?: JsonNull)
+            put("p_mentions", JsonArray(mentions.distinct().take(20).map(::JsonPrimitive)))
+        }).decodeAs<String>()
+        return messagesById(listOf(messageId)).firstOrNull() ?: error("Couldn't load the sent message.")
     }
     /** Quoted messages that aren't in the loaded page. */
     suspend fun messagesById(ids: Collection<String>): List<Message> = if (ids.isEmpty()) emptyList() else
-        client.from("messages").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
+        client.from("message_feed").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
             filter { isIn("id", ids.take(50)) }
         }.decodeList()
     suspend fun editMessage(messageId: String, text: String): Message {
@@ -359,7 +371,7 @@ class BorrowRepository(private val context: Context) {
         rpc("search_conversation_messages", buildJsonObject { put("p_conversation_id", conversationId); put("p_query", query.trim()); put("p_limit", 30) }).decodeList()
 
     /** Pinned messages, newest pin first. */
-    suspend fun pinnedMessages(id: String): List<Message> = client.from("messages").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
+    suspend fun pinnedMessages(id: String): List<Message> = client.from("message_feed").select(Columns.raw("*,sender:profiles!messages_sender_id_fkey(id,full_name,avatar_path)")) {
         filter {
             eq("conversation_id", id); exact("deleted_at", null)
             filterNot("pinned_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, "null")
@@ -405,14 +417,14 @@ class BorrowRepository(private val context: Context) {
     suspend fun searchStudents(query: String): List<Profile> {
         val term = query.replace(Regex("[%_,()]"), " ").replace('\\', ' ').trim()
         if (term.length < 2) return emptyList()
-        return client.from("profiles").select(Columns.raw("id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,created_at")) {
+        return client.from("profiles").select(Columns.raw("id,full_name,$departmentField,year_of_study,avatar_path,verification_status,trust_score,is_admin,created_at")) {
             filter { eq("verification_status", "verified"); ilike("full_name", "%$term%") }
             order("full_name", Order.ASCENDING); limit(12)
         }.decodeList()
     }
     /** The verification queue with email and ID upload; the database refuses anyone who isn't an admin. */
     suspend fun pendingProfiles(): List<Profile> = rpc("admin_pending_profiles", buildJsonObject { put("p_limit", 50) }).decodeList()
-    suspend fun incidents(loanId: String? = null): List<Incident> = client.from("incidents").select(Columns.raw("*,reporter:profiles!incidents_reporter_id_fkey(id,full_name),photos:incident_photos(*),loan:loans(*,item:items(*),owner:profiles!loans_owner_id_fkey(id,full_name),borrower:profiles!loans_borrower_id_fkey(id,full_name))")) {
+    suspend fun incidents(loanId: String? = null): List<Incident> = client.from("incidents").select(Columns.raw("*,reporter:profiles!incidents_reporter_id_fkey(id,full_name),photos:incident_photos(*),loan:loans(*,item:items($itemFields),owner:profiles!loans_owner_id_fkey(id,full_name),borrower:profiles!loans_borrower_id_fkey(id,full_name))")) {
         filter { if (loanId != null) eq("loan_id", loanId) else isIn("status", listOf("open", "under_review")) }; order("created_at", Order.ASCENDING)
     }.decodeList()
     suspend fun request(itemId: String, userId: String, start: String, end: String, message: String) {
@@ -420,12 +432,23 @@ class BorrowRepository(private val context: Context) {
         client.from("borrow_requests").insert(buildJsonObject { put("item_id", itemId); put("borrower_id", userId); put("start_date", start); put("end_date", end); put("message", message.trim()) })
     }
     suspend fun saveItem(id: String?, userId: String, values: JsonObject): String {
-        if (id != null) {
-            client.from("items").update(values) { filter { eq("id", id); eq("owner_id", userId) } }
-            return id
+        // Photos are rows in item_photos, set in display order (first = cover) by set_item_photos.
+        val photos = values["images"] ?: JsonArray(emptyList())
+        val fields = JsonObject(values - "images")
+        val itemId = if (id != null) {
+            client.from("items").update(fields) { filter { eq("id", id); eq("owner_id", userId) } }
+            id
+        } else {
+            val data = JsonObject(fields + mapOf("owner_id" to JsonPrimitive(userId), "status" to JsonPrimitive("available")))
+            client.from("items").insert(data) { select(Columns.raw("id")) }.decodeSingle<JsonObject>()["id"]!!.jsonPrimitive.content
         }
-        val data = JsonObject(values + mapOf("owner_id" to JsonPrimitive(userId), "status" to JsonPrimitive("available")))
-        return client.from("items").insert(data) { select() }.decodeSingle<Item>().id
+        try {
+            rpc("set_item_photos", buildJsonObject { put("p_item_id", itemId); put("p_paths", photos) })
+        } catch (failure: Exception) {
+            if (id == null) runCatching { deleteItem(itemId, userId) }
+            throw failure
+        }
+        return itemId
     }
     suspend fun setItemStatus(id: String, userId: String, status: String) {
         require(status in listOf("available", "paused", "retired"))

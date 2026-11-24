@@ -152,6 +152,7 @@ internal fun depositLabel(amount: Int): String = if (amount > 0) ledgerMoney(amo
     var name by rememberSaveable(profile.id) { mutableStateOf(profile.full_name) }
     var phone by rememberSaveable(profile.id) { mutableStateOf(profile.phone.orEmpty()) }
     var department by rememberSaveable(profile.id) { mutableStateOf(profile.department.orEmpty()) }
+    val departments = rememberDepartmentNames(model.repository, profile.department)
     var year by rememberSaveable(profile.id) { mutableIntStateOf(profile.year_of_study ?: 1) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
@@ -207,13 +208,13 @@ internal fun depositLabel(amount: Int): String = if (amount > 0) ledgerMoney(amo
                             AccountInput("PHONE", phone, { if (it.length <= 10) phone = it }, Modifier.weight(1f), "10-digit mobile", KeyboardType.Phone, busy, ::saveDetails)
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            AccountChoice("DEPARTMENT", department, Rules.departments.map { it to it }, { department = it }, Modifier.weight(1f), busy)
+                            AccountChoice("DEPARTMENT", department, departments.map { it to it }, { department = it }, Modifier.weight(1f), busy)
                             AccountChoice("YEAR OF STUDY", year.toString(), ((1..5).toList() + listOf(year).filter { it > 5 }).map { it.toString() to "Year $it" }, { year = it.toInt() }, Modifier.weight(1f), busy)
                         }
                     } else {
                         AccountInput("FULL NAME", name, { if (it.length <= 80) name = it }, busy = busy, onSubmit = ::saveDetails)
                         AccountInput("PHONE", phone, { if (it.length <= 10) phone = it }, placeholder = "10-digit mobile", keyboard = KeyboardType.Phone, busy = busy, onSubmit = ::saveDetails)
-                        AccountChoice("DEPARTMENT", department, Rules.departments.map { it to it }, { department = it }, busy = busy)
+                        AccountChoice("DEPARTMENT", department, departments.map { it to it }, { department = it }, busy = busy)
                         AccountChoice("YEAR OF STUDY", year.toString(), ((1..5).toList() + listOf(year).filter { it > 5 }).map { it.toString() to "Year $it" }, { year = it.toInt() }, busy = busy)
                     }
                     actions.error?.let { AccountNotice(it, false) }

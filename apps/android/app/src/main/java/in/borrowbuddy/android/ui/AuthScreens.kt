@@ -118,18 +118,28 @@ private class ProfileDraft(name: String, phone: String, department: String, year
 @Composable private fun rememberProfileDraft(profile: Profile): ProfileDraft = rememberSaveable(profile.id,
     saver = listSaver(save = { listOf(it.name, it.phone, it.department, it.year.toString()) },
         restore = { ProfileDraft(it[0], it[1], it[2], it[3].toInt()) })) {
-    ProfileDraft(profile.full_name, profile.phone.orEmpty(), profile.department ?: Rules.departments.first(), profile.year_of_study ?: 1)
+    ProfileDraft(profile.full_name, profile.phone.orEmpty(), profile.department.orEmpty(), profile.year_of_study ?: 1)
 }
-@Composable private fun ProfileInputs(draft: ProfileDraft, phoneLabel: String = "Phone (optional)") {
+/** Department names from the departments table, plus the student's current one if it has been retired. */
+@Composable fun rememberDepartmentNames(repository: `in`.borrowbuddy.android.data.BorrowRepository, current: String?): List<String> {
+    var names by remember { mutableStateOf(listOfNotNull(current?.takeIf { it.isNotBlank() })) }
+    LaunchedEffect(repository) {
+        runCatching { repository.departments() }.onSuccess { list ->
+            names = (list.map { it.name } + listOfNotNull(current)).filter { it.isNotBlank() }.distinct()
+        }
+    }
+    return names
+}
+@Composable private fun ProfileInputs(draft: ProfileDraft, phoneLabel: String = "Phone (optional)", departments: List<String> = emptyList()) {
     CargoField("Full name", draft.name, { if (it.length <= 80) draft.name = it })
     CargoField(phoneLabel, draft.phone, { if (it.length <= 10) draft.phone = it }, keyboard = KeyboardOptions(keyboardType = KeyboardType.Phone))
-    CargoChoice("Department", draft.department, Rules.departments.map { it to it }, { draft.department = it })
+    CargoChoice("Department", draft.department, departments.map { it to it }, { draft.department = it })
     CargoChoice("Year of study", draft.year.toString(), (1..6).map { it.toString() to "Year $it" }, { draft.year = it.toInt() })
 }
-@Composable fun ProfileFields(profile: Profile, onSave: (String, String, String, Int) -> Unit, busy: Boolean, content: @Composable ColumnScope.() -> Unit = {}) {
+@Composable fun ProfileFields(profile: Profile, onSave: (String, String, String, Int) -> Unit, busy: Boolean, departments: List<String> = emptyList(), content: @Composable ColumnScope.() -> Unit = {}) {
     val draft = rememberProfileDraft(profile)
     CargoPanel {
-        ProfileInputs(draft)
+        ProfileInputs(draft, departments = departments)
         content()
         CargoButton("Save and continue", { onSave(draft.name, draft.phone, draft.department, draft.year) }, enabled = !busy, modifier = Modifier.fillMaxWidth())
     }
@@ -148,6 +158,7 @@ private class ProfileDraft(name: String, phone: String, department: String, year
 @Composable fun OnboardingScreen(model: SessionViewModel, state: SessionState, profile: Profile) {
     var path by rememberSaveable(profile.id) { mutableStateOf(profile.student_id_path.orEmpty()) }
     val draft = rememberProfileDraft(profile)
+    val departments = rememberDepartmentNames(model.repository, profile.department)
     val needsId = profile.verification_status != "verified"
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 48.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
@@ -157,7 +168,7 @@ private class ProfileDraft(name: String, phone: String, department: String, year
         CargoPanel(padding = 24.dp, spacing = 20.dp) {
             TicketTopBar()
             Text("WHO ARE YOU?", style = androidx.compose.ui.text.TextStyle(fontFamily = Cargo.Title, fontSize = 20.sp))
-            ProfileInputs(draft, "Phone")
+            ProfileInputs(draft, "Phone", departments)
         }
         if (needsId) CargoPanel(padding = 24.dp, spacing = 20.dp) {
             Text("STUDENT ID · REQUIRED", style = androidx.compose.ui.text.TextStyle(fontFamily = Cargo.Title, fontSize = 20.sp))
