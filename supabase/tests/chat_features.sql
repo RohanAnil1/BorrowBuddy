@@ -60,11 +60,10 @@ begin
   perform public.admin_add_group_member(v_news, v_ctx.member_id);
   perform public.admin_add_group_member(v_open, v_ctx.member_id);
   -- Mentions: the sender, duplicates and non-members never get a notification.
-  insert into public.messages(conversation_id, sender_id, body, mentions)
-    values (v_open, v_ctx.admin_id, '@Meera @Omar hello', array[v_ctx.member_id, v_ctx.member_id, v_ctx.other_id, v_ctx.admin_id])
-    returning id into v_msg;
-  if (select mentions from public.messages where id = v_msg) @> array[v_ctx.admin_id] then raise exception 'FAIL: sender kept in mentions'; end if;
-  if (select cardinality(mentions) from public.messages where id = v_msg) <> 2 then raise exception 'FAIL: mentions not de-duplicated'; end if;
+  v_msg := public.post_message(v_open, '@Meera @Omar hello', null, null,
+    array[v_ctx.member_id, v_ctx.member_id, v_ctx.other_id, v_ctx.admin_id]);
+  if exists (select 1 from public.message_mentions where message_id = v_msg and user_id = v_ctx.admin_id) then raise exception 'FAIL: sender kept in mentions'; end if;
+  if (select count(*) from public.message_mentions where message_id = v_msg) <> 2 then raise exception 'FAIL: mentions not de-duplicated'; end if;
   insert into public.messages(conversation_id, sender_id, body) values (v_news, v_ctx.admin_id, 'Exam schedule is up') returning id into v_news_msg;
   update feature_ctx set open_id = v_open, news_id = v_news, private_id = v_private, admin_msg = v_msg, news_msg = v_news_msg;
 end;
@@ -121,7 +120,7 @@ begin
   exception when others then if sqlerrm <> 'Only admins can pin messages in groups' then raise; end if; end;
 
   -- Students can't forge pins or polls.
-  begin insert into public.messages(conversation_id, sender_id, body, poll) values (v_ctx.open_id, v_ctx.member_id, 'x', '{"question":"x"}');
+  begin insert into public.polls(message_id, question) values (v_ctx.admin_msg, 'x');
     raise exception 'FAIL: inserted a poll directly';
   exception when insufficient_privilege then null; end;
   begin insert into public.messages(conversation_id, sender_id, body, pinned_at) values (v_ctx.open_id, v_ctx.member_id, 'x', now());
@@ -142,7 +141,7 @@ reset role;
 -- A muted member isn't notified of mentions.
 select pg_temp.as_user(admin_id) from feature_ctx;
 set local role authenticated;
-insert into public.messages(conversation_id, sender_id, body, mentions) select open_id, admin_id, 'muted ping', array[member_id] from feature_ctx;
+select public.post_message(open_id, 'muted ping', null, null, array[member_id]) from feature_ctx;
 reset role;
 do $$ begin
   if exists (select 1 from public.notifications n join feature_ctx c on n.user_id = c.member_id where n.body like '%muted ping%') then
@@ -178,11 +177,11 @@ reset role;
 select pg_temp.as_user(admin_id) from feature_ctx;
 set local role authenticated;
 do $$
-declare v_ctx feature_ctx; v_poll uuid; v_row public.messages;
+declare v_ctx feature_ctx; v_poll uuid; v_row public.message_feed;
 begin
   select * into v_ctx from feature_ctx;
   v_poll := public.create_poll(v_ctx.news_id, '  Movie night?  ', array['Friday', ' Friday ', 'Saturday', '', null]);
-  select * into v_row from public.messages where id = v_poll;
+  select * into v_row from public.message_feed where id = v_poll;
   if v_row.body <> 'Movie night?' or v_row.poll -> 'options' <> '["Friday", "Saturday"]'::jsonb then raise exception 'FAIL: poll shape (%)', v_row.poll; end if;
   begin perform public.create_poll(v_ctx.news_id, 'One?', array['only']); raise exception 'FAIL: one-option poll';
   exception when others then if sqlerrm <> 'Give 2 to 10 different options' then raise; end if; end;
@@ -247,7 +246,7 @@ begin
   select * into v_ctx from feature_ctx;
   begin perform public.vote_poll(v_ctx.poll_id, 1); raise exception 'FAIL: voted on a closed poll';
   exception when others then if sqlerrm <> 'This poll is closed' then raise; end if; end;
-  if (select jsonb_array_length(poll -> 'votes' -> '0') from public.messages where id = v_ctx.poll_id) <> 1 then raise exception 'FAIL: votes kept after close'; end if;
+  if (select jsonb_array_length(poll -> 'votes' -> '0') from public.message_feed where id = v_ctx.poll_id) <> 1 then raise exception 'FAIL: votes kept after close'; end if;
 end;
 $$;
 reset role;

@@ -10,6 +10,8 @@ select
   (select count(*) from public.pickup_locations where name like 'Android QA%' or name like 'Forbidden QA%') as qa_pins,
   (select count(*) from public.conversations where title like 'Android QA%') as qa_channels,
   (select count(*) from public.profiles where id = 'd6860cdc-3b60-4ebd-9ee1-8faefba12aa6' and not is_admin and verification_status = 'verified') as demo_lenders,
-  (select count(*) from public.items where owner_id = 'd6860cdc-3b60-4ebd-9ee1-8faefba12aa6' and status = 'available' and description like 'DEMO INVENTORY%' and cardinality(images) > 0) as demo_listings,
-  (select sum(cardinality(images)) from public.items where owner_id = 'd6860cdc-3b60-4ebd-9ee1-8faefba12aa6') as demo_image_references,
+  (select count(*) from public.items where owner_id = 'd6860cdc-3b60-4ebd-9ee1-8faefba12aa6' and status = 'available' and description like 'DEMO INVENTORY%'
+     and exists (select 1 from public.item_photos ph where ph.item_id = items.id)) as demo_listings,
+  (select count(*) from public.item_photos ph join public.items i on i.id = ph.item_id
+     where i.owner_id = 'd6860cdc-3b60-4ebd-9ee1-8faefba12aa6') as demo_image_references,
   (select count(*) from storage.objects where bucket_id = 'item-images' and name like 'd6860cdc-3b60-4ebd-9ee1-8faefba12aa6/demo-20261021/%') as demo_stored_images;

@@ -82,7 +82,7 @@ begin
 end;
 $$;
 -- A normal self-edit still runs the profile audit/update triggers.
-update public.profiles set department='Computer Science' where id=(select id from helper_permission_context);
+update public.profiles set year_of_study=2 where id=(select id from helper_permission_context);
 reset role;
 do $$ begin
   if exists(select 1 from public.notifications where user_id=(select id from helper_permission_context)

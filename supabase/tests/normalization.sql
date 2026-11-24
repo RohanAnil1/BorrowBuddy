@@ -1,6 +1,7 @@
--- Normalized tables (step 1, expand): departments, photos, mentions,
+-- Normalized tables (final schema): departments, photos, mentions,
 -- reactions, polls, schedules, handovers, reports, the loan copy keys and
--- the profile cascades. Real authenticated role for client paths. Rolls back.
+-- the profile cascades, with the old list/JSON columns gone. Real
+-- authenticated role for client paths. Rolls back.
 begin;
 create temp table norm_ctx(admin_id uuid, member_id uuid, owner_id uuid, borrower_id uuid,
   item_id uuid, loan_id uuid, group_id uuid, poll_id uuid, msg_id uuid);
@@ -23,11 +24,12 @@ begin
     (v_borrower, 'norm-qa-' || v_borrower || '@bennett.edu.in', '{"full_name":"Bea Borrower"}');
   update public.profiles set verification_status = 'verified' where id in (v_admin, v_member, v_owner, v_borrower);
   update public.profiles set is_admin = true where id = v_admin;
-  insert into public.items(owner_id, category_id, title, description, max_loan_days, images)
-    select v_owner, id, 'Normalization QA item', 'Rollback-only fixture', 14,
-      array[v_owner || '/a.jpg', v_owner || '/b.jpg']
+  insert into public.items(owner_id, category_id, title, description, max_loan_days)
+    select v_owner, id, 'Normalization QA item', 'Rollback-only fixture', 14
     from public.categories order by sort_order limit 1
     returning id into v_item;
+  insert into public.item_photos(item_id, position, path)
+    values (v_item, 0, v_owner || '/a.jpg'), (v_item, 1, v_owner || '/b.jpg');
   perform pg_temp.as_user(v_borrower);
   insert into public.borrow_requests(item_id, borrower_id, start_date, end_date)
     values (v_item, v_borrower, current_date, current_date + 1) returning id into v_request;
@@ -38,31 +40,59 @@ begin
 end;
 $$;
 
--- 1. Departments: either column can be written, the other follows.
+-- 0. The old columns are gone.
 do $$
-declare v_ctx norm_ctx; v_cs uuid;
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and (table_name, column_name) in (
+        ('items', 'images'), ('campus_posts', 'images'),
+        ('messages', 'reactions'), ('messages', 'mentions'), ('messages', 'poll'),
+        ('campus_schedules', 'weekly'), ('campus_schedules', 'exceptions'),
+        ('profiles', 'department'),
+        ('loans', 'handover_token_expires_at'), ('loans', 'handover_attempts'),
+        ('loans', 'return_token_expires_at'), ('loans', 'return_attempts'),
+        ('loans', 'pickup_confirmed_at'), ('loans', 'return_confirmed_at'))
+  ) then
+    raise exception 'FAIL: an old column survived the contract migration';
+  end if;
+end;
+$$;
+
+-- 1. Departments: profiles point at the lookup table; admin tools read and
+-- write the name through it.
+select pg_temp.as_user(admin_id) from norm_ctx;
+set local role authenticated;
+do $$
+declare v_ctx norm_ctx; v_cs uuid; v_student jsonb;
 begin
   select * into v_ctx from norm_ctx;
   select id into v_cs from public.departments where name = 'Computer Science';
   if v_cs is null then raise exception 'FAIL: departments not seeded'; end if;
-  update public.profiles set department = 'computer science' where id = v_ctx.member_id;
+  perform public.admin_update_student(v_ctx.member_id, 'Maya Member', 'computer science', 2, null);
   if (select department_id from public.profiles where id = v_ctx.member_id) is distinct from v_cs then
-    raise exception 'FAIL: department text did not set department_id';
+    raise exception 'FAIL: admin department name did not resolve to the lookup row';
   end if;
-  if (select department from public.profiles where id = v_ctx.member_id) <> 'Computer Science' then
-    raise exception 'FAIL: department text not normalized to the lookup name';
+  if (select department from public.admin_list_profiles('Computer Science', null, 50, 0) where id = v_ctx.member_id)
+     is distinct from 'Computer Science' then
+    raise exception 'FAIL: admin list search or department name';
   end if;
-  update public.profiles set department_id = (select id from public.departments where name = 'Law')
-  where id = v_ctx.member_id;
-  if (select department from public.profiles where id = v_ctx.member_id) <> 'Law' then
-    raise exception 'FAIL: department_id did not update the text';
+  v_student := public.admin_get_student(v_ctx.member_id);
+  if v_student -> 'profile' ->> 'department' <> 'Computer Science' then
+    raise exception 'FAIL: admin_get_student department name';
   end if;
-  update public.profiles set department_id = null where id = v_ctx.member_id;
-  if (select department from public.profiles where id = v_ctx.member_id) is not null then
-    raise exception 'FAIL: clearing department_id left the text';
+  perform public.admin_update_student(v_ctx.member_id, 'Maya Member', 'Astrophysics', 2, null);
+  if (select d.is_active from public.departments d join public.profiles p on p.department_id = d.id where p.id = v_ctx.member_id) then
+    raise exception 'FAIL: a new admin-typed department was offered to students';
+  end if;
+  perform public.admin_update_student(v_ctx.member_id, 'Maya Member', '', 2, null);
+  if (select department_id from public.profiles where id = v_ctx.member_id) is not null then
+    raise exception 'FAIL: clearing the department';
   end if;
 end;
 $$;
+reset role;
 set local role anon;
 do $$
 begin
@@ -78,7 +108,7 @@ begin
   select * into v_ctx from norm_ctx;
   if (select array_agg(path order by position) from public.item_photos where item_id = v_ctx.item_id)
      <> array[v_ctx.owner_id || '/a.jpg', v_ctx.owner_id || '/b.jpg'] then
-    raise exception 'FAIL: images were not copied into item_photos in order';
+    raise exception 'FAIL: item_photos not in order';
   end if;
 end;
 $$;
@@ -95,9 +125,6 @@ begin
   end if;
   if (select array_agg(path order by position) from public.item_photos where item_id = v_ctx.item_id) <> v_paths then
     raise exception 'FAIL: item_photos not updated';
-  end if;
-  if (select images from public.items where id = v_ctx.item_id) <> v_paths then
-    raise exception 'FAIL: old images column not kept in step';
   end if;
   if (select public.photo_paths(i) from public.items i where i.id = v_ctx.item_id) <> v_paths then
     raise exception 'FAIL: photo_paths does not read item_photos in order';
@@ -135,13 +162,15 @@ do $$
 declare v_ctx norm_ctx; v_post uuid;
 begin
   select * into v_ctx from norm_ctx;
-  insert into public.campus_posts(owner_id, kind, title, description, category_id, location, condition, images, status)
-    select v_ctx.owner_id, 'giveaway', 'Norm QA lamp', 'A working desk lamp for anyone.', id, 'Block A', 'good',
-      array[v_ctx.owner_id || '/p1/1.webp', v_ctx.owner_id || '/p1/2.webp'], 'open'
+  insert into public.campus_posts(owner_id, kind, title, description, category_id, location, condition, status)
+    select v_ctx.owner_id, 'giveaway', 'Norm QA lamp', 'A working desk lamp for anyone.', id, 'Block A', 'good', 'open'
     from public.categories order by sort_order limit 1
     returning id into v_post;
-  if (select count(*) from public.campus_post_photos where post_id = v_post) <> 2 then
-    raise exception 'FAIL: campus post photos not copied';
+  insert into public.campus_post_photos(post_id, position, path)
+    values (v_post, 0, v_ctx.owner_id || '/p1/1.webp'), (v_post, 1, v_ctx.owner_id || '/p1/2.webp');
+  if (select public.photo_paths(p) from public.campus_posts p where p.id = v_post)
+     <> array[v_ctx.owner_id || '/p1/1.webp', v_ctx.owner_id || '/p1/2.webp'] then
+    raise exception 'FAIL: campus photo_paths';
   end if;
   delete from public.campus_posts where id = v_post;
   if exists (select 1 from public.campus_post_photos where post_id = v_post) then
@@ -254,15 +283,24 @@ begin
 end;
 $$;
 
--- 4. Campus schedules: rows per weekday / date, view in the old shape.
+-- 4. Campus schedules: save_schedule takes JSON and stores rows per weekday
+-- / date (a blocked weekday is no row); the view returns the editor's shape.
+select pg_temp.as_user(owner_id) from norm_ctx;
+set local role authenticated;
+do $$
+begin
+  perform public.campus_api('save_schedule', jsonb_build_object(
+    'pickup_location_id', (select id from public.pickup_locations where is_active order by name limit 1),
+    'slot_minutes', 30,
+    'weekly', '[{"day":1,"start":"09:00","end":"11:00"},{"day":3,"start":"14:00","end":"15:30"},{"day":5,"blocked":true}]'::jsonb,
+    'exceptions', '[{"date":"2030-01-07","blocked":true},{"date":"2030-01-09","start":"10:00","end":"12:00"}]'::jsonb));
+end;
+$$;
+reset role;
 do $$
 declare v_ctx norm_ctx; v_view public.campus_schedule_view;
 begin
   select * into v_ctx from norm_ctx;
-  insert into public.campus_schedules(host_id, pickup_location_id, slot_minutes, weekly, exceptions)
-  values (v_ctx.owner_id, (select id from public.pickup_locations order by name limit 1), 30,
-    '[{"day":1,"start":"09:00","end":"11:00"},{"day":3,"start":"14:00","end":"15:30"}]',
-    '[{"date":"2030-01-07","blocked":true},{"date":"2030-01-09","start":"10:00","end":"12:00","blocked":false}]');
   if (select count(*) from public.campus_schedule_windows where host_id = v_ctx.owner_id) <> 2
      or (select count(*) from public.campus_schedule_exceptions where host_id = v_ctx.owner_id) <> 2 then
     raise exception 'FAIL: schedule rows';
@@ -290,10 +328,6 @@ begin
   v_code := public.generate_handover_token(v_ctx.loan_id, 'pickup');
   if not exists (select 1 from public.loan_handovers where loan_id = v_ctx.loan_id and kind = 'pickup' and expires_at > now() and attempts = 0) then
     raise exception 'FAIL: loan_handovers row not written';
-  end if;
-  if (select handover_token_expires_at from public.loans where id = v_ctx.loan_id)
-     is distinct from (select expires_at from public.loan_handovers where loan_id = v_ctx.loan_id and kind = 'pickup') then
-    raise exception 'FAIL: old expiry column not kept in step';
   end if;
   perform pg_temp.as_user(v_ctx.owner_id);
   if (public.confirm_handover_v2(v_ctx.loan_id, v_code, 'pickup') ->> 'status') <> 'active' then
@@ -360,5 +394,5 @@ begin
 end;
 $$;
 
-select 'PASS: normalized tables, sync with old columns, feed and schedule views, keys and cascades' as result;
+select 'PASS: final normalized schema, admin department names, feed and schedule views, keys and cascades' as result;
 rollback;
