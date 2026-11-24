@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth/guards";
+import { getDepartments } from "@/lib/data/departments";
 import { OnboardingForm } from "./onboarding-form";
 
 export const metadata = { title: "Welcome" };
 
 export default async function OnboardingPage() {
   const profile = await requireProfile();
+  const departments = await getDepartments({ id: profile.department_id, name: profile.department });
 
   if (profile.full_name) {
     redirect("/home");
@@ -38,7 +40,7 @@ export default async function OnboardingPage() {
         </p>
 
         <div className="mt-10">
-          <OnboardingForm profile={profile} />
+          <OnboardingForm profile={profile} departments={departments} />
         </div>
       </div>
     </div>

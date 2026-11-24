@@ -2,23 +2,13 @@
 
 import { useActionState } from "react";
 import type { Profile } from "@borrowbuddy/shared";
+import type { Department } from "@/lib/data/departments";
 import { idleState } from "@/lib/action-state";
 import { ImageUploader } from "./image-uploader";
 import { SubmitButton } from "./submit-button";
 import { submitStudentId, updateProfile } from "@/app/(app)/me/actions";
 import { BUCKETS } from "@/lib/storage";
 
-const DEPARTMENTS = [
-  "Computer Science",
-  "Electronics & Communication",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Biotechnology",
-  "Business & Management",
-  "Law",
-  "Design",
-  "Other",
-];
 
 const inputClass =
   "w-full rounded-lg border border-line bg-black px-4 py-3 text-[14px] text-ink outline-none transition-colors focus:border-accent";
@@ -42,7 +32,7 @@ function Notice({ status, message }: { status: string; message?: string }) {
   return null;
 }
 
-export function ProfileForm({ profile }: { profile: Profile }) {
+export function ProfileForm({ profile, departments }: { profile: Profile; departments: Department[] }) {
   const [state, formAction] = useActionState(updateProfile, idleState);
 
   return (
@@ -76,14 +66,14 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           <span className={labelClass}>DEPARTMENT</span>
           <select
             className={inputClass}
-            defaultValue={profile.department ?? ""}
-            name="department"
+            defaultValue={profile.department_id ?? ""}
+            name="department_id"
             required
           >
             <option value="">Choose</option>
-            {DEPARTMENTS.map((department) => (
-              <option key={department} value={department}>
-                {department}
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
               </option>
             ))}
           </select>

@@ -219,6 +219,7 @@ type DeletedStudent = {
   avatar_path: string | null;
   student_id_path: string | null;
   item_images: string[];
+  campus_images?: string[];
 };
 
 export async function deleteStudent(formData: FormData): Promise<void> {
@@ -243,6 +244,7 @@ export async function deleteStudent(formData: FormData): Promise<void> {
       removed.avatar_path ? storage.from(BUCKETS.avatars).remove([removed.avatar_path]) : null,
       removed.student_id_path ? storage.from(BUCKETS.studentIds).remove([removed.student_id_path]) : null,
       removed.item_images.length ? storage.from(BUCKETS.itemImages).remove(removed.item_images) : null,
+      removed.campus_images?.length ? storage.from("campus-photos").remove(removed.campus_images) : null,
     ]);
   } catch (storageError) {
     console.error("[admin] file removal after deleting a student failed:", storageError);

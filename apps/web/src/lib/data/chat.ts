@@ -149,7 +149,7 @@ export async function getLoanConversationId(loanId: string): Promise<string | nu
 export async function getThreadMessages(conversationId: string, limit = 100): Promise<ThreadMessage[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("messages")
+    .from("message_feed")
     .select(MESSAGE_FIELDS)
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
@@ -182,7 +182,7 @@ export async function getConversationCounterpart(
 export async function getPinnedMessages(conversationId: string): Promise<PinnedMessage[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("messages")
+    .from("message_feed")
     .select("id, body, sender_id, pinned_at, image_path, poll, sender:profiles!messages_sender_id_fkey(full_name)")
     .eq("conversation_id", conversationId)
     .not("pinned_at", "is", null)

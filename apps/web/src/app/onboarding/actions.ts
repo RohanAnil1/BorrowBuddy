@@ -16,7 +16,7 @@ export async function completeOnboarding(
   const parsed = profileSetupSchema.safeParse({
     full_name: formData.get("full_name"),
     phone: formData.get("phone") || undefined,
-    department: formData.get("department"),
+    department_id: formData.get("department_id"),
     year_of_study: Number(formData.get("year_of_study") ?? 1),
   });
 
@@ -45,7 +45,7 @@ export async function completeOnboarding(
     .update({
       full_name: parsed.data.full_name,
       phone: parsed.data.phone || null,
-      department: parsed.data.department,
+      department_id: parsed.data.department_id,
       year_of_study: parsed.data.year_of_study,
     })
     .eq("id", profile.id);

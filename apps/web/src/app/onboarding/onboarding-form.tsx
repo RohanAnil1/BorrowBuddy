@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { Profile } from "@borrowbuddy/shared";
+import type { Department } from "@/lib/data/departments";
 import { STUDENT_ID_ALLOWED_TYPES, STUDENT_ID_MIN_BYTES } from "@borrowbuddy/shared";
 import { ImageUploader } from "@/components/app/image-uploader";
 import { SubmitButton } from "@/components/app/submit-button";
@@ -10,24 +11,13 @@ import { BUCKETS } from "@/lib/storage";
 import { idleState } from "@/lib/action-state";
 import { completeOnboarding } from "./actions";
 
-const DEPARTMENTS = [
-  "Computer Science",
-  "Electronics & Communication",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Biotechnology",
-  "Business & Management",
-  "Law",
-  "Design",
-  "Other",
-];
 
 const inputClass =
   "w-full rounded-lg border border-line bg-black px-4 py-3 text-[14px] text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-accent";
 
 const labelClass = "font-secondary text-[10px] text-ink/60";
 
-export function OnboardingForm({ profile }: { profile: Profile }) {
+export function OnboardingForm({ profile, departments }: { profile: Profile; departments: Department[] }) {
   const [state, formAction] = useActionState(completeOnboarding, idleState);
   const [hasId, setHasId] = useState(Boolean(profile.student_id_path));
   // Bootstrap admins arrive already verified; their ID is not re-reviewed.
@@ -79,14 +69,14 @@ export function OnboardingForm({ profile }: { profile: Profile }) {
           <span className={labelClass}>DEPARTMENT</span>
           <select
             className={inputClass}
-            defaultValue={profile.department ?? ""}
-            name="department"
+            defaultValue={profile.department_id ?? ""}
+            name="department_id"
             required
           >
             <option value="">Choose</option>
-            {DEPARTMENTS.map((department) => (
-              <option key={department} value={department}>
-                {department}
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
               </option>
             ))}
           </select>

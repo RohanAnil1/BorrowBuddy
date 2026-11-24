@@ -8,8 +8,15 @@ import type {
 } from "@borrowbuddy/shared";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * An item's own columns. Photos come from item_photos through the
+ * photo_paths computed field, read as `images` (first = cover).
+ */
+export const ITEM_COLUMNS =
+  "id, owner_id, category_id, title, description, condition, deposit_amount, max_loan_days, pickup_location_id, status, created_at, updated_at, images:photo_paths";
+
 export const ITEM_SELECT = `
-  *,
+  ${ITEM_COLUMNS},
   owner:profiles!items_owner_id_fkey (id, full_name, avatar_path, trust_score, verification_status),
   category:categories (*),
   pickup_location:pickup_locations (*)
@@ -77,7 +84,7 @@ export async function searchItems(filters: ItemSearchFilters): Promise<ItemWithO
 
   const { data, error } = await query;
   if (error) throw new Error(`Catalog search failed: ${error.message}`);
-  return (data as ItemWithOwner[] | null) ?? [];
+  return (data as unknown as ItemWithOwner[] | null) ?? [];
 }
 
 export async function getItem(id: string): Promise<ItemWithOwner | null> {

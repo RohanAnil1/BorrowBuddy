@@ -15,6 +15,35 @@ import { BUCKETS } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const messageFields = "*, sender:profiles!messages_sender_id_fkey(id, full_name, avatar_path)";
+
+type Client = ReturnType<typeof createClient>;
+
+/**
+ * Messages are read from message_feed: the stored row plus its reactions,
+ * mentions and poll, which live in their own tables.
+ */
+async function fetchFeedRow(supabase: Client, id: string): Promise<ThreadMessage | null> {
+  const { data } = await supabase.from("message_feed").select(messageFields).eq("id", id).maybeSingle();
+  return (data as ThreadMessage | null) ?? null;
+}
+
+/** Sends through post_message (which records the mentions), then reads the new row back. */
+async function postMessage(
+  supabase: Client,
+  message: { conversationId: string; body: string; imagePath?: string | null; replyToId: string | null; mentions: string[] },
+): Promise<ThreadMessage> {
+  const { data: id, error } = await supabase.rpc("post_message", {
+    p_conversation_id: message.conversationId,
+    p_body: message.body,
+    p_image_path: message.imagePath ?? null,
+    p_reply_to_id: message.replyToId,
+    p_mentions: message.mentions,
+  });
+  if (error) throw error;
+  const row = await fetchFeedRow(supabase, id as string);
+  if (!row) throw new Error("Sent message could not be read back");
+  return row;
+}
 const dayFormat = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
 const timeFormat = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" });
 const TYPING_SEND_MS = 2500;
@@ -246,7 +275,7 @@ export function MessageThread({
     let cancelled = false;
     let done = false;
     void (async () => {
-      const { data } = await createClient().from("messages")
+      const { data } = await createClient().from("message_feed")
         .select("id, body, deleted_at, sender_id, image_path, poll, sender:profiles!messages_sender_id_fkey(full_name)")
         .in("id", missing.slice(0, 50));
       if (cancelled || !data) return;
@@ -295,7 +324,7 @@ export function MessageThread({
       syncing = true;
       try {
         const { data, error } = await supabase
-          .from("messages")
+          .from("message_feed")
           .select(messageFields)
           .eq("conversation_id", conversationId)
           .order("created_at", { ascending: false })
@@ -337,24 +366,23 @@ export function MessageThread({
           delete next[row.sender_id];
           return next;
         });
-        const { data: sender } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_path")
-          .eq("id", row.sender_id)
-          .maybeSingle();
-
-        if (disposed) return;
-        setMessages((current) => mergeMessages(current, [{ ...row, sender }]));
+        const full = await fetchFeedRow(supabase, row.id);
+        if (disposed || !full) return;
+        setMessages((current) => mergeMessages(current, [full]));
 
         if (document.visibilityState === "visible") {
           readThrough = Math.max(readThrough, Date.parse(row.created_at));
           markRead();
         }
       })
-      // Edits, deletes, reactions, pins and poll votes all update the row.
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter }, (payload) => {
+      // Edits, deletes, reactions, pins and poll votes all update the row
+      // (reactions and votes bump activity_at); the feed has the current
+      // reactions and poll.
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter }, async (payload) => {
         if (disposed) return;
-        const row = payload.new as Message;
+        const changed = payload.new as Message;
+        const row = (await fetchFeedRow(supabase, changed.id)) ?? { ...changed, sender: null };
+        if (disposed) return;
         setMessages((current) => current.some((message) => message.id === row.id)
           ? mergeMessages(current, [{ ...row, sender: null }])
           : current);
@@ -465,7 +493,7 @@ export function MessageThread({
   async function fetchOlder(): Promise<ThreadMessage[] | null> {
     const first = messagesRef.current[0];
     if (!first) return null;
-    const { data, error: failure } = await createClient().from("messages")
+    const { data, error: failure } = await createClient().from("message_feed")
       .select(messageFields).eq("conversation_id", conversationId)
       .or(`created_at.lt.${first.created_at},and(created_at.eq.${first.created_at},id.lt.${first.id})`)
       .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(100);
@@ -591,14 +619,11 @@ export function MessageThread({
         updateDraft(draftBeforeEdit.current, false);
         return;
       }
-      const { data, error: failure } = await supabase.from("messages")
-        .insert({ conversation_id: conversationId, sender_id: currentUserId, body, reply_to_id: replyTo?.id ?? null, mentions: mentionsIn(body) })
-        .select(messageFields).single();
-      if (failure) throw failure;
+      const sent = await postMessage(supabase, { conversationId, body, replyToId: replyTo?.id ?? null, mentions: mentionsIn(body) });
       if (draftRef.current === original) updateDraft("");
       setReplyTo(null);
       jumpToLatest();
-      setMessages((current) => mergeMessages(current, [data as ThreadMessage]));
+      setMessages((current) => mergeMessages(current, [sent]));
     } catch {
       setError(editing ? "Couldn’t save your edit. Try again." : "Couldn’t send the message. Your draft is still here.");
     } finally {
@@ -620,10 +645,10 @@ export function MessageThread({
       const { error: upload } = await supabase.storage.from(BUCKETS.chatImages).upload(path, file, { contentType: file.type, upsert: false });
       if (upload) throw upload;
       const caption = draftRef.current.trim();
-      const { data, error: failure } = await supabase.from("messages")
-        .insert({ conversation_id: conversationId, sender_id: currentUserId, body: caption, image_path: path, reply_to_id: replyTo?.id ?? null, mentions: mentionsIn(caption) })
-        .select(messageFields).single();
-      if (failure) {
+      let sent: ThreadMessage;
+      try {
+        sent = await postMessage(supabase, { conversationId, body: caption, imagePath: path, replyToId: replyTo?.id ?? null, mentions: mentionsIn(caption) });
+      } catch (failure) {
         void supabase.storage.from(BUCKETS.chatImages).remove([path]);
         throw failure;
       }
@@ -633,7 +658,7 @@ export function MessageThread({
       if (caption) updateDraft("");
       setReplyTo(null);
       jumpToLatest();
-      setMessages((current) => mergeMessages(current, [data as ThreadMessage]));
+      setMessages((current) => mergeMessages(current, [sent]));
     } catch {
       setError("Couldn’t send the photo. Try again.");
     } finally {

@@ -1,4 +1,4 @@
-import type { Item, Loan, LoanStatus, Profile } from "@borrowbuddy/shared";
+import type { Item, Loan, LoanHandover, LoanStatus, Profile } from "@borrowbuddy/shared";
 import { createClient } from "@/lib/supabase/server";
 
 export type LoanSummary = Loan & {
@@ -7,13 +7,14 @@ export type LoanSummary = Loan & {
   };
   owner: Pick<Profile, "id" | "full_name" | "avatar_path" | "trust_score">;
   borrower: Pick<Profile, "id" | "full_name" | "avatar_path" | "trust_score">;
+  handovers: LoanHandover[];
 };
 
 const LOAN_SELECT = `
   id, request_id, item_id, owner_id, borrower_id, start_date, due_date, returned_at,
-  status, handover_token_expires_at, return_token_expires_at, handover_attempts,
-  return_attempts, pickup_confirmed_at, return_confirmed_at, created_at, updated_at,
-  item:items!loans_item_id_fkey (id, title, images, deposit_amount, max_loan_days, pickup_location:pickup_locations (name)),
+  status, created_at, updated_at,
+  handovers:loan_handovers (kind, expires_at, attempts, confirmed_at),
+  item:items!loans_item_id_fkey (id, title, images:photo_paths, deposit_amount, max_loan_days, pickup_location:pickup_locations (name)),
   owner:profiles!loans_owner_id_fkey (id, full_name, avatar_path, trust_score),
   borrower:profiles!loans_borrower_id_fkey (id, full_name, avatar_path, trust_score)
 `;

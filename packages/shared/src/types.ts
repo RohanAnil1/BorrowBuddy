@@ -84,6 +84,8 @@ export interface Profile {
   email: string;
   phone: string | null;
   department: string | null;
+  /** The departments row; `department` is its name. */
+  department_id: string | null;
   year_of_study: number | null;
   avatar_path: string | null;
   student_id_path: string | null;
@@ -160,6 +162,14 @@ export interface BorrowRequest {
   responded_at: Timestamp | null;
 }
 
+/** One handover of a loan (pickup or return): code expiry, wrong tries, confirmation. */
+export interface LoanHandover {
+  kind: "pickup" | "return";
+  expires_at: Timestamp | null;
+  attempts: number;
+  confirmed_at: Timestamp | null;
+}
+
 export interface Loan {
   id: string;
   request_id: string;
@@ -170,12 +180,6 @@ export interface Loan {
   due_date: DateString;
   returned_at: Timestamp | null;
   status: LoanStatus;
-  handover_token_expires_at: Timestamp | null;
-  return_token_expires_at: Timestamp | null;
-  handover_attempts: number;
-  return_attempts: number;
-  pickup_confirmed_at: Timestamp | null;
-  return_confirmed_at: Timestamp | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

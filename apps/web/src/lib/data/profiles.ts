@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
  * profile and admin_pending_profiles() for the review queue.
  */
 export const PUBLIC_PROFILE_COLUMNS =
-  "id,full_name,department,year_of_study,avatar_path,verification_status,trust_score,is_admin,email_notifications,created_at,updated_at";
+  "id,full_name,department_id,...departments(department:name),year_of_study,avatar_path,verification_status,trust_score,is_admin,email_notifications,created_at,updated_at";
 
 type PrivateFields = Pick<Profile, "email" | "phone" | "student_id_path" | "verification_note">;
 

@@ -99,6 +99,9 @@ begin
   if (select images from public.items where id = v_ctx.item_id) <> v_paths then
     raise exception 'FAIL: old images column not kept in step';
   end if;
+  if (select public.photo_paths(i) from public.items i where i.id = v_ctx.item_id) <> v_paths then
+    raise exception 'FAIL: photo_paths does not read item_photos in order';
+  end if;
   begin
     perform public.set_item_photos(v_ctx.item_id, array['someone-else/x.jpg']);
     raise exception 'FAIL: foreign photo path accepted';

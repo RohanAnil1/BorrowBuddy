@@ -9,6 +9,12 @@ import type {
 } from "@borrowbuddy/shared";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * A campus post's own columns. Photos come from campus_post_photos through
+ * the photo_paths computed field, read as `images` (first = cover).
+ */
+export const CAMPUS_POST_COLUMNS =
+  "id, owner_id, kind, title, description, category_id, location, pickup_location_id, found_on, condition, hold_hours, status, created_at, updated_at, images:photo_paths";
 export async function campusPosts(
   filters: {
     kind?: string;
@@ -24,7 +30,7 @@ export async function campusPosts(
   const db = await createClient();
   let query = db
     .from("campus_posts")
-    .select("*", { count: "exact" })
+    .select(CAMPUS_POST_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
     .order("id");
   if (filters.kind) query = query.eq("kind", filters.kind);
@@ -45,7 +51,7 @@ export async function campusPost(id: string): Promise<CampusPost | null> {
   const db = await createClient();
   const { data, error } = await db
     .from("campus_posts")
-    .select("*")
+    .select(CAMPUS_POST_COLUMNS)
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error("Could not load this campus post.");
@@ -149,7 +155,7 @@ export async function campusSchedule(
 ): Promise<HandoverSchedule | null> {
   const db = await createClient();
   const { data, error } = await db
-    .from("campus_schedules")
+    .from("campus_schedule_view")
     .select("*")
     .eq("host_id", hostId)
     .maybeSingle();
