@@ -53,7 +53,7 @@ supabase/demo-catalog/*.local.*
 __pycache__/
 *.py[cod]
 
-# Local AI-assistant tooling (kept on this machine, not published)
+# Local configuration (kept on this machine, not published)
 .agents/
 .claude/
 skills-lock.json
