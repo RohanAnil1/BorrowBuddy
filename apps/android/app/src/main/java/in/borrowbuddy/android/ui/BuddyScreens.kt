@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -132,7 +133,11 @@ fun buddySuggestions(route: String): List<String> = when {
 @Composable private fun BuddyEmpty(store: BuddyStore, mood: BuddyMood, firstName: String, hero: Boolean, route: String) {
     val starters = listOf("Find gear" to "Find a calculator for this weekend", "My loans" to "When are my loans due?",
         "My ledger" to "Do I owe any fines?", "The rules" to "How does the trust score work?")
-    Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    // Centred when it fits; scrolls when it doesn't. A plain fillMaxSize column
+    // squeezes its last children instead, which left the starter cards as empty boxes.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         ParcelMascot(if (mood == BuddyMood.Idle) BuddyMood.Wave else mood, if (hero) 170.dp else 120.dp, description = "Parcel, Buddy's mascot")
         Spacer(Modifier.height(10.dp))
         if (hero) Text("[ CARGO DESK OPEN ]", style = monoText, color = Cargo.Accent)
@@ -155,6 +160,7 @@ fun buddySuggestions(route: String): List<String> = when {
                 }
             }
         }
+    }
     }
 }
 
